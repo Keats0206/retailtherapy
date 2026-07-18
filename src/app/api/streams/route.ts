@@ -1,0 +1,49 @@
+import { auth } from "@clerk/nextjs/server";
+import { getMux, MUX_RTMP_URL } from "@/lib/mux";
+import type { Video } from "@mux/mux-node/resources";
+
+// Shape returned to the client for a live stream.
+function serialize(stream: Video.LiveStream) {
+  return {
+    id: stream.id,
+    streamKey: stream.stream_key,
+    rtmpUrl: MUX_RTMP_URL,
+    playbackId: stream.playback_ids?.[0]?.id ?? null,
+    status: stream.status,
+  };
+}
+
+// POST /api/streams — create a new Mux live stream. Requires an authenticated
+// host (the /host page is also gated in proxy.ts, but guard here too).
+export async function POST() {
+  const { userId } = await auth();
+  if (!userId) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const mux = getMux();
+    const stream = await mux.video.liveStreams.create({
+      playback_policies: ["public"],
+      // Each RTMP session is archived as an on-demand asset with public playback.
+      new_asset_settings: { playback_policies: ["public"] },
+    });
+
+    return Response.json(serialize(stream), { status: 201 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to create live stream";
+    return Response.json({ error: message }, { status: 500 });
+  }
+}
+
+// GET /api/streams — list existing live streams.
+export async function GET() {
+  try {
+    const mux = getMux();
+    const page = await mux.video.liveStreams.list({ limit: 25 });
+    return Response.json({ streams: page.data.map(serialize) });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to list live streams";
+    return Response.json({ error: message }, { status: 500 });
+  }
+}
