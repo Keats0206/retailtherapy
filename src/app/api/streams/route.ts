@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getHostUser } from "@/lib/auth";
 import { getMux, MUX_RTMP_URL } from "@/lib/mux";
 import type { Video } from "@mux/mux-node/resources";
 
@@ -13,12 +13,12 @@ function serialize(stream: Video.LiveStream) {
   };
 }
 
-// POST /api/streams — create a new Mux live stream. Requires an authenticated
-// host (the /host page is also gated in proxy.ts, but guard here too).
+// POST /api/streams — create a new Mux live stream. Restricted to allowed
+// hosts (see HOST_ALLOWLIST); the /host page is gated the same way.
 export async function POST() {
-  const { userId } = await auth();
-  if (!userId) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const host = await getHostUser();
+  if (!host) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {
