@@ -84,7 +84,7 @@ export function StudioControls({
     // accent border rather than the default hairline.
     <Panel accent className={className}>
       <PanelHeader className="gap-1.5">
-        <h2 className="text-base font-semibold text-foreground">Pin a product</h2>
+        <h2 className="text-base font-semibold text-foreground">Add a link</h2>
         <p className="text-sm text-muted-foreground">
           Paste a retailer link to put it on screen for every viewer.
         </p>
@@ -93,7 +93,7 @@ export function StudioControls({
       <PanelContent className="flex flex-col gap-4">
         {!channel3Configured ? (
           <p className="border-l-2 border-muted-foreground/40 py-1 pl-3 text-sm leading-relaxed text-muted-foreground">
-            Product pinning requires a Channel3 API key. Add{" "}
+            Adding links requires a Channel3 API key. Add{" "}
             <code className="text-foreground">CHANNEL3_API_KEY</code> to{" "}
             <code className="text-foreground">.env.local</code> and restart the
             dev server.
@@ -115,7 +115,7 @@ export function StudioControls({
               className="w-full"
               disabled={resolving || !url.trim()}
             >
-              {resolving ? "Resolving…" : "Pin"}
+              {resolving ? "Resolving…" : "Add link"}
             </Button>
           </form>
         )}
@@ -139,7 +139,7 @@ export function StudioControls({
                   className="shrink-0 text-muted-foreground"
                 >
                   <X />
-                  Unpin
+                  Remove
                 </Button>
               </div>
 

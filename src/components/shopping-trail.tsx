@@ -50,7 +50,7 @@ export function ShoppingTrail({
       <PanelContent>
         {products.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Products you pin will collect here.
+            Links you add will collect here.
           </p>
         ) : (
           <div

@@ -100,7 +100,7 @@ export function BrowsePage({ liveShows }: { liveShows: DiscoveryShow[] }) {
           <div className="flex flex-col gap-2">
             <span className="micro text-muted-foreground">Host a show</span>
             <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
-              Go live from your browser, pin what you&rsquo;re showing, and let
+              Go live from your browser, add links as you show them, and let
               the room decide what&rsquo;s worth buying.
             </p>
           </div>

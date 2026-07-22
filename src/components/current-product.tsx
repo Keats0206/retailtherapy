@@ -37,7 +37,7 @@ export function CurrentProduct({
       <div className={cn("px-3 py-3", className)}>
         <span className="micro text-muted-foreground">On screen now</span>
         <p className="py-6 text-sm text-muted-foreground">
-          When the host pins something, it shows up here.
+          When the host adds a link, it shows up here.
         </p>
       </div>
     );
@@ -125,12 +125,12 @@ export function CurrentProduct({
             disabled={!!myVote}
             onClick={() => onVote("skip")}
           >
-            Skip · {votes.skip}
+            Not buy · {votes.skip}
           </Button>
         </div>
         {myVote && (
           <p className="micro mt-2 text-center text-muted-foreground">
-            You voted {myVote} · {buyPct}% say buy
+            You voted {myVote === "skip" ? "not buy" : myVote} · {buyPct}% say buy
           </p>
         )}
       </div>

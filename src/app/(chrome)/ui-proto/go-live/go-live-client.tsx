@@ -494,7 +494,7 @@ function Preshow({
 
       <div className="flex flex-col gap-4 border-t border-border pt-8 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          Mock broadcast — no LiveKit room. Pin products and chat work locally.
+          Mock broadcast — no LiveKit room. Add links and chat work locally.
         </p>
         <Button
           size="micro"

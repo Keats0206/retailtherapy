@@ -24,7 +24,7 @@ export default async function Dashboard() {
       <div className="flex flex-col gap-6">
         <span className="micro text-muted-foreground">Live shopping</span>
         <h1 className="max-w-xl text-2xl font-normal leading-snug tracking-tight">
-          Hosts go live from the browser, pin what they&rsquo;re showing, and the
+          Hosts go live from the browser, add links as they show them, and the
           room decides whether it&rsquo;s worth buying.
         </h1>
       </div>

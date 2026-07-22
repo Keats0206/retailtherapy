@@ -7,7 +7,7 @@ import { LandingPage } from "@/components/landing-page";
 export const metadata: Metadata = {
   title: "frontrow — watch people shop",
   description:
-    "Live shopping shows in your browser. Hosts go live, pin what they're showing, and let the room decide what's worth buying.",
+    "Live shopping shows in your browser. Hosts go live, add links as they show them, and let the room decide what's worth buying.",
 };
 
 export default async function HomePage() {

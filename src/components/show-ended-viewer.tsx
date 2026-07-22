@@ -52,7 +52,7 @@ export function ShowEndedViewer({
         </Badge>
         <h1 className="text-2xl font-normal tracking-tight">{recap.title}</h1>
         <p className="text-sm text-muted-foreground">
-          {recap.host} · Rewatch the show and shop everything that was pinned.
+          {recap.host} · Rewatch the show and shop everything that was added.
         </p>
       </header>
 

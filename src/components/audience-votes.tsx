@@ -38,7 +38,7 @@ export function AudienceVotes({
           className,
         )}
       >
-        {votes.buy} buy · {votes.skip} skip
+        {votes.buy} buy · {votes.skip} not buy
       </p>
     );
   }
@@ -54,7 +54,7 @@ export function AudienceVotes({
       <Progress value={buyPct} className="gap-0" />
       <div className="flex items-center justify-between text-sm tabular-nums">
         <span>Buy · {votes.buy}</span>
-        <span className="text-muted-foreground">Skip · {votes.skip}</span>
+        <span className="text-muted-foreground">Not buy · {votes.skip}</span>
       </div>
     </div>
   );

@@ -24,9 +24,9 @@ const STEPS = [
   },
   {
     icon: Pin,
-    title: "Pin what you're showing",
+    title: "Add links as you show them",
     description:
-      "Drop products on screen as you shop out loud. Viewers always know exactly what's in frame.",
+      "Drop product links on screen as you shop out loud. Viewers always know exactly what's in frame.",
   },
   {
     icon: ThumbsUp,
@@ -93,7 +93,7 @@ export function LandingPage() {
               </h1>
               <p className="max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
                 Frontrow is live shopping where the audience weighs in. Hosts
-                show what they&rsquo;re buying, pin what&rsquo;s on screen, and
+                show what they&rsquo;re buying, add links to what&rsquo;s on screen, and
                 let the room vote on what&rsquo;s worth it.
               </p>
               <div className="flex flex-wrap items-center gap-3">
@@ -176,7 +176,7 @@ export function LandingPage() {
               items={[
                 { icon: MessageCircle, label: "Live chat with the host and room" },
                 { icon: ThumbsUp, label: "Vote on what you'd actually buy" },
-                { icon: ShoppingBag, label: "Shop pinned products as they appear" },
+                { icon: ShoppingBag, label: "Shop links as they appear" },
               ]}
               cta={{ label: "Find a show", href: "/browse" }}
             />
@@ -184,10 +184,10 @@ export function LandingPage() {
               accent="live"
               eyebrow="For hosts"
               title="Go live from your browser"
-              description="No studio setup. Open Frontrow, share your link, pin products as you show them, and read the room in real time."
+              description="No studio setup. Open Frontrow, share your link, add links as you show them, and read the room in real time."
               items={[
                 { icon: Video, label: "Stream from your laptop or phone" },
-                { icon: Pin, label: "Pin products to the viewer screen" },
+                { icon: Pin, label: "Add links to the viewer screen" },
                 { icon: Radio, label: "See votes and chat while you're live" },
               ]}
               cta={{ label: "Start hosting", href: "/host", host: true }}
