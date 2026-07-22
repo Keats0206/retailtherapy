@@ -6,14 +6,20 @@ import { ConnectionState } from "livekit-client";
 
 import {
   EMPTY,
+  applyEndInteraction,
   applyPin,
   applySetNote,
+  applyStartVerse,
   applyUnpin,
+  applyVerseVote,
   applyVote,
   selectPinned,
+  selectVerse,
+  selectVerseVotesFor,
   selectVotesFor,
   type StreamSnapshot,
   type StreamState,
+  type VerseChoice,
 } from "@/lib/stream-store";
 import type { Product, VoteChoice } from "@/lib/types";
 
@@ -43,7 +49,8 @@ const decoder = new TextDecoder();
 type StreamEvent =
   | { t: "hello" }
   | { t: "snapshot"; state: StreamSnapshot }
-  | { t: "vote"; productId: string; choice: VoteChoice };
+  | { t: "vote"; productId: string; choice: VoteChoice }
+  | { t: "verseVote"; verseId: string; choice: VerseChoice };
 
 export type { StreamSnapshot };
 
@@ -51,6 +58,9 @@ export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
   const [state, setState] = useState<StreamSnapshot>(EMPTY);
   /** Choices this browser already made, so the UI can lock its buttons. */
   const [myVotes, setMyVotes] = useState<Record<string, VoteChoice>>({});
+  const [myVerseVotes, setMyVerseVotes] = useState<
+    Record<string, VerseChoice>
+  >({});
 
   // The message handler needs the latest state without being re-created on
   // every change (which would churn the data-channel subscription). Only ever
@@ -77,6 +87,10 @@ export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
           sendRef.current?.({ t: "snapshot", state: stateRef.current });
         } else if (event.t === "vote") {
           setState((prev) => applyVote(prev, event.productId, event.choice));
+        } else if (event.t === "verseVote") {
+          setState((prev) =>
+            applyVerseVote(prev, event.verseId, event.choice),
+          );
         }
         return;
       }
@@ -144,8 +158,16 @@ export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
     setState((prev) => applyUnpin(prev));
   }, []);
 
+  const endInteraction = useCallback(() => {
+    setState((prev) => applyEndInteraction(prev));
+  }, []);
+
   const setNote = useCallback((productId: string, note: string) => {
     setState((prev) => applySetNote(prev, productId, note));
+  }, []);
+
+  const startVerse = useCallback((left: Product, right: Product) => {
+    setState((prev) => applyStartVerse(prev, left, right));
   }, []);
 
   const vote = useCallback(
@@ -166,22 +188,51 @@ export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
     [isHost, connected, myVotes],
   );
 
+  const verseVote = useCallback(
+    (verseId: string, choice: VerseChoice) => {
+      if (myVerseVotes[verseId]) return;
+      if (!isHost && !connected) return;
+
+      setMyVerseVotes((prev) => ({ ...prev, [verseId]: choice }));
+
+      if (isHost) {
+        setState((prev) => applyVerseVote(prev, verseId, choice));
+      } else {
+        sendRef.current?.({ t: "verseVote", verseId, choice });
+      }
+    },
+    [isHost, connected, myVerseVotes],
+  );
+
   const pinned = useMemo(() => selectPinned(state), [state]);
+  const verse = useMemo(() => selectVerse(state), [state]);
 
   const votesFor = useCallback(
     (productId: string) => selectVotesFor(state, productId),
     [state],
   );
 
+  const verseVotesFor = useCallback(
+    (verseId: string) => selectVerseVotesFor(state, verseId),
+    [state],
+  );
+
   return {
+    active: state.active,
     pinned,
+    verse,
     trail: state.trail,
     snapshot: state,
     votesFor,
+    verseVotesFor,
     myVotes,
+    myVerseVotes,
     pin,
     unpin,
+    endInteraction,
     setNote,
     vote,
+    startVerse,
+    verseVote,
   };
 }

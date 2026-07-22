@@ -10,7 +10,8 @@ Live shopping from the browser. Hosts go live over WebRTC (LiveKit), pin product
 | `/host` | Host studio (Clerk auth + email allowlist) |
 | `/s/<slug>` | Public viewer page — live room or Mux replay |
 | `/dashboard` | Host dashboard — past and live shows |
-| `/prototype`, `/ui-proto/*` | UI sandbox with mock data (no credentials needed) |
+| `/privacy`, `/terms` | Legal pages |
+| `/prototype`, `/ui-proto/*` | UI sandbox (dev only; blocked in production) |
 
 ## Setup
 
@@ -63,12 +64,18 @@ Open [http://localhost:3000](http://localhost:3000).
 6. Host ends show → egress stops, Mux packages the asset, trail is frozen
 7. Replay viewers poll until `muxPlaybackId` is ready
 
+## Production deploy
+
+See [DEPLOY.md](./DEPLOY.md) for the controlled-beta checklist (migrations, env vars, Clerk, smoke test).
+
 ## Scripts
 
 ```bash
 npm run dev          # Next.js dev server
 npm run build        # Production build
 npm run db:studio    # Drizzle Studio
+npm run smoke        # End-to-end show API smoke test
+npm run typecheck    # TypeScript without full build
 ```
 
 ## Prototype routes

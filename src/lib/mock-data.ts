@@ -85,13 +85,14 @@ export const MOCK_PRODUCTS: Product[] = [
  * rather than empty states.
  */
 export const MOCK_SNAPSHOT: StreamSnapshot = {
-  pinnedId: "mock-uniqlo-1",
+  active: { kind: "spotlight", productId: "mock-uniqlo-1" },
   trail: MOCK_PRODUCTS,
   votes: {
     "mock-uniqlo-1": { buy: 47, skip: 12 },
     "mock-ssense-1": { buy: 18, skip: 31 },
     "mock-sephora-1": { buy: 64, skip: 5 },
   },
+  verseVotes: {},
 };
 
 export const MOCK_VIEWER_COUNT = 1284;

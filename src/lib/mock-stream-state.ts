@@ -4,14 +4,20 @@ import { useCallback, useMemo, useState } from "react";
 
 import {
   EMPTY,
+  applyEndInteraction,
   applyPin,
   applySetNote,
+  applyStartVerse,
   applyUnpin,
+  applyVerseVote,
   applyVote,
   selectPinned,
+  selectVerse,
+  selectVerseVotesFor,
   selectVotesFor,
   type StreamSnapshot,
   type StreamState,
+  type VerseChoice,
 } from "@/lib/stream-store";
 import type { Product, VoteChoice } from "@/lib/types";
 
@@ -29,6 +35,9 @@ export function useMockStreamState(
 ): StreamState {
   const [state, setState] = useState<StreamSnapshot>(initial);
   const [myVotes, setMyVotes] = useState<Record<string, VoteChoice>>({});
+  const [myVerseVotes, setMyVerseVotes] = useState<
+    Record<string, VerseChoice>
+  >({});
 
   const pin = useCallback((product: Product) => {
     setState((prev) => applyPin(prev, product));
@@ -38,8 +47,16 @@ export function useMockStreamState(
     setState((prev) => applyUnpin(prev));
   }, []);
 
+  const endInteraction = useCallback(() => {
+    setState((prev) => applyEndInteraction(prev));
+  }, []);
+
   const setNote = useCallback((productId: string, note: string) => {
     setState((prev) => applySetNote(prev, productId, note));
+  }, []);
+
+  const startVerse = useCallback((left: Product, right: Product) => {
+    setState((prev) => applyStartVerse(prev, left, right));
   }, []);
 
   const vote = useCallback(
@@ -52,22 +69,44 @@ export function useMockStreamState(
     [myVotes],
   );
 
+  const verseVote = useCallback(
+    (verseId: string, choice: VerseChoice) => {
+      if (myVerseVotes[verseId]) return;
+      setMyVerseVotes((prev) => ({ ...prev, [verseId]: choice }));
+      setState((prev) => applyVerseVote(prev, verseId, choice));
+    },
+    [myVerseVotes],
+  );
+
   const pinned = useMemo(() => selectPinned(state), [state]);
+  const verse = useMemo(() => selectVerse(state), [state]);
 
   const votesFor = useCallback(
     (productId: string) => selectVotesFor(state, productId),
     [state],
   );
 
+  const verseVotesFor = useCallback(
+    (verseId: string) => selectVerseVotesFor(state, verseId),
+    [state],
+  );
+
   return {
+    active: state.active,
     pinned,
+    verse,
     trail: state.trail,
     snapshot: state,
     votesFor,
+    verseVotesFor,
     myVotes,
+    myVerseVotes,
     pin,
     unpin,
+    endInteraction,
     setNote,
     vote,
+    startVerse,
+    verseVote,
   };
 }

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { cleanProductTitle } from "@/lib/format";
+import { cleanProductTitle, normalizeProductImageUrl } from "@/lib/format";
 import type { Availability, Product } from "@/lib/types";
 
 /**
@@ -19,6 +19,7 @@ const LOOKUP_ENDPOINT = "https://api.trychannel3.com/v1/lookup";
 interface Channel3Image {
   url: string;
   is_main_image: boolean;
+  is_cleaned_image?: boolean;
 }
 
 interface Channel3Offer {
@@ -119,11 +120,19 @@ export async function lookupProduct(rawUrl: string): Promise<Product> {
   return mapProduct(body.product);
 }
 
+function pickImage(images: Channel3Image[] | null): Channel3Image | null {
+  if (!images?.length) return null;
+  return (
+    images.find((i) => i.is_cleaned_image) ??
+    images.find((i) => i.is_main_image) ??
+    images[0]
+  );
+}
+
 function mapProduct(p: Channel3Product): Product {
   // Offers are ordered best-first; the top one carries the trackable link.
   const offer = p.offers?.[0] ?? null;
-  const image =
-    p.images?.find((i) => i.is_main_image) ?? p.images?.[0] ?? null;
+  const image = pickImage(p.images);
 
   // Real responses return brands: [] for plenty of retailers, so the offer
   // domain is the more reliable label.
@@ -132,7 +141,7 @@ function mapProduct(p: Channel3Product): Product {
   return {
     id: p.id,
     name: cleanProductTitle(p.title, retailer),
-    imageUrl: image?.url ?? null,
+    imageUrl: normalizeProductImageUrl(image?.url ?? null),
     price: offer?.price?.price ?? 0,
     currency: offer?.price?.currency ?? "USD",
     retailer,

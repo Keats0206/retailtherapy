@@ -10,9 +10,12 @@ import {
   MUX_RTMP_URL,
   completeMuxLiveStream,
   createMuxLiveStream,
+  deleteMuxAsset,
+  deleteMuxLiveStream,
   resolveMuxRecording,
 } from "@/lib/mux";
 import { EMPTY, type StreamSnapshot } from "@/lib/stream-store";
+import { normalizeSnapshot, spotlightProductId } from "@/lib/interaction-models";
 import type { Product } from "@/lib/types";
 
 /**
@@ -50,7 +53,7 @@ export type Show = Stream;
 
 /** A show, plus the shopping state it recorded. */
 export function snapshotOf(show: Show): StreamSnapshot {
-  return show.snapshot ?? EMPTY;
+  return show.snapshot ? normalizeSnapshot(show.snapshot) : EMPTY;
 }
 
 export async function getShowBySlug(slug: string): Promise<Show | null> {
@@ -90,7 +93,7 @@ function discoveryThumbnail(label: string, tone = 18): string {
 export function toDiscoveryShow(show: Show): DiscoveryShow {
   const snapshot = snapshotOf(show);
   const pinned =
-    snapshot.trail.find((p) => p.id === snapshot.pinnedId) ??
+    snapshot.trail.find((p) => p.id === spotlightProductId(snapshot)) ??
     snapshot.trail[0];
   return {
     slug: show.slug,
@@ -120,6 +123,21 @@ export async function listShowsForHost(hostUserId: string): Promise<Show[]> {
     .limit(50);
 }
 
+export async function getLiveShowForHost(
+  hostUserId: string,
+): Promise<Show | null> {
+  const [show] = await db
+    .select()
+    .from(streams)
+    .where(and(eq(streams.hostUserId, hostUserId), eq(streams.status, "live")))
+    .orderBy(desc(streams.startedAt))
+    .limit(1);
+  return show ?? null;
+}
+
+/** Hours without a snapshot update before a live show is considered stale. */
+export const STALE_SHOW_HOURS = 6;
+
 /**
  * Opens a show. The row and the Mux live stream are created up front so the
  * host has a working share link the instant they click Go live — before the
@@ -131,27 +149,44 @@ export async function createShow(opts: {
   hostName: string | null;
   title: string;
 }): Promise<Show> {
+  const existing = await getLiveShowForHost(opts.hostUserId);
+  if (existing) {
+    throw new Error(
+      "You already have a live show. Open studio to reconnect, or end it first.",
+    );
+  }
+
   const slug = generateSlug();
+  let liveStreamId: string | null = null;
 
-  const { liveStreamId, streamKey } = await createMuxLiveStream();
+  try {
+    const mux = await createMuxLiveStream();
+    liveStreamId = mux.liveStreamId;
+    const { streamKey } = mux;
 
-  const [show] = await db
-    .insert(streams)
-    .values({
-      slug,
-      title: opts.title,
-      hostUserId: opts.hostUserId,
-      hostName: opts.hostName,
-      status: "live",
-      roomName: `show_${slug}`,
-      muxLiveStreamId: liveStreamId,
-      muxStreamKey: streamKey,
-      snapshot: EMPTY,
-      startedAt: new Date(),
-    })
-    .returning();
+    const [show] = await db
+      .insert(streams)
+      .values({
+        slug,
+        title: opts.title,
+        hostUserId: opts.hostUserId,
+        hostName: opts.hostName,
+        status: "live",
+        roomName: `show_${slug}`,
+        muxLiveStreamId: liveStreamId,
+        muxStreamKey: streamKey,
+        snapshot: EMPTY,
+        startedAt: new Date(),
+      })
+      .returning();
 
-  return show;
+    return show;
+  } catch (err) {
+    if (liveStreamId) {
+      await deleteMuxLiveStream(liveStreamId);
+    }
+    throw err;
+  }
 }
 
 /**
@@ -192,8 +227,8 @@ export async function saveSnapshot(
   slug: string,
   hostUserId: string,
   snapshot: StreamSnapshot,
-): Promise<void> {
-  await db
+): Promise<boolean> {
+  const rows = await db
     .update(streams)
     .set({ snapshot, updatedAt: new Date() })
     .where(
@@ -202,7 +237,10 @@ export async function saveSnapshot(
         eq(streams.hostUserId, hostUserId),
         eq(streams.status, "live"),
       ),
-    );
+    )
+    .returning({ id: streams.id });
+
+  return rows.length > 0;
 }
 
 /**
@@ -272,6 +310,8 @@ export async function endShow(
 async function persistTrail(streamId: string, snapshot: StreamSnapshot) {
   if (snapshot.trail.length === 0) return;
 
+  const spotlightId = spotlightProductId(snapshot);
+
   for (const [position, item] of snapshot.trail.entries()) {
     const tally = snapshot.votes[item.id] ?? { buy: 0, skip: 0 };
 
@@ -300,7 +340,7 @@ async function persistTrail(streamId: string, snapshot: StreamSnapshot) {
         streamId,
         productId: row.id,
         position,
-        isSpotlighted: snapshot.pinnedId === item.id,
+        isSpotlighted: spotlightId === item.id,
         note: item.note || null,
         buyVotes: tally.buy,
         skipVotes: tally.skip,
@@ -309,7 +349,7 @@ async function persistTrail(streamId: string, snapshot: StreamSnapshot) {
         target: [streamProducts.streamId, streamProducts.productId],
         set: {
           position,
-          isSpotlighted: snapshot.pinnedId === item.id,
+          isSpotlighted: spotlightId === item.id,
           note: item.note || null,
           buyVotes: tally.buy,
           skipVotes: tally.skip,
@@ -339,6 +379,56 @@ function toProductRow(item: Product) {
  * from the row. Returns the show unchanged if the recording is not ready yet —
  * the page renders a "still processing" state and polls.
  */
+/**
+ * Removes a finished show from the host's dashboard. Live shows must be ended
+ * first — deleting an active room would strand viewers on a dead link.
+ */
+export async function deleteShow(
+  slug: string,
+  hostUserId: string,
+): Promise<Show | null> {
+  const show = await getShowBySlug(slug);
+  if (!show || show.hostUserId !== hostUserId) return null;
+  if (show.status === "live") return null;
+
+  if (show.muxLiveStreamId) {
+    await deleteMuxLiveStream(show.muxLiveStreamId);
+  }
+  if (show.muxAssetId) {
+    await deleteMuxAsset(show.muxAssetId);
+  }
+
+  await db
+    .delete(streams)
+    .where(and(eq(streams.id, show.id), eq(streams.hostUserId, hostUserId)));
+
+  return show;
+}
+
+/**
+ * Ends live shows whose snapshot has not been updated recently — typically a
+ * host who closed the tab without ending cleanly.
+ */
+export async function endStaleShows(
+  staleAfterHours = STALE_SHOW_HOURS,
+): Promise<number> {
+  const cutoff = new Date(Date.now() - staleAfterHours * 60 * 60 * 1000);
+  const stale = await db
+    .select()
+    .from(streams)
+    .where(eq(streams.status, "live"));
+
+  let ended = 0;
+  for (const show of stale) {
+    const lastActivity = show.updatedAt ?? show.startedAt ?? show.createdAt;
+    if (lastActivity >= cutoff) continue;
+
+    const result = await endShow(show.slug, show.hostUserId, snapshotOf(show));
+    if (result) ended += 1;
+  }
+  return ended;
+}
+
 export async function resolveRecording(show: Show): Promise<Show> {
   if (show.muxPlaybackId) return show;
   if (show.status !== "ended" || !show.muxLiveStreamId) return show;

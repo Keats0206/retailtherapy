@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
 import { LandingPage } from "@/components/landing-page";
+import { LANDING_CLOTHING_PRELOAD } from "@/lib/landing-clothing-data";
 
 export const metadata: Metadata = {
   title: "frontrow — watch people shop",
@@ -17,5 +18,12 @@ export default async function HomePage() {
     redirect("/dashboard");
   }
 
-  return <LandingPage />;
+  return (
+    <>
+      {LANDING_CLOTHING_PRELOAD.map((href) => (
+        <link key={href} rel="preload" as="image" href={href} />
+      ))}
+      <LandingPage />
+    </>
+  );
 }

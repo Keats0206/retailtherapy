@@ -239,6 +239,102 @@
   --lk-border-radius: var(--radius);
 }
 
+@keyframes hero-float-a {
+  0%,
+  100% {
+    transform: rotate(-6deg) translateY(0);
+  }
+  50% {
+    transform: rotate(-4deg) translateY(-6px);
+  }
+}
+
+@keyframes hero-float-b {
+  0%,
+  100% {
+    transform: rotate(12deg) translateY(0);
+  }
+  50% {
+    transform: rotate(10deg) translateY(-8px);
+  }
+}
+
+@keyframes hero-float-c {
+  0%,
+  100% {
+    transform: rotate(-3deg) translateY(0);
+  }
+  50% {
+    transform: rotate(-1deg) translateY(-5px);
+  }
+}
+
+@utility animate-hero-float-a {
+  animation: hero-float-a 5s ease-in-out infinite;
+}
+
+@utility animate-hero-float-b {
+  animation: hero-float-b 6.5s ease-in-out infinite;
+}
+
+@utility animate-hero-float-c {
+  animation: hero-float-c 4.5s ease-in-out infinite;
+}
+
+@utility animate-demo-pin-in {
+  animation: demo-pin-in 700ms ease-out forwards;
+}
+
+@keyframes demo-pin-in {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.host-earnings-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: color-mix(in oklch, var(--muted-foreground) 18%, transparent);
+  outline: none;
+}
+
+.host-earnings-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 9999px;
+  border: 2px solid var(--background);
+  background: var(--live);
+  box-shadow: 0 1px 3px color-mix(in oklch, var(--foreground) 20%, transparent);
+  cursor: grab;
+}
+
+.host-earnings-slider::-moz-range-thumb {
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 9999px;
+  border: 2px solid var(--background);
+  background: var(--live);
+  box-shadow: 0 1px 3px color-mix(in oklch, var(--foreground) 20%, transparent);
+  cursor: grab;
+}
+
+.host-earnings-slider:active::-webkit-slider-thumb {
+  cursor: grabbing;
+}
+
+.host-earnings-slider:active::-moz-range-thumb {
+  cursor: grabbing;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

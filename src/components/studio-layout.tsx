@@ -35,7 +35,7 @@ export function StudioLayout({
   /** Overrides the Channel3 lookup — see `StudioControls`. */
   onResolveProduct?: (url: string) => Promise<Product>;
 }) {
-  const { pinned, trail, pin, unpin, setNote, votesFor } = stream;
+  const { pinned, verse, trail, pin, unpin, endInteraction, setNote, votesFor, verseVotesFor, startVerse } = stream;
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
 
   return (
@@ -46,9 +46,13 @@ export function StudioLayout({
         <div className="flex min-w-0 flex-col gap-4 max-lg:gap-3 xl:flex-1 xl:overflow-y-auto">
           <StudioControls
             pinned={pinned}
+            verse={verse}
             votes={pinned ? votesFor(pinned.id) : undefined}
+            verseVotes={verse ? verseVotesFor(verse.id) : undefined}
             onPin={pin}
             onUnpin={unpin}
+            onEndInteraction={endInteraction}
+            onStartVerse={startVerse}
             onNote={setNote}
             onResolve={onResolveProduct}
             channel3Configured={channel3Configured}

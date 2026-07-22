@@ -1,15 +1,11 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
+import { ChevronRight } from "lucide-react";
 
+import { DeleteShowButton } from "@/components/delete-show-button";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { listShowsForHost } from "@/lib/shows";
 import { cn } from "@/lib/utils";
 
@@ -81,42 +77,56 @@ function ShowRow({
       : show.status === "ended"
         ? "Ended"
         : "Scheduled";
+  const actionLabel =
+    show.status === "live" ? "Open studio" : "View recap";
+  const href =
+    show.status === "live"
+      ? `/host?slug=${show.slug}`
+      : `/host/${show.slug}`;
+  const dateLabel = show.startedAt
+    ? show.startedAt.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      })
+    : null;
 
   return (
-    <Card className="py-0 ring-foreground/8">
-      <Link
-        href={`/s/${show.slug}`}
-        className="flex flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      >
-        <CardHeader className="gap-2 pb-2">
-          <div className="flex items-start justify-between gap-3">
-            <CardTitle className="text-base font-normal">{show.title}</CardTitle>
-            <Badge
-              variant={show.status === "live" ? "destructive" : "secondary"}
-              size="micro"
-              className={cn(
-                show.status === "live" && "bg-live text-live-foreground",
+    <Card className="py-0 ring-foreground/8 transition-colors hover:ring-foreground/15">
+      <div className="flex items-center gap-1 pr-2 sm:pr-3">
+        <Link
+          href={href}
+          className="group flex min-w-0 flex-1 items-center gap-4 px-4 py-3.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="truncate text-base font-normal">{show.title}</span>
+              {show.status === "live" ? (
+                <span className="inline-flex shrink-0 items-center gap-1.5 text-live">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-live" />
+                  <span className="micro">{statusLabel}</span>
+                </span>
+              ) : (
+                <Badge variant="secondary" size="micro" className="shrink-0">
+                  {statusLabel}
+                </Badge>
               )}
-            >
-              {statusLabel}
-            </Badge>
+            </div>
+            <p className="truncate text-sm text-muted-foreground">
+              /s/{show.slug}
+              {dateLabel ? ` · ${dateLabel}` : null}
+            </p>
           </div>
-          <CardDescription>
-            /s/{show.slug}
-            {show.startedAt
-              ? ` · ${show.startedAt.toLocaleDateString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                })}`
-              : null}
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <span className="micro text-muted-foreground">
-            {show.status === "live" ? "Open studio view" : "View recap"}
+          <span className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground transition-colors group-hover:text-foreground">
+            {actionLabel}
+            <ChevronRight className="size-4 opacity-0 transition-opacity group-hover:opacity-100" />
           </span>
-        </CardFooter>
-      </Link>
+        </Link>
+        <DeleteShowButton
+          slug={show.slug}
+          title={show.title}
+          disabled={show.status === "live"}
+        />
+      </div>
     </Card>
   );
 }

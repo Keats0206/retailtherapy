@@ -77,6 +77,7 @@ export default function ShowView({ show }: { show: LiveShow }) {
     <main className="flex min-h-0 flex-1 flex-col">
       <WatchLayout
         stream={stream}
+        exitHref="/ui-proto"
         viewers={<ViewerCountView count={show.viewers} />}
         stage={
           <div className="relative h-full w-full">

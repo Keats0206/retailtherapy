@@ -11,6 +11,7 @@ import {
   Video,
 } from "lucide-react";
 
+import { LandingStoreMockup } from "@/components/landing-store-mockup";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/user-menu";
 import { cn } from "@/lib/utils";
@@ -42,7 +43,7 @@ export function LandingPage() {
       <header className="sticky top-0 z-10 border-b border-border/80 bg-background/90 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
           <Link href="/" className="micro font-bold">
-            RetailTherpay
+            frontrow
           </Link>
           <nav className="flex items-center gap-2 sm:gap-3">
             <Button
@@ -86,42 +87,32 @@ export function LandingPage() {
       <main>
         {/* Hero */}
         <section className="border-b border-border">
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-16 lg:py-24">
-            <div className="flex flex-col gap-6">
-              <h1 className="max-w-lg text-4xl font-normal leading-[1.06] tracking-tight sm:text-5xl lg:text-[3.25rem]">
-                watch people shop.
-              </h1>
-              <p className="max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
-                Frontrow is live shopping where the audience weighs in. Hosts
-                show what they&rsquo;re buying, add links to what&rsquo;s on screen, and
-                let the room vote on what&rsquo;s worth it.
-              </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <Button size="lg" render={<Link href="/browse" />}>
-                  Browse live shows
-                </Button>
-                <Show when="signed-out">
-                  <SignUpButton mode="modal">
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="border-pop/30 text-pop hover:bg-pop hover:text-pop-foreground"
-                    >
-                      Host a show
-                    </Button>
-                  </SignUpButton>
-                </Show>
-                <Show when="signed-in">
+          <div className="mx-auto w-full max-w-5xl px-6 py-16 lg:py-24">
+            <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
+              <div className="flex flex-col gap-6">
+                <h1 className="max-w-lg text-4xl font-normal leading-[1.06] tracking-tight sm:text-5xl lg:text-[3.25rem]">
+                  watch people shop.
+                </h1>
+                <p className="max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
+                  Hosts go live, add links to what&rsquo;s on screen, and let the room
+                  vote on what&rsquo;s worth it.
+                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button size="lg" render={<Link href="/browse" />}>
+                    Browse live shows
+                  </Button>
                   <Button
                     variant="outline"
                     size="lg"
                     className="border-pop/30 text-pop hover:bg-pop hover:text-pop-foreground"
-                    render={<Link href="/host" />}
+                    render={<Link href="/apply" />}
                   >
-                    Host a show
+                    Apply to host
                   </Button>
-                </Show>
+                </div>
               </div>
+
+              <LandingStoreMockup />
             </div>
           </div>
         </section>
@@ -190,7 +181,7 @@ export function LandingPage() {
                 { icon: Pin, label: "Add links to the viewer screen" },
                 { icon: Radio, label: "See votes and chat while you're live" },
               ]}
-              cta={{ label: "Start hosting", href: "/host", host: true }}
+              cta={{ label: "Apply to host", href: "/apply" }}
             />
           </div>
         </section>
@@ -231,12 +222,26 @@ export function LandingPage() {
       <footer className="border-t border-border">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-8">
           <span className="micro text-muted-foreground">frontrow</span>
-          <Link
-            href="/browse"
-            className="micro text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Browse shows
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/privacy"
+              className="micro text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Privacy
+            </Link>
+            <Link
+              href="/terms"
+              className="micro text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Terms
+            </Link>
+            <Link
+              href="/browse"
+              className="micro text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Browse shows
+            </Link>
+          </div>
         </div>
       </footer>
     </div>

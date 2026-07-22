@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   LiveKitRoom,
@@ -25,7 +26,6 @@ import {
 
 import { ChatPanel } from "@/components/chat-panel";
 import { EndShowDialog } from "@/components/end-show-dialog";
-import { ShowEndedCreator } from "@/components/show-ended-creator";
 import { StudioLayout } from "@/components/studio-layout";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,7 +48,6 @@ import {
   VideoPlaceholder,
 } from "@/components/video-placeholder";
 import { ViewerCount } from "@/components/viewer-count";
-import { buildEndedRecap, type EndedShowRecap } from "@/lib/show-recap";
 import { useStreamState } from "@/lib/stream-state";
 import { cn } from "@/lib/utils";
 
@@ -86,18 +85,55 @@ type MediaControls = {
 export default function HostClient({
   hostName,
   channel3Configured,
+  resumeSlug,
 }: {
   hostName: string | null;
   channel3Configured: boolean;
+  resumeSlug?: string | null;
 }) {
-  const [phase, setPhase] = useState<"preshow" | "live" | "ended">("preshow");
+  const router = useRouter();
+  const [phase, setPhase] = useState<"preshow" | "live" | "disconnected">(
+    "preshow",
+  );
   const [session, setSession] = useState<ShowSession | null>(null);
-  const [recap, setRecap] = useState<EndedShowRecap | null>(null);
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const liveStartedAt = useRef<number | null>(null);
   const media = useMediaPreview();
+  const stopMediaRef = useRef(media.stop);
+  stopMediaRef.current = media.stop;
+
+  const resumeShow = useCallback(async (slug: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/shows/${slug}/resume`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to reconnect");
+
+      stopMediaRef.current();
+      if (!liveStartedAt.current) liveStartedAt.current = Date.now();
+      setSession({
+        slug: data.slug,
+        title: data.title,
+        room: data.room,
+        token: data.token,
+        url: data.url,
+      });
+      setPhase("live");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setPhase("preshow");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!resumeSlug) return;
+    void resumeShow(resumeSlug);
+  }, [resumeSlug, resumeShow]);
 
   async function goLive() {
     setLoading(true);
@@ -113,7 +149,7 @@ export default function HostClient({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to start show");
 
-      media.stop();
+      stopMediaRef.current();
       liveStartedAt.current = Date.now();
       setSession({
         slug: data.slug,
@@ -130,22 +166,10 @@ export default function HostClient({
     }
   }
 
-  function handleShowEnded(ended: EndedShowRecap) {
-    setRecap(ended);
+  function handleShowEnded(slug: string) {
     setSession(null);
-    setPhase("ended");
-  }
-
-  function startNewShow() {
-    setRecap(null);
-    setSession(null);
-    setTitle("");
-    liveStartedAt.current = null;
     setPhase("preshow");
-  }
-
-  if (phase === "ended" && recap) {
-    return <ShowEndedCreator recap={recap} onStartNew={startNewShow} />;
+    router.replace(`/host/${slug}`);
   }
 
   if (phase === "live" && session) {
@@ -156,9 +180,23 @@ export default function HostClient({
         channel3Configured={channel3Configured}
         startedAt={liveStartedAt}
         onShowEnded={handleShowEnded}
-        onDisconnected={() => {
+        onDisconnected={() => setPhase("disconnected")}
+      />
+    );
+  }
+
+  if (phase === "disconnected" && session) {
+    return (
+      <DisconnectedPanel
+        slug={session.slug}
+        title={session.title}
+        loading={loading}
+        error={error}
+        onReconnect={() => void resumeShow(session.slug)}
+        onBack={() => {
           setSession(null);
           setPhase("preshow");
+          setError(null);
         }}
       />
     );
@@ -176,6 +214,49 @@ export default function HostClient({
   );
 }
 
+function DisconnectedPanel({
+  slug,
+  title,
+  loading,
+  error,
+  onReconnect,
+  onBack,
+}: {
+  slug: string;
+  title: string;
+  loading: boolean;
+  error: string | null;
+  onReconnect: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center gap-4 px-6 py-24">
+      <h1 className="text-2xl font-normal tracking-tight">Connection lost</h1>
+      <p className="text-sm text-muted-foreground">
+        Your show <span className="text-foreground">{title}</span> is still live
+        for viewers. Reconnect to continue hosting, or open the dashboard to end
+        it from another session.
+      </p>
+      {error ? (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={onReconnect} disabled={loading}>
+          {loading ? "Reconnecting…" : "Reconnect"}
+        </Button>
+        <Button variant="outline" render={<Link href={`/s/${slug}`} target="_blank" />}>
+          Open viewer page
+        </Button>
+        <Button variant="ghost" onClick={onBack}>
+          Back to studio
+        </Button>
+      </div>
+    </main>
+  );
+}
+
 function LiveBroadcast({
   session,
   hostName,
@@ -188,19 +269,42 @@ function LiveBroadcast({
   hostName: string | null;
   channel3Configured: boolean;
   startedAt: React.RefObject<number | null>;
-  onShowEnded: (recap: EndedShowRecap) => void;
+  onShowEnded: (slug: string) => void;
   onDisconnected: () => void;
 }) {
   const recordingStarted = useRef(false);
+  const [studioError, setStudioError] = useState<string | null>(null);
 
   function handleConnected() {
     if (recordingStarted.current) return;
     recordingStarted.current = true;
-    void fetch(`/api/shows/${session.slug}/recording`, { method: "POST" });
+    void (async () => {
+      try {
+        const res = await fetch(`/api/shows/${session.slug}/recording`, {
+          method: "POST",
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error ?? "Failed to start recording");
+        }
+      } catch (err) {
+        setStudioError(
+          err instanceof Error ? err.message : "Failed to start recording",
+        );
+      }
+    })();
   }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {studioError ? (
+        <div
+          className="border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+          role="alert"
+        >
+          {studioError}
+        </div>
+      ) : null}
       <LiveKitRoom
         token={session.token}
         serverUrl={session.url}
@@ -218,6 +322,7 @@ function LiveBroadcast({
           channel3Configured={channel3Configured}
           startedAt={startedAt}
           onShowEnded={onShowEnded}
+          onStudioError={setStudioError}
         />
       </LiveKitRoom>
     </div>
@@ -230,12 +335,14 @@ function BroadcastStudio({
   channel3Configured,
   startedAt,
   onShowEnded,
+  onStudioError,
 }: {
   session: ShowSession;
   hostName: string | null;
   channel3Configured: boolean;
   startedAt: React.RefObject<number | null>;
-  onShowEnded: (recap: EndedShowRecap) => void;
+  onShowEnded: (slug: string) => void;
+  onStudioError: (message: string | null) => void;
 }) {
   const stream = useStreamState({ isHost: true });
   const room = useRoomContext();
@@ -246,6 +353,7 @@ function BroadcastStudio({
   const [endDialogOpen, setEndDialogOpen] = useState(false);
   const [ending, setEnding] = useState(false);
   const [endingStep, setEndingStep] = useState(0);
+  const [endError, setEndError] = useState<string | null>(null);
 
   const viewerPath = `/s/${session.slug}`;
 
@@ -264,18 +372,32 @@ function BroadcastStudio({
 
   useEffect(() => {
     const id = setInterval(() => {
-      void fetch(`/api/shows/${session.slug}/snapshot`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ snapshot: stream.snapshot }),
-      });
+      void (async () => {
+        try {
+          const res = await fetch(`/api/shows/${session.slug}/snapshot`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ snapshot: stream.snapshot }),
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error ?? "Failed to save snapshot");
+          }
+        } catch (err) {
+          onStudioError(
+            err instanceof Error ? err.message : "Failed to save snapshot",
+          );
+        }
+      })();
     }, 30_000);
     return () => clearInterval(id);
-  }, [session.slug, stream.snapshot]);
+  }, [onStudioError, session.slug, stream.snapshot]);
 
   const confirmEndShow = useCallback(async () => {
     setEnding(true);
     setEndingStep(0);
+    setEndError(null);
+    onStudioError(null);
 
     const snapshotWithStats = {
       ...stream.snapshot,
@@ -286,11 +408,15 @@ function BroadcastStudio({
     };
 
     try {
-      await fetch(`/api/shows/${session.slug}/snapshot`, {
+      const snapshotRes = await fetch(`/api/shows/${session.slug}/snapshot`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ snapshot: snapshotWithStats }),
       });
+      if (!snapshotRes.ok) {
+        const data = await snapshotRes.json();
+        throw new Error(data.error ?? "Failed to save final snapshot");
+      }
       setEndingStep(1);
 
       const res = await fetch(`/api/shows/${session.slug}/end`, {
@@ -307,32 +433,20 @@ function BroadcastStudio({
       room.disconnect();
       setEndingStep(3);
 
-      onShowEnded(
-        buildEndedRecap({
-          slug: session.slug,
-          title: session.title,
-          host: hostName ?? "Host",
-          snapshot: snapshotWithStats,
-          startedAt: startedAt.current,
-          peakViewers: peakViewers.current,
-          chatCount: peakChat.current,
-        }),
-      );
-    } catch {
+      onShowEnded(session.slug);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to end show";
+      setEndError(message);
+      onStudioError(message);
       setEnding(false);
       setEndingStep(0);
-      setEndDialogOpen(false);
-    } finally {
-      setEnding(false);
-      setEndDialogOpen(false);
     }
   }, [
-    hostName,
     onShowEnded,
+    onStudioError,
     room,
     session.slug,
-    session.title,
-    startedAt,
     stream.snapshot,
   ]);
 
@@ -382,10 +496,14 @@ function BroadcastStudio({
 
       <EndShowDialog
         open={endDialogOpen}
-        onOpenChange={setEndDialogOpen}
+        onOpenChange={(open) => {
+          setEndDialogOpen(open);
+          if (!open) setEndError(null);
+        }}
         onConfirm={confirmEndShow}
         ending={ending}
         endingStep={endingStep}
+        error={endError}
       />
     </>
   );

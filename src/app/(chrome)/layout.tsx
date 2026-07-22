@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Show, SignInButton } from "@clerk/nextjs";
 
+import { SiteFooter } from "@/components/site-footer";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/user-menu";
 
@@ -22,7 +23,7 @@ export default function ChromeLayout({
     <>
       <header className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
         <Link href="/" className="micro font-bold">
-          RetailTherpay
+          Retail Therapy
         </Link>
         <div className="flex items-center gap-4">
           <Show when="signed-out">
@@ -41,6 +42,7 @@ export default function ChromeLayout({
           so ordinary pages need to scroll inside this container instead. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {children}
+        <SiteFooter />
       </div>
     </>
   );
