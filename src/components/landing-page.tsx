@@ -40,9 +40,9 @@ const STEPS = [
 export function LandingPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <header className="sticky top-0 z-10 border-b border-border/80 bg-background/90 backdrop-blur-sm">
+      <header className="sticky top-0 z-10 bg-background/90 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
-          <Link href="/" className="micro font-bold">
+          <Link href="/" className="text-base font-bold uppercase tracking-widest">
             frontrow
           </Link>
           <nav className="flex items-center gap-2 sm:gap-3">
@@ -61,7 +61,9 @@ export function LandingPage() {
                 </Button>
               </SignInButton>
               <SignUpButton mode="modal">
-                <Button size="micro">Get started</Button>
+                <Button variant="secondary" size="micro">
+                  Get started
+                </Button>
               </SignUpButton>
             </Show>
             <Show when="signed-in">
@@ -86,7 +88,7 @@ export function LandingPage() {
 
       <main>
         {/* Hero */}
-        <section className="border-b border-border">
+        <section>
           <div className="mx-auto w-full max-w-5xl px-6 py-16 lg:py-24">
             <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
               <div className="flex flex-col gap-6">
@@ -98,13 +100,16 @@ export function LandingPage() {
                   vote on what&rsquo;s worth it.
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
-                  <Button size="lg" render={<Link href="/browse" />}>
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    render={<Link href="/browse" />}
+                  >
                     Browse live shows
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="lg"
-                    className="border-pop/30 text-pop hover:bg-pop hover:text-pop-foreground"
                     render={<Link href="/apply" />}
                   >
                     Apply to host
@@ -118,7 +123,7 @@ export function LandingPage() {
         </section>
 
         {/* How it works */}
-        <section className="border-b border-border">
+        <section>
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-6 py-16 lg:py-20">
             <div className="flex flex-col gap-2">
               <span className="micro text-muted-foreground">How it works</span>
@@ -157,7 +162,7 @@ export function LandingPage() {
         </section>
 
         {/* For viewers / hosts */}
-        <section className="border-b border-border">
+        <section>
           <div className="mx-auto grid w-full max-w-5xl gap-6 px-6 py-16 lg:grid-cols-2 lg:py-20">
             <FeaturePanel
               accent="pop"
@@ -187,7 +192,7 @@ export function LandingPage() {
         </section>
 
         {/* Final CTA */}
-        <section>
+        <section className="bg-muted/50">
           <div className="mx-auto flex w-full max-w-5xl flex-col items-start gap-6 px-6 py-16 sm:flex-row sm:items-center sm:justify-between lg:py-20">
             <div className="flex max-w-lg flex-col gap-2">
               <h2 className="text-2xl font-normal tracking-tight sm:text-3xl">
@@ -199,18 +204,18 @@ export function LandingPage() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Button size="lg" render={<Link href="/browse" />}>
+              <Button variant="secondary" size="lg" render={<Link href="/browse" />}>
                 Browse live shows
               </Button>
               <Show when="signed-out">
                 <SignUpButton mode="modal">
-                  <Button variant="outline" size="lg">
+                  <Button variant="ghost" size="lg">
                     Get started
                   </Button>
                 </SignUpButton>
               </Show>
               <Show when="signed-in">
-                <Button variant="outline" size="lg" render={<Link href="/host" />}>
+                <Button variant="ghost" size="lg" render={<Link href="/host" />}>
                   Go live
                 </Button>
               </Show>
@@ -219,7 +224,7 @@ export function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-t border-border">
+      <footer>
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-8">
           <span className="micro text-muted-foreground">frontrow</span>
           <div className="flex items-center gap-4">
@@ -264,10 +269,7 @@ function FeaturePanel({
   cta: { label: string; href: string; host?: boolean };
 }) {
   const accentClass = accent === "pop" ? "text-pop" : "text-live";
-  const ctaClass =
-    accent === "pop"
-      ? "border-pop/30 text-pop hover:bg-pop hover:text-pop-foreground"
-      : "bg-live text-live-foreground hover:bg-live/90";
+  const ctaClass = "bg-secondary text-secondary-foreground hover:bg-secondary/80";
 
   return (
     <div className="flex flex-col gap-6 rounded-xl bg-muted/40 p-6 ring-1 ring-foreground/8 lg:p-8">
@@ -311,7 +313,7 @@ function FeaturePanel({
       ) : (
         <Button
           size="micro"
-          variant="outline"
+          variant="secondary"
           className={cn("mt-auto w-fit", ctaClass)}
           render={<Link href={cta.href} />}
         >

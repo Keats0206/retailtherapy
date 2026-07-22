@@ -21,7 +21,7 @@ export function BrowsePage({ liveShows }: { liveShows: DiscoveryShow[] }) {
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <header className="sticky top-0 z-10 border-b border-border/80 bg-background/90 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
-          <Link href="/" className="micro font-bold">
+          <Link href="/" className="text-base font-bold uppercase tracking-widest">
             Retail Therapy
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">

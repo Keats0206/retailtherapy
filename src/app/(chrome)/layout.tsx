@@ -22,7 +22,7 @@ export default function ChromeLayout({
   return (
     <>
       <header className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
-        <Link href="/" className="micro font-bold">
+        <Link href="/" className="text-base font-bold uppercase tracking-widest">
           Retail Therapy
         </Link>
         <div className="flex items-center gap-4">
