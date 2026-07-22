@@ -21,7 +21,7 @@ console.log("Status:         ", stream.status);
 console.log("RTMP server URL: rtmps://global-live.mux.com:443/app");
 console.log("Stream key:     ", stream.stream_key);
 console.log("Playback ID:    ", playbackId);
-console.log("\nWatch page:      /watch/" + playbackId);
+console.log("\nWatch page:      /s/<slug>  (create a show via /host)");
 console.log("Test with ffmpeg:\n  ffmpeg -re -f lavfi -i testsrc=size=1280x720:rate=30 \\");
 console.log("    -f lavfi -i sine=frequency=440 -c:v libx264 -preset veryfast \\");
 console.log("    -b:v 2500k -c:a aac -f flv \\");

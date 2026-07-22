@@ -4,21 +4,35 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConnectionState, useDataChannel } from "@livekit/components-react";
 import { ConnectionState } from "livekit-client";
 
-import type { Product, VoteChoice, VoteTally } from "@/lib/types";
+import {
+  EMPTY,
+  applyPin,
+  applySetNote,
+  applyUnpin,
+  applyVote,
+  selectPinned,
+  selectVotesFor,
+  type StreamSnapshot,
+  type StreamState,
+} from "@/lib/stream-store";
+import type { Product, VoteChoice } from "@/lib/types";
 
 /**
  * Shared shopping state for a live room, carried over the LiveKit data channel.
  *
- * The host is authoritative: it owns the pinned product, the trail, and the
- * vote tallies, and rebroadcasts a full snapshot on every change. Viewers only
- * ever emit `hello` (asking for the current state) and `vote`.
+ * The state transitions themselves live in `lib/stream-store.ts` — this module
+ * is only the transport. The host is authoritative: it owns the pinned product,
+ * the trail, and the vote tallies, and rebroadcasts a full snapshot on every
+ * change. Viewers only ever emit `hello` (asking for the current state) and
+ * `vote`.
  *
  * Snapshots are whole-state rather than incremental on purpose — a stream
  * carries a handful of products, so the bandwidth is trivial and it removes any
  * chance of viewers drifting out of sync after a dropped packet.
  *
- * Note this state is ephemeral: it lives only as long as the room. Persisting
- * to `streams` / `stream_products` is what makes replay possible later.
+ * The wire itself is still ephemeral — it lives only as long as the room — but
+ * the host mirrors `snapshot` to `streams.snapshot` as the show runs, and that
+ * is what /s/<slug> replays once it ends.
  */
 
 const TOPIC = "shop";
@@ -26,36 +40,14 @@ const TOPIC = "shop";
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-export interface StreamSnapshot {
-  pinnedId: string | null;
-  /** Every product pinned this session, oldest first. */
-  trail: Product[];
-  votes: Record<string, VoteTally>;
-}
-
 type StreamEvent =
   | { t: "hello" }
   | { t: "snapshot"; state: StreamSnapshot }
   | { t: "vote"; productId: string; choice: VoteChoice };
 
-const EMPTY: StreamSnapshot = { pinnedId: null, trail: [], votes: {} };
+export type { StreamSnapshot };
 
-function applyVote(
-  state: StreamSnapshot,
-  productId: string,
-  choice: VoteChoice,
-): StreamSnapshot {
-  const current = state.votes[productId] ?? { buy: 0, skip: 0 };
-  return {
-    ...state,
-    votes: {
-      ...state.votes,
-      [productId]: { ...current, [choice]: current[choice] + 1 },
-    },
-  };
-}
-
-export function useStreamState({ isHost }: { isHost: boolean }) {
+export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
   const [state, setState] = useState<StreamSnapshot>(EMPTY);
   /** Choices this browser already made, so the UI can lock its buttons. */
   const [myVotes, setMyVotes] = useState<Record<string, VoteChoice>>({});
@@ -145,26 +137,15 @@ export function useStreamState({ isHost }: { isHost: boolean }) {
   }, [isHost, connected]);
 
   const pin = useCallback((product: Product) => {
-    setState((prev) => {
-      const exists = prev.trail.some((p) => p.id === product.id);
-      return {
-        ...prev,
-        pinnedId: product.id,
-        trail: exists ? prev.trail : [...prev.trail, product],
-      };
-    });
+    setState((prev) => applyPin(prev, product));
   }, []);
 
   const unpin = useCallback(() => {
-    setState((prev) => ({ ...prev, pinnedId: null }));
+    setState((prev) => applyUnpin(prev));
   }, []);
 
-  /** Host-only: attach an aside to a product ("runs small, size up"). */
   const setNote = useCallback((productId: string, note: string) => {
-    setState((prev) => ({
-      ...prev,
-      trail: prev.trail.map((p) => (p.id === productId ? { ...p, note } : p)),
-    }));
+    setState((prev) => applySetNote(prev, productId, note));
   }, []);
 
   const vote = useCallback(
@@ -185,19 +166,17 @@ export function useStreamState({ isHost }: { isHost: boolean }) {
     [isHost, connected, myVotes],
   );
 
-  const pinned = useMemo(
-    () => state.trail.find((p) => p.id === state.pinnedId) ?? null,
-    [state.trail, state.pinnedId],
-  );
+  const pinned = useMemo(() => selectPinned(state), [state]);
 
   const votesFor = useCallback(
-    (productId: string): VoteTally => state.votes[productId] ?? { buy: 0, skip: 0 },
-    [state.votes],
+    (productId: string) => selectVotesFor(state, productId),
+    [state],
   );
 
   return {
     pinned,
     trail: state.trail,
+    snapshot: state,
     votesFor,
     myVotes,
     pin,

@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# frontrow (retailtherapy)
 
-## Getting Started
+Live shopping from the browser. Hosts go live over WebRTC (LiveKit), pin products from retailer URLs (Channel3), and viewers vote and chat in real time. When a show ends, the broadcast is archived to Mux and replayed at `/s/<slug>` with the shopping trail intact.
 
-First, run the development server:
+## Routes
+
+| Route | Purpose |
+|---|---|
+| `/` | Homepage — lists live shows from the database |
+| `/host` | Host studio (Clerk auth + email allowlist) |
+| `/s/<slug>` | Public viewer page — live room or Mux replay |
+| `/dashboard` | Host dashboard — past and live shows |
+| `/prototype`, `/ui-proto/*` | UI sandbox with mock data (no credentials needed) |
+
+## Setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Copy environment variables:
+
+```bash
+cp .env.example .env.local
+```
+
+3. Fill in `.env.local`:
+
+| Variable | Service |
+|---|---|
+| `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | [LiveKit Cloud](https://cloud.livekit.io) |
+| `MUX_TOKEN_ID`, `MUX_TOKEN_SECRET` | [Mux](https://mux.com) |
+| `DATABASE_URL` | [Neon](https://neon.tech) (pooled connection string) |
+| `NEXT_PUBLIC_CLERK_*`, `CLERK_SECRET_KEY` | [Clerk](https://clerk.com) |
+| `HOST_ALLOWLIST` | Comma-separated emails allowed to host |
+| `CHANNEL3_API_KEY` | [Channel3](https://trychannel3.com/developers) (product lookup) |
+
+4. Apply the database schema:
+
+```bash
+npm run db:generate   # after schema changes
+npm run db:migrate    # apply migrations
+# or: npm run db:push  # dev-only schema sync
+```
+
+5. Start the dev server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Show lifecycle
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Host signs in and opens `/host`
+2. `POST /api/shows` creates a DB row, provisions a Mux live stream, and mints a LiveKit host token
+3. Host connects → `POST /api/shows/<slug>/recording` starts LiveKit egress to Mux
+4. Viewers open `/s/<slug>` — no auth required
+5. Host pins products via Channel3 lookup; snapshot autosaves every 30s
+6. Host ends show → egress stops, Mux packages the asset, trail is frozen
+7. Replay viewers poll until `muxPlaybackId` is ready
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run dev          # Next.js dev server
+npm run build        # Production build
+npm run db:studio    # Drizzle Studio
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Prototype routes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`/prototype` and `/ui-proto/*` run entirely on mock data — useful for UI iteration without LiveKit, Mux, or Channel3 credentials.

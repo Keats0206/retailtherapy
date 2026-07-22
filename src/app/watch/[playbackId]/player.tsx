@@ -11,9 +11,13 @@ import { Track } from "livekit-client";
 import "@livekit/components-styles";
 
 import { ChatPanel } from "@/components/chat-panel";
-import { CurrentProduct } from "@/components/current-product";
-import { ShoppingTrail } from "@/components/shopping-trail";
+import {
+  CAMERA_BUBBLE,
+  VideoFrame,
+  VideoPlaceholder,
+} from "@/components/video-placeholder";
 import { ViewerCount } from "@/components/viewer-count";
+import { WatchLayout } from "@/components/watch-layout";
 import { useStreamState } from "@/lib/stream-state";
 
 type Connection = { token: string; url: string };
@@ -44,9 +48,11 @@ export default function Player({ room }: { room: string }) {
     };
   }, [room]);
 
+  // These stand in for the whole theatre, so they fill it rather than sitting in
+  // an aspect-video box with dead white underneath.
   if (error) {
     return (
-      <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-red-200 bg-red-50 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+      <div className="micro flex flex-1 items-center justify-center bg-black text-white/40">
         {error}
       </div>
     );
@@ -54,7 +60,7 @@ export default function Player({ room }: { room: string }) {
 
   if (!conn) {
     return (
-      <div className="flex aspect-video w-full items-center justify-center rounded-xl bg-zinc-100 text-sm text-zinc-500 dark:bg-zinc-900">
+      <div className="micro flex flex-1 items-center justify-center bg-black text-white/40">
         Connecting…
       </div>
     );
@@ -69,43 +75,32 @@ export default function Player({ room }: { room: string }) {
       // publish *data*, which is what chat and voting use.
       video={false}
       audio={false}
-      data-lk-theme="default"
+      data-lk-theme="retail"
+      // LiveKitRoom renders a plain div, which would otherwise break the
+      // flex chain the full-height theatre layout depends on.
+      className="flex min-h-0 flex-1 flex-col"
     >
-      <WatchLayout />
+      <Watch />
       <RoomAudioRenderer />
     </LiveKitRoom>
   );
 }
 
 /**
- * The viewer's shopping experience: video on the left, the pinned product and
- * chat on the right. Must be inside <LiveKitRoom> so the hooks find the room.
+ * The watch experience, wired to the live room. The layout itself lives in
+ * `components/watch-layout.tsx` so /prototype can render it without LiveKit.
+ * Must be inside <LiveKitRoom> so the hooks find the room.
  */
-function WatchLayout() {
-  const { pinned, trail, votesFor, myVotes, vote } = useStreamState({
-    isHost: false,
-  });
+function Watch() {
+  const stream = useStreamState({ isHost: false });
 
   return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-      <div className="flex min-w-0 flex-1 flex-col gap-4">
-        <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">
-          <Stage />
-        </div>
-        <ShoppingTrail products={trail} pinnedId={pinned?.id ?? null} />
-      </div>
-
-      <aside className="flex w-full flex-col gap-4 lg:w-96">
-        <ViewerCount />
-        <CurrentProduct
-          product={pinned}
-          votes={votesFor(pinned?.id ?? "")}
-          myVote={pinned ? myVotes[pinned.id] : undefined}
-          onVote={(choice) => pinned && vote(pinned.id, choice)}
-        />
-        <ChatPanel className="h-96" />
-      </aside>
-    </div>
+    <WatchLayout
+      stream={stream}
+      stage={<Stage />}
+      viewers={<ViewerCount />}
+      chat={<ChatPanel className="min-h-0 flex-1" />}
+    />
   );
 }
 
@@ -125,11 +120,7 @@ function Stage() {
   const camera = tracks.find((t) => t.source === Track.Source.Camera);
 
   if (!share && !camera) {
-    return (
-      <div className="flex h-full items-center justify-center text-sm text-zinc-400">
-        Waiting for the host to start…
-      </div>
-    );
+    return <VideoPlaceholder>Waiting for the host to start…</VideoPlaceholder>;
   }
 
   if (!share) {
@@ -144,12 +135,12 @@ function Stage() {
       <VideoTrack trackRef={share} className="h-full w-full object-contain" />
 
       {camera && (
-        <div className="absolute bottom-3 right-3 aspect-square w-24 overflow-hidden rounded-full border-2 border-white/80 shadow-lg sm:w-32 dark:border-zinc-900/80">
+        <VideoFrame className={CAMERA_BUBBLE}>
           <VideoTrack
             trackRef={camera}
             className="h-full w-full object-cover"
           />
-        </div>
+        </VideoFrame>
       )}
     </div>
   );

@@ -1,5 +1,10 @@
 import "server-only";
-import { AccessToken } from "livekit-server-sdk";
+import {
+  AccessToken,
+  EgressClient,
+  StreamOutput,
+  StreamProtocol,
+} from "livekit-server-sdk";
 
 /**
  * Server-only LiveKit helpers. LiveKit is the primary live path: creators
@@ -54,4 +59,53 @@ export async function createAccessToken(opts: {
   });
 
   return at.toJwt();
+}
+
+let egress: EgressClient | null = null;
+
+function getEgressClient(): EgressClient {
+  if (egress) return egress;
+  const { url, apiKey, apiSecret } = getLiveKitConfig();
+  // EgressClient rewrites a ws(s):// host to http(s):// itself, so LIVEKIT_URL
+  // can be passed through unchanged.
+  egress = new EgressClient(url, apiKey, apiSecret);
+  return egress;
+}
+
+/**
+ * Mirrors a live room to an RTMP destination (here: Mux) so the session is
+ * archived while it happens.
+ *
+ * This is a RoomComposite egress — LiveKit renders the room the way a viewer
+ * sees it and encodes that single feed, rather than handing us raw per-track
+ * media to stitch together. `speaker` layout means a screen share takes the
+ * frame when there is one, which matches the viewer's `Stage`.
+ *
+ * The room must already exist, so call this only once the host has connected;
+ * an egress against an empty room has nothing to compose.
+ */
+export async function startRoomRecording(opts: {
+  room: string;
+  rtmpUrl: string;
+}): Promise<string> {
+  const info = await getEgressClient().startRoomCompositeEgress(
+    opts.room,
+    new StreamOutput({
+      protocol: StreamProtocol.RTMP,
+      urls: [opts.rtmpUrl],
+    }),
+    { layout: "speaker" },
+  );
+
+  return info.egressId;
+}
+
+/**
+ * Stops an in-flight recording. Safe to call for an egress that already
+ * stopped on its own (the last participant leaving ends it), which is why the
+ * caller treats a failure here as non-fatal — ending the show must not hinge on
+ * it.
+ */
+export async function stopRoomRecording(egressId: string): Promise<void> {
+  await getEgressClient().stopEgress(egressId);
 }

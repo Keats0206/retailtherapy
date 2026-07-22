@@ -4,8 +4,7 @@ import { LookupError, lookupProduct } from "@/lib/channel3";
 // POST /api/products/lookup — resolve a retailer product URL via Channel3.
 // Body: { url: string }.
 //
-// Host-only: every call spends Channel3 credits, so this is gated on the
-// HOST_ALLOWLIST rather than left open to any viewer.
+// Host-only: every call spends Channel3 credits, so this requires sign-in.
 export async function POST(request: Request) {
   let host = false;
   try {

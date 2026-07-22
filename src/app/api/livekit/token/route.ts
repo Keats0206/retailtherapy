@@ -1,11 +1,10 @@
 import { currentUser } from "@clerk/nextjs/server";
 
-import { isAllowedHostEmail } from "@/lib/auth";
 import { createAccessToken, getLiveKitConfig } from "@/lib/livekit";
 
 // POST /api/livekit/token — mint a LiveKit access token for a room.
 // Body: { room: string, role?: "host" | "viewer" }.
-// Hosts (per HOST_ALLOWLIST) may publish; everyone else is subscribe-only.
+// Signed-in users may publish when role is "host"; everyone else is subscribe-only.
 // Viewers do not need to be signed in.
 export async function POST(request: Request) {
   let body: { room?: string; role?: string };
@@ -21,7 +20,7 @@ export async function POST(request: Request) {
   }
 
   // Clerk may be unconfigured (e.g. keys not yet set); treat that as anonymous
-  // so viewers still work. Publishing always requires an allowed host.
+  // so viewers still work. Publishing requires a signed-in user.
   let user: Awaited<ReturnType<typeof currentUser>> = null;
   try {
     user = await currentUser();
@@ -29,15 +28,13 @@ export async function POST(request: Request) {
     user = null;
   }
 
-  const email = user?.primaryEmailAddress?.emailAddress;
-  const isHost = isAllowedHostEmail(email);
   const wantsHost = body.role === "host";
 
-  if (wantsHost && !isHost) {
+  if (wantsHost && !user) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const canPublish = wantsHost && isHost;
+  const canPublish = wantsHost && !!user;
   const identity =
     user?.id ?? `viewer-${crypto.randomUUID().slice(0, 8)}`;
   const name =

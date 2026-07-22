@@ -13,8 +13,7 @@ function serialize(stream: Video.LiveStream) {
   };
 }
 
-// POST /api/streams — create a new Mux live stream. Restricted to allowed
-// hosts (see HOST_ALLOWLIST); the /host page is gated the same way.
+// POST /api/streams — create a new Mux live stream. Requires a signed-in user.
 export async function POST() {
   const host = await getHostUser();
   if (!host) {
@@ -36,8 +35,13 @@ export async function POST() {
   }
 }
 
-// GET /api/streams — list existing live streams.
+// GET /api/streams — list existing live streams. Host-only.
 export async function GET() {
+  const host = await getHostUser();
+  if (!host) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const mux = getMux();
     const page = await mux.video.liveStreams.list({ limit: 25 });

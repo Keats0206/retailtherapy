@@ -1,12 +1,33 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
-import { ClerkProvider, Show, SignInButton, UserButton } from "@clerk/nextjs";
+import localFont from "next/font/local";
+import { Geist_Mono } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
+import { shadcn } from "@clerk/ui/themes";
+import { Agentation } from "agentation";
 import "./globals.css";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const alpino = localFont({
+  src: [
+    {
+      path: "./fonts/alpino/Alpino-Regular.woff2",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "./fonts/alpino/Alpino-Medium.woff2",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "./fonts/alpino/Alpino-Bold.woff2",
+      weight: "700",
+      style: "normal",
+    },
+  ],
+  variable: "--font-sans",
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
@@ -15,8 +36,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Retail Therapy",
-  description: "Livestream shopping powered by Mux.",
+  title: "frontrow",
+  description: "Watch people shop.",
+};
+
+const clerkAppearance = {
+  theme: shadcn,
+  variables: {
+    borderRadius: "var(--radius)",
+    fontFamily: "var(--font-sans)",
+  },
 };
 
 export default function RootLayout({
@@ -25,33 +54,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider appearance={clerkAppearance}>
       <html
         lang="en"
-        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+        className={cn("h-full", "antialiased", "font-sans", alpino.variable, geistMono.variable)}
       >
-        <body className="min-h-full flex flex-col">
-          <header className="flex items-center justify-between border-b border-zinc-200 px-6 py-3 dark:border-zinc-800">
-            <Link
-              href="/"
-              className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
-            >
-              Retail Therapy
-            </Link>
-            <div className="flex items-center gap-3">
-              <Show when="signed-out">
-                <SignInButton mode="modal">
-                  <button className="rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900">
-                    Sign in
-                  </button>
-                </SignInButton>
-              </Show>
-              <Show when="signed-in">
-                <UserButton />
-              </Show>
-            </div>
-          </header>
-          {children}
+        {/* h-full + overflow-hidden so /watch can fill the viewport exactly and
+            scroll only inside its rail. The header lives in (chrome)/layout,
+            which every route except /watch renders under. */}
+        <body className="flex h-full flex-col overflow-hidden">
+          <TooltipProvider>{children}</TooltipProvider>
+          {process.env.NODE_ENV === "development" && <Agentation />}
         </body>
       </html>
     </ClerkProvider>
