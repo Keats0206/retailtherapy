@@ -27,6 +27,7 @@ import {
 import { ChatPanel } from "@/components/chat-panel";
 import { EndLiveShowButton } from "@/components/end-live-show-button";
 import { EndShowDialog } from "@/components/end-show-dialog";
+import { ShareShowLinkButton } from "@/components/share-show-link-button";
 import { StudioLayout } from "@/components/studio-layout";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -467,38 +468,45 @@ function BroadcastStudio({
 
   return (
     <>
-      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5 sm:px-6 sm:py-3">
+      <div className="flex flex-col gap-3 border-b border-border px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-3">
         <span className="micro inline-flex shrink-0 items-center gap-2 text-live">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-live" />
           You&rsquo;re live
         </span>
-        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-          <ViewerCount />
-          <Link
-            href={viewerPath}
-            target="_blank"
-            aria-label="Open viewer page"
-            className="micro inline-flex shrink-0 items-center gap-1 text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline max-sm:rounded-md max-sm:border max-sm:border-border max-sm:p-2 max-sm:no-underline"
-          >
-            <span className="max-sm:sr-only">Open viewer page</span>
-            <ExternalLink className="size-3.5 sm:size-3" />
-          </Link>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setEndDialogOpen(true)}
-                  aria-label="End show"
-                  className="hidden border-live/40 text-live hover:bg-live hover:text-live-foreground sm:inline-flex"
-                >
-                  <LogOut />
-                </Button>
-              }
-            />
-            <TooltipContent>End show</TooltipContent>
-          </Tooltip>
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <ShareShowLinkButton
+            slug={session.slug}
+            className="h-11 w-full text-base sm:w-auto"
+            showPath
+          />
+          <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-4">
+            <ViewerCount />
+            <Link
+              href={viewerPath}
+              target="_blank"
+              aria-label="Open viewer page"
+              className="micro inline-flex shrink-0 items-center gap-1 text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline max-sm:rounded-md max-sm:border max-sm:border-border max-sm:p-2 max-sm:no-underline"
+            >
+              <span className="max-sm:sr-only">Open viewer page</span>
+              <ExternalLink className="size-3.5 sm:size-3" />
+            </Link>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setEndDialogOpen(true)}
+                    aria-label="End show"
+                    className="hidden border-live/40 text-live hover:bg-live hover:text-live-foreground sm:inline-flex"
+                  >
+                    <LogOut />
+                  </Button>
+                }
+              />
+              <TooltipContent>End show</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
       </div>
 
@@ -743,6 +751,14 @@ function Preshow({
           </Button>
         </div>
 
+        {liveShowSlug ? (
+          <ShareShowLinkButton
+            slug={liveShowSlug}
+            className="h-11 w-full text-base sm:max-w-md"
+            showPath
+          />
+        ) : null}
+
         <div className="flex max-w-md flex-col gap-2">
           <Input
             value={title}
@@ -751,7 +767,9 @@ function Preshow({
             aria-label="Show title"
           />
           <p className="text-sm text-muted-foreground">
-            Share link appears in the header once you go live.
+            {liveShowSlug
+              ? "Share the link above so viewers can join before you reconnect."
+              : "Your share link unlocks as soon as you go live."}
           </p>
         </div>
       </header>
