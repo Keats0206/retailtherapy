@@ -3,7 +3,11 @@ import { NextResponse } from "next/server";
 
 // Public surface: viewers at /s/* and /watch/* stay open. Hosting and the
 // dashboard require an account.
-const isProtectedRoute = createRouteMatcher(["/host(.*)", "/dashboard"]);
+const isProtectedRoute = createRouteMatcher([
+  "/host(.*)",
+  "/dashboard",
+  "/admin",
+]);
 const isPrototypeRoute = createRouteMatcher([
   "/prototype(.*)",
   "/ui-proto(.*)",

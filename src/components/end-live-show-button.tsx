@@ -19,12 +19,15 @@ export function EndLiveShowButton({
   title,
   size = "sm",
   className,
+  variant = "host",
   onEnded,
 }: {
   slug: string;
   title: string;
   size?: "sm" | "micro" | "default" | "lg";
   className?: string;
+  /** Host ends their own show; admin force-ends any show. */
+  variant?: "host" | "admin";
   /** Called after a successful end, before router.refresh(). */
   onEnded?: () => void;
 }) {
@@ -32,13 +35,18 @@ export function EndLiveShowButton({
   const [open, setOpen] = useState(false);
   const [ending, setEnding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const endUrl =
+    variant === "admin"
+      ? `/api/admin/shows/${slug}/end`
+      : `/api/shows/${slug}/end`;
+  const buttonLabel = variant === "admin" ? "Close show" : "End show";
 
   async function confirmEnd() {
     setEnding(true);
     setError(null);
 
     try {
-      const res = await fetch(`/api/shows/${slug}/end`, {
+      const res = await fetch(endUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
@@ -67,7 +75,7 @@ export function EndLiveShowButton({
         className={className}
         onClick={() => setOpen(true)}
       >
-        End show
+        {buttonLabel}
       </Button>
 
       <Dialog
@@ -81,11 +89,23 @@ export function EndLiveShowButton({
       >
         <DialogContent showCloseButton={!ending}>
           <DialogHeader>
-            <DialogTitle>End this show?</DialogTitle>
+            <DialogTitle>
+              {variant === "admin" ? "Close this show?" : "End this show?"}
+            </DialogTitle>
             <DialogDescription>
-              &ldquo;{title}&rdquo; will move to your past shows. Viewers will
-              see the recap at /s/{slug}. You can&rsquo;t go live on this link
-              again.
+              {variant === "admin" ? (
+                <>
+                  &ldquo;{title}&rdquo; will be removed from browse and moved to
+                  the recap at /s/{slug}. The host cannot go live on this link
+                  again.
+                </>
+              ) : (
+                <>
+                  &ldquo;{title}&rdquo; will move to your past shows. Viewers
+                  will see the recap at /s/{slug}. You can&rsquo;t go live on
+                  this link again.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
 
@@ -102,7 +122,7 @@ export function EndLiveShowButton({
               disabled={ending}
               onClick={() => setOpen(false)}
             >
-              Keep live
+              {variant === "admin" ? "Cancel" : "Keep live"}
             </Button>
             <Button
               type="button"
@@ -113,10 +133,10 @@ export function EndLiveShowButton({
               {ending ? (
                 <>
                   <Loader2 className="animate-spin" />
-                  Ending…
+                  {variant === "admin" ? "Closing…" : "Ending…"}
                 </>
               ) : (
-                "End show"
+                buttonLabel
               )}
             </Button>
           </DialogFooter>

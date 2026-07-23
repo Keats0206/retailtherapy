@@ -105,13 +105,22 @@ export function toDiscoveryShow(show: Show): DiscoveryShow {
 }
 
 export async function listLiveShows(limit = 12): Promise<DiscoveryShow[]> {
-  const rows = await db
+  const rows = await listLiveShowRows(limit);
+  return rows.map(toDiscoveryShow);
+}
+
+/** All live shows, for admin moderation. */
+export async function listLiveShowsForAdmin(limit = 50): Promise<Show[]> {
+  return listLiveShowRows(limit);
+}
+
+async function listLiveShowRows(limit: number): Promise<Show[]> {
+  return db
     .select()
     .from(streams)
     .where(eq(streams.status, "live"))
     .orderBy(desc(streams.startedAt))
     .limit(limit);
-  return rows.map(toDiscoveryShow);
 }
 
 export async function listShowsForHost(hostUserId: string): Promise<Show[]> {

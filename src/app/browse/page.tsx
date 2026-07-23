@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { BrowsePage } from "@/components/browse-page";
+import { isAdmin } from "@/lib/auth";
 import { listLiveShows } from "@/lib/shows";
 
 export const metadata: Metadata = {
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BrowseRoute() {
-  const liveShows = await listLiveShows();
+  const [liveShows, admin] = await Promise.all([listLiveShows(), isAdmin()]);
 
-  return <BrowsePage liveShows={liveShows} />;
+  return <BrowsePage liveShows={liveShows} isAdmin={admin} />;
 }

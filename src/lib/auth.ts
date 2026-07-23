@@ -22,6 +22,29 @@ export async function isHost(): Promise<boolean> {
   return (await getHostUser()) !== null;
 }
 
+/**
+ * Returns the current Clerk user when signed in and listed in `ADMIN_ALLOWLIST`,
+ * otherwise `null`. Use for ops actions like force-ending a live show.
+ */
+export async function getAdminUser(): Promise<User | null> {
+  const user = await currentUser();
+  if (!user) return null;
+  if (!isUserAllowlistedAsAdmin(user)) return null;
+  return user;
+}
+
+export async function isAdmin(): Promise<boolean> {
+  return (await getAdminUser()) !== null;
+}
+
+export function isUserAllowlistedAsAdmin(user: User): boolean {
+  const allowlist = getAdminAllowlist();
+  if (!allowlist) return false;
+
+  const email = primaryEmail(user);
+  return email !== null && allowlist.has(email);
+}
+
 /** Signed-in user, regardless of allowlist. */
 export async function getSignedInUser(): Promise<User | null> {
   return currentUser();
@@ -36,10 +59,18 @@ export function isUserAllowlistedToHost(user: User): boolean {
 }
 
 function getHostAllowlist(): Set<string> | null {
-  const raw = process.env.HOST_ALLOWLIST?.trim();
-  if (!raw) return null;
+  return parseEmailAllowlist(process.env.HOST_ALLOWLIST);
+}
 
-  const emails = raw
+function getAdminAllowlist(): Set<string> | null {
+  return parseEmailAllowlist(process.env.ADMIN_ALLOWLIST);
+}
+
+function parseEmailAllowlist(raw: string | undefined): Set<string> | null {
+  const trimmed = raw?.trim();
+  if (!trimmed) return null;
+
+  const emails = trimmed
     .split(",")
     .map((entry) => entry.trim().toLowerCase())
     .filter(Boolean);
