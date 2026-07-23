@@ -19,10 +19,10 @@ import { cn } from "@/lib/utils";
 export function BrowsePage({ liveShows }: { liveShows: DiscoveryShow[] }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <header className="sticky top-0 z-10 border-b border-border/80 bg-background/90 backdrop-blur-sm">
+      <header className="sticky top-0 z-10 bg-background/90 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
           <Link href="/" className="text-base font-bold uppercase tracking-widest">
-            Retail Therapy
+            frontrow
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
             <Show when="signed-out">

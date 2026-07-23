@@ -21,9 +21,9 @@ export default function ChromeLayout({
 }>) {
   return (
     <>
-      <header className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
+      <header className="flex shrink-0 items-center justify-between px-6 py-4">
         <Link href="/" className="text-base font-bold uppercase tracking-widest">
-          Retail Therapy
+          frontrow
         </Link>
         <div className="flex items-center gap-4">
           <Show when="signed-out">

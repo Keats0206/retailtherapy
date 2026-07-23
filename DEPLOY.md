@@ -2,6 +2,15 @@
 
 Use this before inviting real hosts. Run steps in order.
 
+**Quick local check** (before deploy):
+
+```bash
+npm run verify:env
+npm run typecheck && npm run lint && npm run build
+```
+
+See also [docs/BETA_SESSION_GUIDE.md](./docs/BETA_SESSION_GUIDE.md) and [docs/DEFERRED.md](./docs/DEFERRED.md).
+
 ## 1. Database
 
 ```bash

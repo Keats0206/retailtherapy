@@ -43,7 +43,7 @@ export function ApplyHostPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <header className="sticky top-0 z-10 border-b border-border/80 bg-background/90 backdrop-blur-sm">
+      <header className="sticky top-0 z-10 bg-background/90 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
           <Link href="/" className="text-base font-bold uppercase tracking-widest">
             frontrow
@@ -88,8 +88,10 @@ export function ApplyHostPage() {
                     Turn your audience into a live shopping channel.
                   </h1>
                   <p className="max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
-                    Frontrow is invite-only for hosts right now. Apply with your
-                    socials and we&rsquo;ll reach out when there&rsquo;s a fit.
+                    Frontrow is invite-only for hosts right now. Submit your
+                    details below — we review applications weekly and email you
+                    if approved. Hosting access is added manually; there&rsquo;s
+                    no instant self-serve signup.
                   </p>
                 </div>
 
@@ -151,6 +153,8 @@ export function ApplyHostPage() {
                       </h2>
                       <p className="text-sm text-muted-foreground">
                         Tell us where you publish and how big your audience is.
+                        This saves your interest — we&rsquo;ll follow up by email
+                        if there&rsquo;s a fit.
                       </p>
                     </div>
 

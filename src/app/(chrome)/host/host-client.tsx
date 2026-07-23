@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import { ChatPanel } from "@/components/chat-panel";
+import { EndLiveShowButton } from "@/components/end-live-show-button";
 import { EndShowDialog } from "@/components/end-show-dialog";
 import { StudioLayout } from "@/components/studio-layout";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -58,12 +59,6 @@ const STORE_LINKS = [
   { name: "REI", url: "https://www.rei.com" },
 ] as const;
 
-const PRESHOW_TIPS = [
-  "Open each store in a new browser tab before you go live — you'll paste product URLs from there.",
-  "Open the viewer page in a separate window so you can see what your audience sees.",
-  "Check your camera and mic here first. Screen share starts once you're live.",
-] as const;
-
 type ShowSession = {
   slug: string;
   title: string;
@@ -86,10 +81,14 @@ export default function HostClient({
   hostName,
   channel3Configured,
   resumeSlug,
+  liveShowSlug,
+  liveShowTitle,
 }: {
   hostName: string | null;
   channel3Configured: boolean;
   resumeSlug?: string | null;
+  liveShowSlug?: string | null;
+  liveShowTitle?: string | null;
 }) {
   const router = useRouter();
   const [phase, setPhase] = useState<"preshow" | "live" | "disconnected">(
@@ -102,7 +101,9 @@ export default function HostClient({
   const liveStartedAt = useRef<number | null>(null);
   const media = useMediaPreview();
   const stopMediaRef = useRef(media.stop);
-  stopMediaRef.current = media.stop;
+  useEffect(() => {
+    stopMediaRef.current = media.stop;
+  }, [media.stop]);
 
   const resumeShow = useCallback(async (slug: string) => {
     setLoading(true);
@@ -132,7 +133,10 @@ export default function HostClient({
 
   useEffect(() => {
     if (!resumeSlug) return;
-    void resumeShow(resumeSlug);
+    const timer = window.setTimeout(() => {
+      void resumeShow(resumeSlug);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [resumeSlug, resumeShow]);
 
   async function goLive() {
@@ -147,7 +151,14 @@ export default function HostClient({
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to start show");
+      if (!res.ok) {
+        if (res.status === 409 && liveShowSlug) {
+          throw new Error(
+            "You already have a live show. Reconnect below or end it first.",
+          );
+        }
+        throw new Error(data.error ?? "Failed to start show");
+      }
 
       stopMediaRef.current();
       liveStartedAt.current = Date.now();
@@ -176,9 +187,7 @@ export default function HostClient({
     return (
       <LiveBroadcast
         session={session}
-        hostName={hostName}
         channel3Configured={channel3Configured}
-        startedAt={liveStartedAt}
         onShowEnded={handleShowEnded}
         onDisconnected={() => setPhase("disconnected")}
       />
@@ -198,6 +207,12 @@ export default function HostClient({
           setPhase("preshow");
           setError(null);
         }}
+        onShowEnded={() => {
+          setSession(null);
+          setPhase("preshow");
+          setError(null);
+          router.replace(`/host/${session.slug}`);
+        }}
       />
     );
   }
@@ -210,6 +225,12 @@ export default function HostClient({
       loading={loading}
       error={error}
       media={media}
+      liveShowSlug={liveShowSlug}
+      liveShowTitle={liveShowTitle}
+      onResumeLiveShow={
+        liveShowSlug ? () => void resumeShow(liveShowSlug) : undefined
+      }
+      resumeLoading={loading}
     />
   );
 }
@@ -221,6 +242,7 @@ function DisconnectedPanel({
   error,
   onReconnect,
   onBack,
+  onShowEnded,
 }: {
   slug: string;
   title: string;
@@ -228,14 +250,14 @@ function DisconnectedPanel({
   error: string | null;
   onReconnect: () => void;
   onBack: () => void;
+  onShowEnded: () => void;
 }) {
   return (
     <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center gap-4 px-6 py-24">
       <h1 className="text-2xl font-normal tracking-tight">Connection lost</h1>
       <p className="text-sm text-muted-foreground">
         Your show <span className="text-foreground">{title}</span> is still live
-        for viewers. Reconnect to continue hosting, or open the dashboard to end
-        it from another session.
+        for viewers. Reconnect to continue hosting, or end the show below.
       </p>
       {error ? (
         <p className="text-sm text-destructive" role="alert">
@@ -246,6 +268,11 @@ function DisconnectedPanel({
         <Button onClick={onReconnect} disabled={loading}>
           {loading ? "Reconnecting…" : "Reconnect"}
         </Button>
+        <EndLiveShowButton
+          slug={slug}
+          title={title}
+          onEnded={onShowEnded}
+        />
         <Button variant="outline" render={<Link href={`/s/${slug}`} target="_blank" />}>
           Open viewer page
         </Button>
@@ -259,16 +286,12 @@ function DisconnectedPanel({
 
 function LiveBroadcast({
   session,
-  hostName,
   channel3Configured,
-  startedAt,
   onShowEnded,
   onDisconnected,
 }: {
   session: ShowSession;
-  hostName: string | null;
   channel3Configured: boolean;
-  startedAt: React.RefObject<number | null>;
   onShowEnded: (slug: string) => void;
   onDisconnected: () => void;
 }) {
@@ -318,9 +341,7 @@ function LiveBroadcast({
       >
         <BroadcastStudio
           session={session}
-          hostName={hostName}
           channel3Configured={channel3Configured}
-          startedAt={startedAt}
           onShowEnded={onShowEnded}
           onStudioError={setStudioError}
         />
@@ -331,16 +352,12 @@ function LiveBroadcast({
 
 function BroadcastStudio({
   session,
-  hostName,
   channel3Configured,
-  startedAt,
   onShowEnded,
   onStudioError,
 }: {
   session: ShowSession;
-  hostName: string | null;
   channel3Configured: boolean;
-  startedAt: React.RefObject<number | null>;
   onShowEnded: (slug: string) => void;
   onStudioError: (message: string | null) => void;
 }) {
@@ -413,19 +430,17 @@ function BroadcastStudio({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ snapshot: snapshotWithStats }),
       });
-      if (!snapshotRes.ok) {
-        const data = await snapshotRes.json();
-        throw new Error(data.error ?? "Failed to save final snapshot");
+      if (snapshotRes.ok) {
+        setEndingStep(1);
       }
-      setEndingStep(1);
 
       const res = await fetch(`/api/shows/${session.slug}/end`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ snapshot: snapshotWithStats }),
       });
-      if (!res.ok) {
-        const data = await res.json();
+      const data = (await res.json()) as { error?: string; status?: string };
+      if (!res.ok || data.status !== "ended") {
         throw new Error(data.error ?? "Failed to end show");
       }
       setEndingStep(2);
@@ -647,6 +662,10 @@ function Preshow({
   loading,
   error,
   media,
+  liveShowSlug,
+  liveShowTitle,
+  onResumeLiveShow,
+  resumeLoading,
 }: {
   title: string;
   onTitleChange: (value: string) => void;
@@ -654,38 +673,86 @@ function Preshow({
   loading: boolean;
   error: string | null;
   media: MediaControls;
+  liveShowSlug?: string | null;
+  liveShowTitle?: string | null;
+  onResumeLiveShow?: () => void;
+  resumeLoading?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { cameraOn, micOn, toggleCamera, toggleMic, cameraError } = media;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-6 sm:gap-10 sm:px-6 sm:py-8">
-      <header className="flex flex-col gap-5 sm:gap-6">
-        <div className="flex flex-col gap-2 sm:gap-3">
-          <span className="micro text-muted-foreground">Show creator</span>
-          <h1 className="text-xl font-normal tracking-tight sm:text-2xl">
+      <header className="flex flex-col gap-4">
+        {liveShowSlug ? (
+          <div className="flex flex-col gap-3 rounded-xl bg-muted/40 p-4 ring-1 ring-foreground/8">
+            <div className="flex flex-col gap-1">
+              <span className="micro inline-flex items-center gap-2 text-live">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-live" />
+                Show still live
+              </span>
+              <p className="text-sm text-muted-foreground">
+                {liveShowTitle ? (
+                  <>
+                    <span className="text-foreground">{liveShowTitle}</span> is
+                    still live at /s/{liveShowSlug}. Reconnect to keep hosting,
+                    or end it before starting a new one.
+                  </>
+                ) : (
+                  <>
+                    You still have a live show at /s/{liveShowSlug}. Reconnect
+                    to keep hosting, or end it before starting a new one.
+                  </>
+                )}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {onResumeLiveShow ? (
+                <Button
+                  type="button"
+                  disabled={resumeLoading}
+                  className="bg-live text-live-foreground hover:bg-live/90"
+                  onClick={onResumeLiveShow}
+                >
+                  {resumeLoading ? "Reconnecting…" : "Open studio"}
+                </Button>
+              ) : null}
+              <EndLiveShowButton
+                slug={liveShowSlug}
+                title={liveShowTitle ?? "Live show"}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <h1 className="text-xl font-medium tracking-tight text-foreground sm:text-2xl">
             Prep your show
           </h1>
-          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Set up your camera, open the stores you&rsquo;ll shop from, and go
-            live when you&rsquo;re ready. Your share link appears once the show
-            starts.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <p className="text-sm text-muted-foreground">
-            Going live creates a shareable show and starts recording
-            automatically.
-          </p>
           <Button
-            size="micro"
             onClick={onGoLive}
-            disabled={loading}
+            disabled={loading || Boolean(liveShowSlug)}
+            title={
+              liveShowSlug
+                ? "End your current live show before starting another"
+                : "Creates a shareable show and starts recording automatically"
+            }
             className="w-full shrink-0 bg-live text-live-foreground hover:bg-live/90 sm:w-fit"
           >
             {loading ? "Starting…" : "Go live"}
           </Button>
+        </div>
+
+        <div className="flex max-w-md flex-col gap-2">
+          <Input
+            value={title}
+            onChange={(e) => onTitleChange(e.target.value)}
+            placeholder="Untitled show"
+            aria-label="Show title"
+          />
+          <p className="text-sm text-muted-foreground">
+            Share link appears in the header once you go live.
+          </p>
         </div>
       </header>
 
@@ -753,70 +820,31 @@ function Preshow({
           </PanelContent>
         </Panel>
 
-        <div className="flex flex-col gap-6">
-          <Panel>
-            <PanelHeader>
-              <PanelTitle>Show title</PanelTitle>
-            </PanelHeader>
-            <PanelContent>
-              <Input
-                value={title}
-                onChange={(e) => onTitleChange(e.target.value)}
-                placeholder="Untitled show"
-              />
-            </PanelContent>
-          </Panel>
-
-          <Panel>
-            <PanelHeader>
-              <PanelTitle>Store links</PanelTitle>
-            </PanelHeader>
-            <PanelContent className="flex flex-col gap-3">
-              <p className="text-sm text-muted-foreground">
-                Open these in new tabs so you can grab product URLs while
-                you&rsquo;re live.
-              </p>
-              <ul className="flex flex-col gap-2">
-                {STORE_LINKS.map((store) => (
-                  <li key={store.url}>
-                    <a
-                      href={store.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={cn(
-                        buttonVariants({ variant: "outline", size: "sm" }),
-                        "w-full justify-between",
-                      )}
-                    >
-                      {store.name}
-                      <ExternalLink className="size-3.5 text-muted-foreground" />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </PanelContent>
-          </Panel>
-
-          <Panel>
-            <PanelHeader>
-              <PanelTitle>Before you go live</PanelTitle>
-            </PanelHeader>
-            <PanelContent className="flex flex-col gap-4">
-              <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
-                {PRESHOW_TIPS.map((tip) => (
-                  <li key={tip} className="flex gap-2">
-                    <span className="mt-1.5 size-1 shrink-0 rounded-full bg-muted-foreground/50" />
-                    <span>{tip}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <p className="border-t border-border pt-4 text-sm text-muted-foreground">
-                Your viewer link appears in the header once you go live.
-              </p>
-            </PanelContent>
-          </Panel>
-        </div>
+        <Panel>
+          <PanelHeader>
+            <PanelTitle>Store links</PanelTitle>
+          </PanelHeader>
+          <PanelContent>
+            <ul className="flex flex-col gap-2">
+              {STORE_LINKS.map((store) => (
+                <li key={store.url}>
+                  <a
+                    href={store.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      buttonVariants({ variant: "outline", size: "sm" }),
+                      "w-full justify-between",
+                    )}
+                  >
+                    {store.name}
+                    <ExternalLink className="size-3.5 text-foreground/60" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </PanelContent>
+        </Panel>
       </div>
     </main>
   );

@@ -61,12 +61,6 @@ const STORE_LINKS = [
   { name: "REI", url: "https://www.rei.com" },
 ] as const;
 
-const PRESHOW_TIPS = [
-  "Open each store in a new browser tab before you go live — you\u2019ll paste product URLs from there.",
-  "Open the viewer page in a separate window so you can see what your audience sees.",
-  "Check your camera and mic here first. Screen share starts once you\u2019re live.",
-] as const;
-
 type MediaControls = {
   stream: MediaStream | null;
   cameraOn: boolean;
@@ -370,17 +364,27 @@ function Preshow({
   const viewerPath = `/ui-proto/show/${MOCK_SHOW_SLUG}`;
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 px-6 py-8">
-      <header className="flex flex-col gap-3">
-        <span className="micro text-muted-foreground">Show creator</span>
-        <h1 className="text-2xl font-normal tracking-tight">Prep your show</h1>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          Set up your camera, open the stores you&rsquo;ll shop from, and preview
-          the viewer page — then go live when you&rsquo;re ready.
+    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-6 sm:gap-10 sm:px-6 sm:py-8">
+      <header className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <h1 className="text-xl font-medium tracking-tight text-foreground sm:text-2xl">
+            Prep your show
+          </h1>
+          <Button
+            onClick={onGoLive}
+            title="Mock broadcast — no LiveKit room. Add links and chat work locally."
+            className="w-full shrink-0 bg-live text-live-foreground hover:bg-live/90 sm:w-fit"
+          >
+            Go live
+          </Button>
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          Preview the viewer page before you go live.
         </p>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+      <div className="grid gap-5 sm:gap-6 lg:grid-cols-[1.2fr_1fr]">
         <Panel>
           <PanelHeader>
             <PanelTitle>Camera &amp; mic</PanelTitle>
@@ -425,84 +429,46 @@ function Preshow({
           </PanelContent>
         </Panel>
 
-        <div className="flex flex-col gap-6">
-          <Panel>
-            <PanelHeader>
-              <PanelTitle>Store links</PanelTitle>
-            </PanelHeader>
-            <PanelContent className="flex flex-col gap-3">
-              <p className="text-sm text-muted-foreground">
-                Open these in new tabs so you can grab product URLs while you&rsquo;re
-                live.
-              </p>
-              <ul className="flex flex-col gap-2">
-                {STORE_LINKS.map((store) => (
-                  <li key={store.url}>
-                    <a
-                      href={store.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={cn(
-                        buttonVariants({ variant: "outline", size: "sm" }),
-                        "w-full justify-between",
-                      )}
-                    >
-                      {store.name}
-                      <ExternalLink className="size-3.5 text-muted-foreground" />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </PanelContent>
-          </Panel>
+        <Panel>
+          <PanelHeader>
+            <PanelTitle>Store links</PanelTitle>
+          </PanelHeader>
+          <PanelContent className="flex flex-col gap-4">
+            <ul className="flex flex-col gap-2">
+              {STORE_LINKS.map((store) => (
+                <li key={store.url}>
+                  <a
+                    href={store.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      buttonVariants({ variant: "outline", size: "sm" }),
+                      "w-full justify-between",
+                    )}
+                  >
+                    {store.name}
+                    <ExternalLink className="size-3.5 text-foreground/60" />
+                  </a>
+                </li>
+              ))}
+            </ul>
 
-          <Panel>
-            <PanelHeader>
-              <PanelTitle>Before you go live</PanelTitle>
-            </PanelHeader>
-            <PanelContent className="flex flex-col gap-4">
-              <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
-                {PRESHOW_TIPS.map((tip) => (
-                  <li key={tip} className="flex gap-2">
-                    <span className="mt-1.5 size-1 shrink-0 rounded-full bg-muted-foreground/50" />
-                    <span>{tip}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="flex flex-col gap-2 border-t border-border pt-4">
-                <span className="micro text-muted-foreground">Viewer preview</span>
-                <Link
-                  href={viewerPath}
-                  target="_blank"
-                  className={cn(
-                    buttonVariants({ variant: "ghost", size: "sm" }),
-                    "justify-between text-foreground",
-                  )}
-                >
-                  Open viewer page
-                  <ExternalLink className="size-3.5 text-muted-foreground" />
-                </Link>
-                <code className="micro truncate font-mono text-muted-foreground">
-                  {viewerPath}
-                </code>
-              </div>
-            </PanelContent>
-          </Panel>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-4 border-t border-border pt-8 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Mock broadcast — no LiveKit room. Add links and chat work locally.
-        </p>
-        <Button
-          size="micro"
-          onClick={onGoLive}
-          className="w-fit bg-live text-live-foreground hover:bg-live/90"
-        >
-          Go live
-        </Button>
+            <div className="flex flex-col gap-2 border-t border-border pt-4">
+              <PanelTitle tone="muted">Viewer preview</PanelTitle>
+              <Link
+                href={viewerPath}
+                target="_blank"
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "justify-between text-foreground",
+                )}
+              >
+                Open viewer page
+                <ExternalLink className="size-3.5 text-foreground/60" />
+              </Link>
+            </div>
+          </PanelContent>
+        </Panel>
       </div>
     </main>
   );

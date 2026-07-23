@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { getSignedInUser, isUserAllowlistedToHost } from "@/lib/auth";
 import { isChannel3Configured } from "@/lib/channel3";
+import { getLiveShowForHost } from "@/lib/shows";
 import { Button } from "@/components/ui/button";
 import HostClient from "./host-client";
 
@@ -41,11 +42,15 @@ export default async function HostPage({
     [user.firstName, user.lastName].filter(Boolean).join(" ") ??
     null;
 
+  const liveShow = await getLiveShowForHost(user.id);
+
   return (
     <HostClient
       hostName={hostName}
       channel3Configured={isChannel3Configured()}
       resumeSlug={resumeSlug ?? null}
+      liveShowSlug={liveShow?.slug ?? null}
+      liveShowTitle={liveShow?.title ?? null}
     />
   );
 }

@@ -292,12 +292,24 @@ export async function endShow(
       egressId: null,
       updatedAt: new Date(),
     })
-    .where(and(eq(streams.id, show.id), eq(streams.hostUserId, hostUserId)))
+    .where(
+      and(
+        eq(streams.id, show.id),
+        eq(streams.hostUserId, hostUserId),
+        eq(streams.status, "live"),
+      ),
+    )
     .returning();
 
-  await persistTrail(show.id, final);
+  if (!updated) return null;
 
-  return updated ?? show;
+  try {
+    await persistTrail(show.id, final);
+  } catch {
+    // The row is already ended; relational trail backfill is best-effort.
+  }
+
+  return updated;
 }
 
 /**
@@ -424,7 +436,7 @@ export async function endStaleShows(
     if (lastActivity >= cutoff) continue;
 
     const result = await endShow(show.slug, show.hostUserId, snapshotOf(show));
-    if (result) ended += 1;
+    if (result?.status === "ended") ended += 1;
   }
   return ended;
 }

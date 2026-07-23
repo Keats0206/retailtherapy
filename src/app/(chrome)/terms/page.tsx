@@ -6,7 +6,7 @@ export default function TermsPage() {
 
       <section className="flex flex-col gap-3 text-sm leading-relaxed text-muted-foreground">
         <p>
-          By using Retail Therapy during the controlled beta, you agree to these
+          By using frontrow during the controlled beta, you agree to these
           terms. If you do not agree, do not use the service.
         </p>
         <h2 className="text-base text-foreground">Beta access</h2>

@@ -6,7 +6,7 @@ export default function PrivacyPage() {
 
       <section className="flex flex-col gap-3 text-sm leading-relaxed text-muted-foreground">
         <p>
-          Retail Therapy (&ldquo;we&rdquo;, &ldquo;us&rdquo;) operates a live
+          frontrow (&ldquo;we&rdquo;, &ldquo;us&rdquo;) operates a live
           shopping platform that lets hosts broadcast from the browser and lets
           viewers watch, chat, and vote on products in real time.
         </p>

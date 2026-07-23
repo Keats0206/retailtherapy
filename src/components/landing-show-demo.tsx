@@ -17,11 +17,13 @@ import { formatCount, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
+  const [reduced, setReduced] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  });
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(mq.matches);
     const onChange = () => setReduced(mq.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
@@ -184,23 +186,28 @@ export function LandingShowDemo({ className }: { className?: string }) {
   // Vote + viewer count animation during voting phase
   useEffect(() => {
     if (reducedMotion) {
-      setVotes({
-        buy: staticProduct.voteTarget.buy,
-        skip: staticProduct.voteTarget.skip,
-      });
-      setBuyPct(staticProduct.voteTarget.buyPct);
-      setViewers(DEMO_VIEWER_COUNT.end);
-      return;
+      const timer = window.setTimeout(() => {
+        setVotes({
+          buy: staticProduct.voteTarget.buy,
+          skip: staticProduct.voteTarget.skip,
+        });
+        setBuyPct(staticProduct.voteTarget.buyPct);
+        setViewers(DEMO_VIEWER_COUNT.end);
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
 
     if (phase !== "voting") {
       if (phase === "chatting" || phase === "hold" || phase === "transition") {
-        setVotes({
-          buy: product.voteTarget.buy,
-          skip: product.voteTarget.skip,
-        });
-        setBuyPct(product.voteTarget.buyPct);
-        setViewers(DEMO_VIEWER_COUNT.end);
+        const timer = window.setTimeout(() => {
+          setVotes({
+            buy: product.voteTarget.buy,
+            skip: product.voteTarget.skip,
+          });
+          setBuyPct(product.voteTarget.buyPct);
+          setViewers(DEMO_VIEWER_COUNT.end);
+        }, 0);
+        return () => window.clearTimeout(timer);
       }
       return;
     }

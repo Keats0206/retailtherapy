@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { ChevronRight } from "lucide-react";
 
 import { DeleteShowButton } from "@/components/delete-show-button";
+import { EndLiveShowButton } from "@/components/end-live-show-button";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,12 +27,40 @@ export default async function Dashboard() {
       </div>
 
       <div className="flex flex-col gap-6 border-t border-border pt-8">
-        <Link
-          href="/host"
-          className={cn(buttonVariants({ variant: "outline" }), "w-fit")}
-        >
-          Go live as host
-        </Link>
+        {liveShows.length > 0 ? (
+          <>
+            <p className="text-sm text-muted-foreground">
+              You still have a show live. Reconnect in the studio or end it
+              below.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href={`/host?slug=${liveShows[0].slug}`}
+                className={cn(
+                  buttonVariants({ size: "lg" }),
+                  "w-fit bg-live text-live-foreground hover:bg-live/90",
+                )}
+              >
+                Open studio
+              </Link>
+              <EndLiveShowButton
+                slug={liveShows[0].slug}
+                title={liveShows[0].title}
+                size="lg"
+              />
+            </div>
+          </>
+        ) : (
+          <Link
+            href="/host"
+            className={cn(
+              buttonVariants({ size: "lg" }),
+              "w-fit bg-live text-live-foreground hover:bg-live/90",
+            )}
+          >
+            Go live as host
+          </Link>
+        )}
         <p className="text-sm text-muted-foreground">
           Watching? Open the link your host sent you, or browse{" "}
           <Link href="/browse" className="text-foreground underline-offset-4 hover:underline">
@@ -126,6 +155,9 @@ function ShowRow({
           title={show.title}
           disabled={show.status === "live"}
         />
+        {show.status === "live" ? (
+          <EndLiveShowButton slug={show.slug} title={show.title} size="sm" />
+        ) : null}
       </div>
     </Card>
   );

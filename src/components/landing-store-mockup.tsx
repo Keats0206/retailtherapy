@@ -84,15 +84,15 @@ export function LandingStoreMockup({ className }: { className?: string }) {
     <div className={cn("flex flex-col gap-2", className)}>
       <span className="micro text-muted-foreground">shop any store · demo</span>
 
-      <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-foreground/10 shadow-lg">
+      <div className="overflow-hidden rounded-2xl bg-white shadow-lg">
         {/* Browser chrome */}
-        <div className="flex items-center gap-2.5 border-b border-border/60 bg-[#f5f5f5] px-3 py-2">
+        <div className="flex items-center gap-2.5 bg-[#f5f5f5] px-3 py-2">
           <div className="flex shrink-0 gap-1.5" aria-hidden>
             <span className="size-2.5 rounded-full bg-[#FF5F57]" />
             <span className="size-2.5 rounded-full bg-[#FEBC2E]" />
             <span className="size-2.5 rounded-full bg-[#28C840]" />
           </div>
-          <div className="flex min-w-0 flex-1 items-center justify-center rounded-md bg-white px-3 py-1 shadow-sm ring-1 ring-black/5">
+          <div className="flex min-w-0 flex-1 items-center justify-center rounded-md bg-white px-3 py-1">
             <span className="micro truncate text-foreground/50">
               revolve.com/clothing/{activeTab.toLowerCase()}
             </span>
@@ -102,7 +102,7 @@ export function LandingStoreMockup({ className }: { className?: string }) {
         {/* Store UI */}
         <div className="relative">
           {/* Nav */}
-          <div className="flex items-center justify-between border-b border-black/5 px-4 py-2.5">
+          <div className="flex items-center justify-between px-4 py-2.5">
             <nav className="hidden items-center gap-4 sm:flex">
               {NAV_ITEMS.map((item) => (
                 <span
@@ -129,8 +129,8 @@ export function LandingStoreMockup({ className }: { className?: string }) {
           </div>
 
           {/* Category tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto border-b border-black/5 px-3 py-2">
-            <span className="micro flex shrink-0 items-center gap-1 rounded-sm border border-black/10 px-2 py-1 text-[10px] text-foreground/60">
+          <div className="flex items-center gap-1.5 overflow-x-auto px-3 py-2">
+            <span className="micro flex shrink-0 items-center gap-1 rounded-sm bg-black/5 px-2 py-1 text-[10px] text-foreground/60">
               <SlidersHorizontal className="size-2.5" strokeWidth={1.75} />
               All Filters
             </span>
@@ -140,10 +140,10 @@ export function LandingStoreMockup({ className }: { className?: string }) {
                 type="button"
                 onClick={() => setActiveTab(tab)}
                 className={cn(
-                  "micro shrink-0 rounded-sm border px-2 py-1 text-[10px] transition-colors",
+                  "micro shrink-0 rounded-sm px-2 py-1 text-[10px] transition-colors",
                   activeTab === tab
-                    ? "border-foreground bg-foreground text-white"
-                    : "border-black/10 text-foreground/60 hover:border-black/20",
+                    ? "bg-foreground text-white"
+                    : "bg-black/5 text-foreground/60 hover:bg-black/10",
                 )}
               >
                 {tab}
@@ -164,7 +164,7 @@ export function LandingStoreMockup({ className }: { className?: string }) {
 
           {/* Live host bubble */}
           <div className="pointer-events-none absolute bottom-3 right-3 sm:bottom-4 sm:right-4">
-            <div className="relative size-14 overflow-hidden rounded-full ring-2 ring-live shadow-lg sm:size-16">
+            <div className="relative size-14 overflow-hidden rounded-full shadow-lg sm:size-16">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={HOST_IMAGE}

@@ -11,7 +11,7 @@ import {
   Video,
 } from "lucide-react";
 
-import { LandingStoreMockup } from "@/components/landing-store-mockup";
+import { HeroZStack } from "@/components/hero-zstack";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/user-menu";
 import { cn } from "@/lib/utils";
@@ -92,10 +92,10 @@ export function LandingPage() {
           <div className="mx-auto w-full max-w-5xl px-6 py-16 lg:py-24">
             <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
               <div className="flex flex-col gap-6">
-                <h1 className="max-w-lg text-4xl font-normal leading-[1.06] tracking-tight sm:text-5xl lg:text-[3.25rem]">
+                <h1 className="max-w-lg text-5xl font-bold leading-[1.04] tracking-tight sm:text-6xl lg:text-[4rem]">
                   watch people shop.
                 </h1>
-                <p className="max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
+                <p className="max-w-md text-lg leading-relaxed text-muted-foreground sm:text-xl">
                   Hosts go live, add links to what&rsquo;s on screen, and let the room
                   vote on what&rsquo;s worth it.
                 </p>
@@ -117,7 +117,7 @@ export function LandingPage() {
                 </div>
               </div>
 
-              <LandingStoreMockup />
+              <HeroZStack />
             </div>
           </div>
         </section>
@@ -127,7 +127,7 @@ export function LandingPage() {
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-6 py-16 lg:py-20">
             <div className="flex flex-col gap-2">
               <span className="micro text-muted-foreground">How it works</span>
-              <h2 className="max-w-md text-2xl font-normal tracking-tight sm:text-3xl">
+              <h2 className="max-w-md text-3xl font-bold tracking-tight sm:text-4xl">
                 Shopping shows with a live audience
               </h2>
             </div>
@@ -135,7 +135,7 @@ export function LandingPage() {
               {STEPS.map((step, index) => (
                 <div
                   key={step.title}
-                  className="flex flex-col gap-4 rounded-xl bg-muted/40 p-6 ring-1 ring-foreground/8"
+                  className="flex flex-col gap-4 rounded-xl bg-muted/30 p-6"
                 >
                   <div className="flex items-center gap-3">
                     <span className="micro text-muted-foreground">
@@ -150,8 +150,8 @@ export function LandingPage() {
                     />
                   </div>
                   <div className="flex flex-col gap-2">
-                    <h3 className="text-base font-medium">{step.title}</h3>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
+                    <h3 className="text-lg font-semibold">{step.title}</h3>
+                    <p className="text-base leading-relaxed text-muted-foreground">
                       {step.description}
                     </p>
                   </div>
@@ -195,10 +195,10 @@ export function LandingPage() {
         <section className="bg-muted/50">
           <div className="mx-auto flex w-full max-w-5xl flex-col items-start gap-6 px-6 py-16 sm:flex-row sm:items-center sm:justify-between lg:py-20">
             <div className="flex max-w-lg flex-col gap-2">
-              <h2 className="text-2xl font-normal tracking-tight sm:text-3xl">
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
                 Ready to watch — or go live?
               </h2>
-              <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+              <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
                 Browse what&rsquo;s streaming now, or sign up and host your first
                 show from the browser.
               </p>
@@ -269,23 +269,22 @@ function FeaturePanel({
   cta: { label: string; href: string; host?: boolean };
 }) {
   const accentClass = accent === "pop" ? "text-pop" : "text-live";
-  const ctaClass = "bg-secondary text-secondary-foreground hover:bg-secondary/80";
 
   return (
-    <div className="flex flex-col gap-6 rounded-xl bg-muted/40 p-6 ring-1 ring-foreground/8 lg:p-8">
+    <div className="flex flex-col gap-6 rounded-xl bg-muted/30 p-6 lg:p-8">
       <div className="flex flex-col gap-2">
-        <span className={cn("micro", accentClass)}>{eyebrow}</span>
-        <h3 className="text-xl font-normal tracking-tight">{title}</h3>
-        <p className="text-sm leading-relaxed text-muted-foreground">
+        <span className={cn("micro font-semibold", accentClass)}>{eyebrow}</span>
+        <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h3>
+        <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
           {description}
         </p>
       </div>
       <ul className="flex flex-col gap-3">
         {items.map((item) => (
-          <li key={item.label} className="flex items-start gap-3 text-sm">
+          <li key={item.label} className="flex items-start gap-3 text-base font-medium sm:text-lg">
             <item.icon
-              className={cn("mt-0.5 size-4 shrink-0", accentClass)}
-              strokeWidth={1.75}
+              className={cn("mt-0.5 size-5 shrink-0", accentClass)}
+              strokeWidth={2}
             />
             <span>{item.label}</span>
           </li>
@@ -294,7 +293,11 @@ function FeaturePanel({
       {cta.host ? (
         <Show when="signed-out">
           <SignUpButton mode="modal">
-            <Button size="micro" className={cn("mt-auto w-fit", ctaClass)}>
+            <Button
+              variant="ghost"
+              size="lg"
+              className={cn("mt-auto w-fit px-0 font-semibold hover:bg-transparent", accentClass)}
+            >
               {cta.label}
             </Button>
           </SignUpButton>
@@ -303,8 +306,9 @@ function FeaturePanel({
       {cta.host ? (
         <Show when="signed-in">
           <Button
-            size="micro"
-            className={cn("mt-auto w-fit", ctaClass)}
+            variant="ghost"
+            size="lg"
+            className={cn("mt-auto w-fit px-0 font-semibold hover:bg-transparent", accentClass)}
             render={<Link href={cta.href} />}
           >
             {cta.label}
@@ -312,9 +316,9 @@ function FeaturePanel({
         </Show>
       ) : (
         <Button
-          size="micro"
-          variant="secondary"
-          className={cn("mt-auto w-fit", ctaClass)}
+          variant="ghost"
+          size="lg"
+          className={cn("mt-auto w-fit px-0 font-semibold hover:bg-transparent", accentClass)}
           render={<Link href={cta.href} />}
         >
           {cta.label}

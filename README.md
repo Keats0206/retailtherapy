@@ -6,7 +6,8 @@ Live shopping from the browser. Hosts go live over WebRTC (LiveKit), pin product
 
 | Route | Purpose |
 |---|---|
-| `/` | Homepage — lists live shows from the database |
+| `/` | Homepage — marketing; signed-in users go to `/dashboard` |
+| `/browse` | Lists live shows from the database |
 | `/host` | Host studio (Clerk auth + email allowlist) |
 | `/s/<slug>` | Public viewer page — live room or Mux replay |
 | `/dashboard` | Host dashboard — past and live shows |

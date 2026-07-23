@@ -35,7 +35,9 @@ export function HostEarningsMockup({ className }: { className?: string }) {
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
-      <span className="micro text-muted-foreground">earnings estimate · demo</span>
+      <span className="micro text-muted-foreground">
+        earnings estimate · coming soon
+      </span>
 
       <div className="overflow-hidden rounded-2xl bg-background ring-1 ring-foreground/10 shadow-lg">
         <div className="flex items-center gap-2.5 border-b border-border/80 bg-muted/50 px-3 py-2.5">
@@ -46,7 +48,7 @@ export function HostEarningsMockup({ className }: { className?: string }) {
           </div>
           <div className="flex min-w-0 flex-1 items-center justify-center rounded-md bg-background px-3 py-1 ring-1 ring-foreground/8">
             <span className="micro truncate text-muted-foreground">
-              frontrow.com/host/earnings
+              Host earnings dashboard · coming soon
             </span>
           </div>
         </div>
