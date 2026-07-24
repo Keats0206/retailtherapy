@@ -1,5 +1,4 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
 
 // Public surface: viewers at /s/* and /watch/* stay open. Hosting and the
 // dashboard require an account.
@@ -8,17 +7,8 @@ const isProtectedRoute = createRouteMatcher([
   "/dashboard",
   "/admin",
 ]);
-const isPrototypeRoute = createRouteMatcher([
-  "/prototype(.*)",
-  "/ui-proto(.*)",
-  "/v2-proto(.*)",
-]);
 
 export default clerkMiddleware(async (auth, req) => {
-  if (process.env.NODE_ENV === "production" && isPrototypeRoute(req)) {
-    return NextResponse.redirect(new URL("/", req.url));
-  }
-
   if (isProtectedRoute(req)) {
     await auth.protect();
   }

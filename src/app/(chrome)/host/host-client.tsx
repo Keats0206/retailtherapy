@@ -43,9 +43,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  MONITOR_ASIDE,
-  MONITOR_CAMERA,
-  MONITOR_SHARE,
+  HOST_CAMERA_BUBBLE,
+  HOST_CONTROL_BAR,
+  HOST_CONTROL_BAR_INNER,
+  HOST_STAGE,
   VideoFrame,
   VideoPlaceholder,
 } from "@/components/video-placeholder";
@@ -513,8 +514,8 @@ function BroadcastStudio({
       <StudioLayout
         stream={stream}
         channel3Configured={channel3Configured}
-        monitor={<ConfidenceMonitor onEndShow={() => setEndDialogOpen(true)} />}
-        chat={<ChatPanel className="min-h-0 flex-1 ring-0 xl:min-h-64" />}
+        stage={<HostStage onEndShow={() => setEndDialogOpen(true)} />}
+        chat={<ChatPanel className="min-h-0 flex-1 ring-0" />}
       />
 
       <EndShowDialog
@@ -532,45 +533,47 @@ function BroadcastStudio({
   );
 }
 
-function ConfidenceMonitor({ onEndShow }: { onEndShow: () => void }) {
+function HostStage({ onEndShow }: { onEndShow: () => void }) {
   const tracks = useTracks(
-    [Track.Source.Camera, Track.Source.ScreenShare],
+    [Track.Source.ScreenShare, Track.Source.Camera],
     { onlySubscribed: false },
   );
   const local = tracks.filter((t) => t.participant.isLocal);
-  const camera = local.find((t) => t.source === Track.Source.Camera);
   const share = local.find((t) => t.source === Track.Source.ScreenShare);
+  const camera = local.find((t) => t.source === Track.Source.Camera);
 
   return (
-    <aside className={MONITOR_ASIDE}>
-      <div className="flex flex-col gap-3 max-lg:gap-2">
-        <div className="flex flex-col gap-3 max-lg:flex-row max-lg:items-stretch max-lg:gap-2">
-        <VideoFrame label="You" className={MONITOR_CAMERA}>
-          {camera ? (
-            <VideoTrack
-              trackRef={camera}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <VideoPlaceholder>Camera off</VideoPlaceholder>
+    <div className={HOST_STAGE}>
+      {!share && !camera ? (
+        <VideoPlaceholder>Share your screen to start</VideoPlaceholder>
+      ) : !share ? (
+        <VideoTrack
+          trackRef={camera!}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="relative h-full w-full">
+          <VideoTrack
+            trackRef={share}
+            className="h-full w-full object-contain"
+          />
+          {camera && (
+            <VideoFrame className={HOST_CAMERA_BUBBLE}>
+              <VideoTrack
+                trackRef={camera}
+                className="h-full w-full object-cover"
+              />
+            </VideoFrame>
           )}
-        </VideoFrame>
+        </div>
+      )}
 
-        <VideoFrame label="On screen" className={MONITOR_SHARE}>
-          {share ? (
-            <VideoTrack
-              trackRef={share}
-              className="h-full w-full object-contain"
-            />
-          ) : (
-            <VideoPlaceholder>Not sharing</VideoPlaceholder>
-          )}
-        </VideoFrame>
+      <div className={HOST_CONTROL_BAR}>
+        <div className={HOST_CONTROL_BAR_INNER}>
+          <StudioControlBar sharing={Boolean(share)} onEndShow={onEndShow} />
         </div>
       </div>
-
-      <StudioControlBar sharing={Boolean(share)} onEndShow={onEndShow} />
-    </aside>
+    </div>
   );
 }
 

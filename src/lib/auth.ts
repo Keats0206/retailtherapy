@@ -22,9 +22,13 @@ export async function isHost(): Promise<boolean> {
   return (await getHostUser()) !== null;
 }
 
+/** Built-in super admins — always have admin access when signed in. */
+const BUILTIN_SUPER_ADMIN_USERNAMES = new Set(["keats0206"]);
+
 /**
- * Returns the current Clerk user when signed in and listed in `ADMIN_ALLOWLIST`,
- * otherwise `null`. Use for ops actions like force-ending a live show.
+ * Returns the current Clerk user when signed in and allowed as admin, otherwise
+ * `null`. Super admins (username allowlist) and `ADMIN_ALLOWLIST` emails both
+ * qualify. Use for ops actions like force-ending a live show.
  */
 export async function getAdminUser(): Promise<User | null> {
   const user = await currentUser();
@@ -38,11 +42,19 @@ export async function isAdmin(): Promise<boolean> {
 }
 
 export function isUserAllowlistedAsAdmin(user: User): boolean {
+  const username = clerkUsername(user);
+  if (username && isSuperAdminUsername(username)) return true;
+
   const allowlist = getAdminAllowlist();
   if (!allowlist) return false;
 
   const email = primaryEmail(user);
   return email !== null && allowlist.has(email);
+}
+
+export function isSuperAdmin(user: User): boolean {
+  const username = clerkUsername(user);
+  return username !== null && isSuperAdminUsername(username);
 }
 
 /** Signed-in user, regardless of allowlist. */
@@ -64,6 +76,32 @@ function getHostAllowlist(): Set<string> | null {
 
 function getAdminAllowlist(): Set<string> | null {
   return parseEmailAllowlist(process.env.ADMIN_ALLOWLIST);
+}
+
+function getSuperAdminUsernames(): Set<string> | null {
+  return parseUsernameAllowlist(process.env.SUPER_ADMIN_USERNAMES);
+}
+
+function isSuperAdminUsername(username: string): boolean {
+  if (BUILTIN_SUPER_ADMIN_USERNAMES.has(username)) return true;
+  const allowlist = getSuperAdminUsernames();
+  return allowlist?.has(username) ?? false;
+}
+
+function clerkUsername(user: User): string | null {
+  return user.username?.trim().toLowerCase() ?? null;
+}
+
+function parseUsernameAllowlist(raw: string | undefined): Set<string> | null {
+  const trimmed = raw?.trim();
+  if (!trimmed) return null;
+
+  const usernames = trimmed
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+
+  return usernames.length > 0 ? new Set(usernames) : null;
 }
 
 function parseEmailAllowlist(raw: string | undefined): Set<string> | null {

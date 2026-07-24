@@ -4,6 +4,7 @@ import { Show, SignInButton } from "@clerk/nextjs";
 import { SiteFooter } from "@/components/site-footer";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/user-menu";
+import { isAdmin } from "@/lib/auth";
 
 /**
  * The site header, for every route except `/watch`.
@@ -14,11 +15,13 @@ import { UserMenu } from "@/components/user-menu";
  * layout (not a second root layout), so moving between here and /watch is still
  * a client-side transition.
  */
-export default function ChromeLayout({
+export default async function ChromeLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const admin = await isAdmin();
+
   return (
     <>
       <header className="flex shrink-0 items-center justify-between px-6 py-4">
@@ -26,6 +29,11 @@ export default function ChromeLayout({
           frontrow
         </Link>
         <div className="flex items-center gap-4">
+          {admin ? (
+            <Button variant="ghost" size="micro" render={<Link href="/admin" />}>
+              Admin
+            </Button>
+          ) : null}
           <Show when="signed-out">
             <SignInButton mode="modal">
               <Button variant="ghost" size="micro">

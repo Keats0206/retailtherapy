@@ -1,3 +1,5 @@
+import { LANDING_CLOTHING_PRELOAD } from "@/lib/landing-clothing-data";
+
 export type PorterProductCategory =
   | "top"
   | "bottom"
@@ -200,13 +202,7 @@ export function outfitProducts(
 
 export const PORTER_OUTFIT_CYCLE_MS = 7000;
 
-export const HERO_SHOPPER_IMAGE = "/landing/hero-shopper.png";
-
-/** Fallback until hero-shopper.png is added */
-export const HERO_SHOPPER_FALLBACK =
-  "https://images.unsplash.com/photo-1483985988355-763728419177?w=900&auto=format&fit=crop";
-
 export const PORTER_HERO_PRELOAD = [
-  HERO_SHOPPER_IMAGE,
+  ...LANDING_CLOTHING_PRELOAD,
   ...outfitProducts(PORTER_OUTFITS[0]!).map((p) => p.imageUrl),
 ];

@@ -76,15 +76,29 @@ function ProductCard({
   );
 }
 
-export function LandingStoreMockup({ className }: { className?: string }) {
+export function LandingStoreMockup({
+  className,
+  embedded = false,
+}: {
+  className?: string;
+  /** Hide eyebrow and tighten chrome when nested inside HeroZStack. */
+  embedded?: boolean;
+}) {
   const [activeTab, setActiveTab] = useState<ClothingTab>("Dresses");
   const products = productsForTab(activeTab);
 
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      <span className="micro text-muted-foreground">shop any store · demo</span>
+    <div className={cn("flex flex-col", embedded ? "gap-0" : "gap-2", className)}>
+      {!embedded ? (
+        <span className="micro text-muted-foreground">shop any store · demo</span>
+      ) : null}
 
-      <div className="overflow-hidden rounded-2xl bg-white shadow-lg">
+      <div
+        className={cn(
+          "overflow-hidden rounded-2xl bg-white shadow-lg",
+          embedded && "shadow-xl ring-1 ring-foreground/10",
+        )}
+      >
         {/* Browser chrome */}
         <div className="flex items-center gap-2.5 bg-[#f5f5f5] px-3 py-2">
           <div className="flex shrink-0 gap-1.5" aria-hidden>

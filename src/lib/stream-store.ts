@@ -2,9 +2,7 @@
  * The shopping state of a live room, and the pure transitions over it.
  *
  * Deliberately transport-free: no LiveKit, no React. `useStreamState` drives
- * this over the room's data channel; `useMockStreamState` drives the same
- * transitions from local state for the /prototype route. Keeping the rules in
- * one place is what stops the prototype from drifting away from the real thing.
+ * this over the room's data channel.
  */
 
 import {

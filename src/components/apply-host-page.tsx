@@ -32,13 +32,42 @@ const PERKS = [
 export function ApplyHostPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+
     setSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setSubmitting(false);
-    setSubmitted(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: String(data.get("email") ?? ""),
+          name: String(data.get("name") ?? ""),
+          handle: String(data.get("handle") ?? ""),
+          pitch: String(data.get("pitch") ?? ""),
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        setError(payload?.error ?? "Something went wrong. Try again.");
+        return;
+      }
+
+      setSubmitted(true);
+    } catch {
+      setError("Couldn't reach the server. Check your connection and retry.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -83,15 +112,15 @@ export function ApplyHostPage() {
             <div className="grid items-start gap-12 lg:grid-cols-2 lg:gap-14">
               <div className="flex flex-col gap-6 lg:sticky lg:top-24">
                 <div className="flex flex-col gap-3">
-                  <span className="micro text-live">Host program</span>
+                  <span className="micro text-live">Host waitlist</span>
                   <h1 className="max-w-lg text-4xl font-normal leading-[1.06] tracking-tight sm:text-5xl">
                     Turn your audience into a live shopping channel.
                   </h1>
                   <p className="max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
-                    Frontrow is invite-only for hosts right now. Submit your
-                    details below — we review applications weekly and email you
-                    if approved. Hosting access is added manually; there&rsquo;s
-                    no instant self-serve signup.
+                    Frontrow is invite-only for hosts right now. Leave your email
+                    and we&rsquo;ll send an invite as we open up spots. We work
+                    through the list in order — there&rsquo;s no instant
+                    self-serve signup.
                   </p>
                 </div>
 
@@ -127,11 +156,11 @@ export function ApplyHostPage() {
                     />
                     <div className="flex max-w-sm flex-col gap-2">
                       <h2 className="text-xl font-normal tracking-tight">
-                        Application received
+                        You&rsquo;re on the list
                       </h2>
                       <p className="text-sm leading-relaxed text-muted-foreground">
-                        Thanks for applying. We review host applications weekly and
-                        will email you if there&rsquo;s a match.
+                        We&rsquo;ll email your invite as spots open up. In the
+                        meantime, watch a show to see how hosting works.
                       </p>
                     </div>
                     <Button
@@ -149,60 +178,37 @@ export function ApplyHostPage() {
                   >
                     <div className="flex flex-col gap-1">
                       <h2 className="text-xl font-normal tracking-tight">
-                        Apply to host
+                        Join the host waitlist
                       </h2>
                       <p className="text-sm text-muted-foreground">
-                        Tell us where you publish and how big your audience is.
-                        This saves your interest — we&rsquo;ll follow up by email
-                        if there&rsquo;s a fit.
+                        Email is all we need. The rest helps us move you up the
+                        list.
                       </p>
                     </div>
 
+                    <Field label="Email" htmlFor="email" required>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        required
+                        autoComplete="email"
+                        placeholder="you@example.com"
+                      />
+                    </Field>
+
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <Field label="Name" htmlFor="name" required>
-                        <Input id="name" name="name" required autoComplete="name" />
+                      <Field label="Name" htmlFor="name">
+                        <Input id="name" name="name" autoComplete="name" />
                       </Field>
-                      <Field label="Email" htmlFor="email" required>
+                      <Field label="Handle or channel" htmlFor="handle">
                         <Input
-                          id="email"
-                          name="email"
-                          type="email"
-                          required
-                          autoComplete="email"
+                          id="handle"
+                          name="handle"
+                          placeholder="@you or youtube.com/c/you"
                         />
                       </Field>
                     </div>
-
-                    <Field label="Primary platform" htmlFor="platform" required>
-                      <Input
-                        id="platform"
-                        name="platform"
-                        placeholder="Instagram, TikTok, YouTube…"
-                        required
-                      />
-                    </Field>
-
-                    <Field label="Handle or channel URL" htmlFor="handle" required>
-                      <Input
-                        id="handle"
-                        name="handle"
-                        placeholder="@you or youtube.com/c/you"
-                        required
-                      />
-                    </Field>
-
-                    <Field
-                      label="Follower / subscriber count"
-                      htmlFor="subscribers"
-                      required
-                    >
-                      <Input
-                        id="subscribers"
-                        name="subscribers"
-                        placeholder="e.g. 25,000"
-                        required
-                      />
-                    </Field>
 
                     <Field label="What would you shop live?" htmlFor="pitch">
                       <textarea
@@ -223,11 +229,20 @@ export function ApplyHostPage() {
                       className="bg-live text-live-foreground hover:bg-live/90"
                       disabled={submitting}
                     >
-                      {submitting ? "Submitting…" : "Submit application"}
+                      {submitting ? "Joining…" : "Join the waitlist"}
                     </Button>
 
+                    {error ? (
+                      <p
+                        role="alert"
+                        className="text-sm leading-relaxed text-destructive"
+                      >
+                        {error}
+                      </p>
+                    ) : null}
+
                     <p className="text-xs leading-relaxed text-muted-foreground">
-                      By applying you agree we may contact you about hosting on
+                      By joining you agree we may email you about hosting on
                       Frontrow. We don&rsquo;t share your info with third parties.
                     </p>
                   </form>

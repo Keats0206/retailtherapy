@@ -1,0 +1,35 @@
+import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
+
+import { getShowBySlug } from "@/lib/shows";
+import { toPublicShow } from "@/lib/show-public";
+
+import WaitroomClient from "./waitroom-client";
+
+export async function generateMetadata({
+  params,
+}: PageProps<"/waitroom/[slug]">): Promise<Metadata> {
+  const { slug } = await params;
+  const show = await getShowBySlug(slug);
+  if (!show) return { title: "Waitroom" };
+  return {
+    title: `${show.title} — starting soon`,
+    description: `${show.hostName ?? "The host"} is about to go live.`,
+  };
+}
+
+export default async function WaitroomPage({
+  params,
+}: PageProps<"/waitroom/[slug]">) {
+  const { slug } = await params;
+  const show = await getShowBySlug(slug);
+  if (!show) notFound();
+
+  // The waitroom is only for a show that hasn't started. Once it's live (or
+  // over, and playing back its replay), the show itself lives at /s/<slug>.
+  if (show.status !== "scheduled") {
+    redirect(`/s/${slug}`);
+  }
+
+  return <WaitroomClient initialShow={toPublicShow(show)} />;
+}

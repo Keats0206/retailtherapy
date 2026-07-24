@@ -44,6 +44,9 @@
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  /* Apple's SF Pro Display for headings / hero type; system fonts elsewhere already
+     resolve to SF Pro on Apple devices. Graceful fallback on non-Apple platforms. */
+  --font-display: "SF Pro Display", "SF Pro", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --radius: 0.625rem;
   --shadow-x: 0;
   --shadow-y: 1px;
@@ -106,6 +109,7 @@
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-display: "SF Pro Display", "SF Pro", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --radius: 0.625rem;
   --shadow-x: 0;
   --shadow-y: 1px;
@@ -165,7 +169,37 @@
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono, var(--font-mono));
   --font-serif: var(--font-serif);
-  --font-heading: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-heading: var(--font-display);
+
+  /* Type scale, bumped ~15% larger than Tailwind's defaults. Every text-*
+     utility reads these, so the whole app scales up in one place. */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.375rem;
+  --text-base: 1.0625rem;
+  --text-base--line-height: 1.625rem;
+  --text-lg: 1.25rem;
+  --text-lg--line-height: 1.875rem;
+  --text-xl: 1.4375rem;
+  --text-xl--line-height: 1.875rem;
+  --text-2xl: 1.75rem;
+  --text-2xl--line-height: 2.25rem;
+  --text-3xl: 2.125rem;
+  --text-3xl--line-height: 2.5rem;
+  --text-4xl: 2.625rem;
+  --text-4xl--line-height: 2.875rem;
+  --text-5xl: 3.5rem;
+  --text-5xl--line-height: 1;
+  --text-6xl: 4.25rem;
+  --text-6xl--line-height: 1;
+  --text-7xl: 5.25rem;
+  --text-7xl--line-height: 1;
+  --text-8xl: 7rem;
+  --text-8xl--line-height: 1;
+  --text-9xl: 9rem;
+  --text-9xl--line-height: 1;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -343,7 +377,7 @@
     @apply font-sans;
   }
   body {
-    @apply text-sm antialiased bg-background text-foreground;
+    @apply text-base antialiased bg-background text-foreground;
     font-family: var(--font-sans);
   }
 }

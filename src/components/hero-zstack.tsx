@@ -3,9 +3,8 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
 
+import { LandingStoreMockup } from "@/components/landing-store-mockup";
 import {
-  HERO_SHOPPER_FALLBACK,
-  HERO_SHOPPER_IMAGE,
   outfitProducts,
   PORTER_OUTFIT_CYCLE_MS,
   PORTER_OUTFITS,
@@ -15,19 +14,19 @@ import { cn } from "@/lib/utils";
 
 const FLOAT_SLOTS = [
   {
-    className: "left-[0%] top-[4%] z-20 w-[36%] -rotate-6",
+    className: "left-[-10%] top-[6%] z-30 w-[58%] -rotate-6",
     y: [-4, -10, -4],
     duration: 5,
     delay: 0,
   },
   {
-    className: "right-[-4%] top-[12%] z-30 w-[32%] rotate-[10deg]",
+    className: "right-[-12%] top-[10%] z-40 w-[54%] rotate-[10deg]",
     y: [-6, -12, -6],
     duration: 6.2,
     delay: 0.35,
   },
   {
-    className: "bottom-[2%] left-[16%] z-40 w-[40%] -rotate-[4deg]",
+    className: "bottom-[-8%] left-[12%] z-50 w-[62%] -rotate-[4deg]",
     y: [-3, -8, -3],
     duration: 4.8,
     delay: 0.7,
@@ -46,7 +45,7 @@ function FloatingProduct({
   const reducedMotion = useReducedMotion();
 
   return (
-    <div className={cn("absolute", slot.className)}>
+    <div className={cn("pointer-events-none absolute", slot.className)}>
       <motion.div
         animate={reducedMotion ? undefined : { y: [...slot.y] }}
         transition={
@@ -73,45 +72,11 @@ function FloatingProduct({
             <img
               src={product.imageUrl}
               alt=""
-              className="h-auto w-full select-none object-contain drop-shadow-[0_14px_32px_rgba(0,0,0,0.16)]"
+              className="h-auto w-full select-none object-contain drop-shadow-[0_16px_40px_rgba(0,0,0,0.2)]"
             />
           </motion.div>
         </AnimatePresence>
       </motion.div>
-    </div>
-  );
-}
-
-function ShopperLayer() {
-  const [src, setSrc] = useState(HERO_SHOPPER_IMAGE);
-  const [loaded, setLoaded] = useState(false);
-
-  return (
-    <div className="absolute inset-0 z-10">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt="Host shopping live"
-        className={cn(
-          "h-full w-full select-none object-contain transition-opacity duration-300",
-          loaded ? "opacity-100" : "opacity-0",
-        )}
-        onLoad={() => setLoaded(true)}
-        onError={() => {
-          if (src !== HERO_SHOPPER_FALLBACK) {
-            setSrc(HERO_SHOPPER_FALLBACK);
-            setLoaded(false);
-          }
-        }}
-      />
-      {!loaded && (
-        <div
-          className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-[2rem] border border-dashed border-foreground/15 bg-muted/40 text-center backdrop-blur-sm"
-          aria-hidden
-        >
-          <span className="micro text-muted-foreground">hero-shopper.png</span>
-        </div>
-      )}
     </div>
   );
 }
@@ -137,10 +102,8 @@ export function HeroZStack({ className }: { className?: string }) {
     <div className={cn("flex flex-col gap-2", className)}>
       <span className="micro text-muted-foreground">pinned on screen · demo</span>
 
-      <div className="relative mx-auto aspect-[4/5] w-full max-w-md overflow-visible sm:max-w-lg">
-        <div className="absolute inset-[6%] z-0 rounded-[2rem] bg-gradient-to-b from-muted/50 to-muted/15" />
-
-        <ShopperLayer />
+      <div className="relative mx-auto w-full max-w-xl overflow-visible sm:max-w-2xl">
+        <LandingStoreMockup embedded />
 
         {outfit.map((product, index) => (
           <FloatingProduct
@@ -150,11 +113,6 @@ export function HeroZStack({ className }: { className?: string }) {
             outfitKey={outfitKey}
           />
         ))}
-
-        <span className="micro absolute right-[4%] top-[8%] z-50 inline-flex items-center gap-1.5 rounded-full bg-live px-2.5 py-1 text-live-foreground shadow-sm">
-          <span className="size-1.5 animate-pulse rounded-full bg-live-foreground/70" />
-          live
-        </span>
       </div>
     </div>
   );

@@ -12,7 +12,6 @@ Live shopping from the browser. Hosts go live over WebRTC (LiveKit), pin product
 | `/s/<slug>` | Public viewer page — live room or Mux replay |
 | `/dashboard` | Host dashboard — past and live shows |
 | `/privacy`, `/terms` | Legal pages |
-| `/prototype`, `/ui-proto/*` | UI sandbox (dev only; blocked in production) |
 
 ## Setup
 
@@ -78,7 +77,3 @@ npm run db:studio    # Drizzle Studio
 npm run smoke        # End-to-end show API smoke test
 npm run typecheck    # TypeScript without full build
 ```
-
-## Prototype routes
-
-`/prototype` and `/ui-proto/*` run entirely on mock data — useful for UI iteration without LiveKit, Mux, or Channel3 credentials.

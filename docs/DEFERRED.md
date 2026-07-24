@@ -15,7 +15,6 @@ These are intentionally **not** in scope until after the polish ship and 3+ stru
 | Clerk webhooks / users table | Host identity is Clerk ID on `streams` row | Only if profiles or roles are needed |
 | Order / commission tracking | Purchases happen at retailers | Depends on Channel3 reporting or manual reconciliation |
 | Chat persistence | Ephemeral chat is acceptable; snapshot has `chatCount` | Only if hosts ask for transcripts |
-| `/prototype` cleanup | Already blocked in production | Low priority dev hygiene |
 
 ## Revisit triggers
 

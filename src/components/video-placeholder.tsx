@@ -21,9 +21,23 @@ export const MONITOR_ASIDE =
 export const CAMERA_BUBBLE =
   "absolute bottom-4 right-4 aspect-square w-24 border border-white/60 sm:w-32";
 
+/** Full-stage container for the host while live — mirrors the viewer theatre pane. */
+export const HOST_STAGE =
+  "relative min-h-0 min-w-0 flex-1 bg-black max-lg:aspect-video max-lg:flex-none";
+
+/** Host camera PiP on the stage (bottom-right, slightly larger than viewer bubble). */
+export const HOST_CAMERA_BUBBLE =
+  "absolute bottom-4 right-4 aspect-square w-24 border border-white/60 sm:w-36";
+
+/** Meet-style floating control bar centered at the bottom of the host stage. */
+export const HOST_CONTROL_BAR =
+  "pointer-events-none absolute inset-x-0 bottom-4 flex justify-center";
+export const HOST_CONTROL_BAR_INNER =
+  "pointer-events-auto flex items-center gap-1 rounded-full border border-white/20 bg-black/60 px-2 py-1.5 backdrop-blur-sm max-lg:gap-0.5 sm:gap-1.5";
+
 /**
- * A black video box with a corner label. Wraps real `<VideoTrack>`s on /host,
- * and stand-in text on /prototype, so both read identically.
+ * A black video box with a corner label. Wraps real `<VideoTrack>`s on /host
+ * and stand-in text when media is off or unavailable.
  */
 export function VideoFrame({
   label,

@@ -23,11 +23,11 @@ export default async function HostPage({
         <h1 className="text-2xl font-normal tracking-tight">Hosting is invite-only</h1>
         <p className="text-sm text-muted-foreground">
           Your account is signed in, but it is not on the host allowlist yet.
-          Apply to join the host program — we review applications weekly.
+          Join the waitlist — we send invites as spots open up.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button size="micro" className="bg-live text-live-foreground hover:bg-live/90" render={<Link href="/apply" />}>
-            Apply to host
+            Join the waitlist
           </Button>
           <Button variant="outline" size="micro" className="w-fit" render={<Link href="/dashboard" />}>
             Back to dashboard

@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
  * at occasionally, so it lives in a bottom sheet now.
  *
  * Video, viewer count, and chat come in as slots — they're the LiveKit-bound
- * parts. `/watch/[playbackId]` passes the real ones; `/prototype` passes mocks.
+ * parts. `/watch/[playbackId]` and `/s/[slug]` pass the real ones.
  */
 const OVERLAY_BUTTON = cn(
   buttonVariants({ variant: "outline", size: "icon-sm" }),
