@@ -11,44 +11,46 @@ import type { Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /**
- * The host's studio while live. Presenting isn't watching yourself: the video is
- * demoted to a narrow confidence monitor on the left — small camera, small
- * preview of what's being shared — and the shopping tools and chat get the room.
+ * The host's studio while live. Screen share fills the main stage (Meet-style),
+ * with shopping tools and chat in a narrow rail on the right.
  *
- * The video and chat arrive as slots rather than being rendered here, because
- * they're the only LiveKit-bound parts. `/host` passes the real confidence
- * monitor and data-channel chat; `/prototype` passes placeholders and an
- * in-memory log, and gets the same studio.
+ * The stage and chat arrive as slots rather than being rendered here, because
+ * they're the LiveKit-bound parts. `/host` passes the real stage and
+ * data-channel chat.
  */
 export function StudioLayout({
   stream,
-  monitor,
+  stage,
   chat,
   channel3Configured = true,
   onResolveProduct,
 }: {
   stream: StreamState;
-  monitor: React.ReactNode;
+  stage: React.ReactNode;
   chat: React.ReactNode;
   /** When false, product pinning is disabled until CHANNEL3_API_KEY is set. */
   channel3Configured?: boolean;
   /** Overrides the Channel3 lookup — see `StudioControls`. */
   onResolveProduct?: (url: string) => Promise<Product>;
 }) {
-  const { pinned, trail, pin, unpin, setNote, votesFor } = stream;
+  const { pinned, verse, trail, pin, unpin, endInteraction, setNote, votesFor, verseVotesFor, startVerse } = stream;
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col-reverse lg:flex-row">
-      {monitor}
+    <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+      {stage}
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 max-lg:gap-3 max-lg:p-3 xl:flex-row xl:overflow-hidden">
-        <div className="flex min-w-0 flex-col gap-4 max-lg:gap-3 xl:flex-1 xl:overflow-y-auto">
+      <aside className="flex min-h-0 w-full flex-col gap-4 overflow-y-auto border-border p-4 max-lg:gap-3 max-lg:p-3 max-lg:flex-1 lg:w-90 lg:shrink-0 lg:border-l lg:overflow-hidden">
+        <div className="flex min-h-0 flex-col gap-4 max-lg:gap-3 lg:flex-1 lg:overflow-y-auto">
           <StudioControls
             pinned={pinned}
+            verse={verse}
             votes={pinned ? votesFor(pinned.id) : undefined}
+            verseVotes={verse ? verseVotesFor(verse.id) : undefined}
             onPin={pin}
             onUnpin={unpin}
+            onEndInteraction={endInteraction}
+            onStartVerse={startVerse}
             onNote={setNote}
             onResolve={onResolveProduct}
             channel3Configured={channel3Configured}
@@ -64,11 +66,11 @@ export function StudioLayout({
 
         <div
           className={cn(
-            "flex shrink-0 flex-col overflow-hidden transition-[max-height] duration-200 xl:min-h-64 xl:w-80 xl:flex-none",
-            "max-xl:rounded-xl max-xl:bg-card max-xl:ring-1 max-xl:ring-foreground/10",
+            "flex min-h-0 shrink-0 flex-col overflow-hidden transition-[max-height] duration-200 lg:min-h-48 lg:flex-1",
+            "max-lg:rounded-xl max-lg:bg-card max-lg:ring-1 max-lg:ring-foreground/10",
             mobileChatOpen
-              ? "max-h-[min(75vh,28rem)] xl:max-h-none"
-              : "max-h-11 xl:max-h-none",
+              ? "max-h-[min(75vh,28rem)] lg:max-h-none"
+              : "max-h-11 lg:max-h-none",
           )}
         >
           <button
@@ -76,7 +78,7 @@ export function StudioLayout({
             onClick={() => setMobileChatOpen((open) => !open)}
             className={cn(
               buttonVariants({ variant: "ghost" }),
-              "h-11 w-full shrink-0 justify-between rounded-none px-4 hover:bg-transparent xl:hidden",
+              "h-11 w-full shrink-0 justify-between rounded-none px-4 hover:bg-transparent lg:hidden",
             )}
           >
             <span className="inline-flex items-center gap-2">
@@ -93,15 +95,15 @@ export function StudioLayout({
           <div
             className={cn(
               "flex min-h-0 flex-1 flex-col overflow-hidden",
-              !mobileChatOpen && "max-xl:hidden",
+              !mobileChatOpen && "max-lg:hidden",
               mobileChatOpen &&
-                "max-xl:[&_[data-slot=panel-header]]:hidden max-xl:[&_[data-slot=panel]]:rounded-none max-xl:[&_[data-slot=panel]]:py-0 max-xl:[&_[data-slot=panel]]:ring-0",
+                "max-lg:[&_[data-slot=panel-header]]:hidden max-lg:[&_[data-slot=panel]]:rounded-none max-lg:[&_[data-slot=panel]]:py-0 max-lg:[&_[data-slot=panel]]:ring-0",
             )}
           >
             {chat}
           </div>
         </div>
-      </div>
+      </aside>
     </div>
   );
 }

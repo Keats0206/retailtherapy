@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 
+import { EndLiveShowButton } from "@/components/end-live-show-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,13 +17,19 @@ import {
 import type { DiscoveryShow } from "@/lib/shows";
 import { cn } from "@/lib/utils";
 
-export function BrowsePage({ liveShows }: { liveShows: DiscoveryShow[] }) {
+export function BrowsePage({
+  liveShows,
+  isAdmin = false,
+}: {
+  liveShows: DiscoveryShow[];
+  isAdmin?: boolean;
+}) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <header className="sticky top-0 z-10 border-b border-border/80 bg-background/90 backdrop-blur-sm">
+      <header className="sticky top-0 z-10 bg-background/90 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
-          <Link href="/" className="micro font-bold">
-            RetailTherpay
+          <Link href="/" className="text-base font-bold uppercase tracking-widest">
+            frontrow
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
             <Show when="signed-out">
@@ -73,7 +80,7 @@ export function BrowsePage({ liveShows }: { liveShows: DiscoveryShow[] }) {
           {liveShows.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {liveShows.map((show) => (
-                <ShowCard key={show.slug} show={show} />
+                <ShowCard key={show.slug} show={show} isAdmin={isAdmin} />
               ))}
             </div>
           ) : (
@@ -100,7 +107,7 @@ export function BrowsePage({ liveShows }: { liveShows: DiscoveryShow[] }) {
           <div className="flex flex-col gap-2">
             <span className="micro text-muted-foreground">Host a show</span>
             <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
-              Go live from your browser, pin what you&rsquo;re showing, and let
+              Go live from your browser, add links as you show them, and let
               the room decide what&rsquo;s worth buying.
             </p>
           </div>
@@ -128,47 +135,65 @@ export function BrowsePage({ liveShows }: { liveShows: DiscoveryShow[] }) {
   );
 }
 
-function ShowCard({ show }: { show: DiscoveryShow }) {
+function ShowCard({
+  show,
+  isAdmin,
+}: {
+  show: DiscoveryShow;
+  isAdmin: boolean;
+}) {
   return (
     <Card className="overflow-hidden py-0 ring-foreground/8 transition-colors hover:ring-foreground/15">
-      <Link
-        href={`/s/${show.slug}`}
-        className="flex w-full flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      >
-        <div className="relative aspect-video w-full overflow-hidden bg-muted">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={show.thumbnailUrl}
-            alt=""
-            className="h-full w-full object-cover"
-          />
-          <Badge
-            variant="destructive"
-            size="micro"
-            className="absolute left-3 top-3 bg-live text-live-foreground"
-          >
-            Live
-          </Badge>
-        </div>
+      <div className="relative">
+        <Link
+          href={`/s/${show.slug}`}
+          className="flex w-full flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <div className="relative aspect-video w-full overflow-hidden bg-muted">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={show.thumbnailUrl}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+            <Badge
+              variant="destructive"
+              size="micro"
+              className="absolute left-3 top-3 bg-live text-live-foreground"
+            >
+              Live
+            </Badge>
+          </div>
 
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base font-normal">{show.title}</CardTitle>
-          <CardDescription>{show.host}</CardDescription>
-        </CardHeader>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-normal">{show.title}</CardTitle>
+            <CardDescription>{show.host}</CardDescription>
+          </CardHeader>
 
-        {show.pinnedProduct ? (
-          <CardContent className="pt-0">
-            <p className="text-sm text-muted-foreground">
-              On screen:{" "}
-              <span className="text-foreground">{show.pinnedProduct}</span>
-            </p>
-          </CardContent>
+          {show.pinnedProduct ? (
+            <CardContent className="pt-0">
+              <p className="text-sm text-muted-foreground">
+                On screen:{" "}
+                <span className="text-foreground">{show.pinnedProduct}</span>
+              </p>
+            </CardContent>
+          ) : null}
+
+          <CardFooter className={cn(!show.pinnedProduct && "border-t-0")}>
+            <span className="micro text-muted-foreground">Join show</span>
+          </CardFooter>
+        </Link>
+        {isAdmin ? (
+          <div className="absolute right-3 top-3">
+            <EndLiveShowButton
+              slug={show.slug}
+              title={show.title}
+              size="micro"
+              variant="admin"
+            />
+          </div>
         ) : null}
-
-        <CardFooter className={cn(!show.pinnedProduct && "border-t-0")}>
-          <span className="micro text-muted-foreground">Join show</span>
-        </CardFooter>
-      </Link>
+      </div>
     </Card>
   );
 }

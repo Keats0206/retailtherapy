@@ -9,7 +9,7 @@ import {
   PanelHeader,
   PanelTitle,
 } from "@/components/ui/panel";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, normalizeProductImageUrl } from "@/lib/format";
 import type { Product, VoteTally } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -50,7 +50,7 @@ export function ShoppingTrail({
       <PanelContent>
         {products.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Products you pin will collect here.
+            Links you add will collect here.
           </p>
         ) : (
           <div
@@ -63,6 +63,7 @@ export function ShoppingTrail({
             {products.map((p) => {
               const active = p.id === pinnedId;
               const votes = votesFor?.(p.id);
+              const imageUrl = normalizeProductImageUrl(p.imageUrl);
               const Wrapper = onSelect ? "button" : "div";
               return (
                 <Wrapper
@@ -82,10 +83,10 @@ export function ShoppingTrail({
                       "focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
                   )}
                 >
-                  {p.imageUrl && (
+                  {imageUrl && (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
-                      src={p.imageUrl}
+                      src={imageUrl}
                       alt={p.name}
                       className={cn(
                         "mb-2 aspect-square w-full rounded-md bg-muted object-cover",

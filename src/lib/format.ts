@@ -23,6 +23,21 @@ export function formatCount(n: number): string {
  * title that legitimately ends in the brand — "Air Force 1 by Nike" — is left
  * alone.
  */
+/**
+ * Some retailers (notably SSENSE) return Cloudinary template URLs with a
+ * literal `__IMAGE_PARAMS__` segment that 404s in the browser. Channel3 passes
+ * these through unchanged; fill in sensible defaults so the image loads.
+ */
+export function normalizeProductImageUrl(
+  url: string | null | undefined,
+): string | null {
+  if (!url) return null;
+  if (url.includes("__IMAGE_PARAMS__")) {
+    return url.replaceAll("__IMAGE_PARAMS__", "f_auto,q_auto,w_600");
+  }
+  return url;
+}
+
 export function cleanProductTitle(title: string, retailer?: string): string {
   let out = title.split(/\s+[|–—]\s+/)[0].trim();
 

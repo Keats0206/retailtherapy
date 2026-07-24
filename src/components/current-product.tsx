@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, normalizeProductImageUrl } from "@/lib/format";
 import type { Product, VoteChoice, VoteTally } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +37,7 @@ export function CurrentProduct({
       <div className={cn("px-3 py-3", className)}>
         <span className="micro text-muted-foreground">On screen now</span>
         <p className="py-6 text-sm text-muted-foreground">
-          When the host pins something, it shows up here.
+          When the host adds a link, it shows up here.
         </p>
       </div>
     );
@@ -46,6 +46,7 @@ export function CurrentProduct({
   const total = votes.buy + votes.skip;
   const buyPct = total ? Math.round((votes.buy / total) * 100) : 0;
   const soldOut = product.availability === "OutOfStock";
+  const imageUrl = normalizeProductImageUrl(product.imageUrl);
 
   return (
     <div className={cn("px-3 py-3", className)}>
@@ -60,10 +61,10 @@ export function CurrentProduct({
 
       {/* The image is the product. Give it the full column width rather than a
           thumbnail beside text. */}
-      {product.imageUrl && (
+      {imageUrl && (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
-          src={product.imageUrl}
+          src={imageUrl}
           alt={product.name}
           className="mt-2 aspect-square w-full bg-muted object-cover"
         />
@@ -125,12 +126,12 @@ export function CurrentProduct({
             disabled={!!myVote}
             onClick={() => onVote("skip")}
           >
-            Skip · {votes.skip}
+            Not buy · {votes.skip}
           </Button>
         </div>
         {myVote && (
           <p className="micro mt-2 text-center text-muted-foreground">
-            You voted {myVote} · {buyPct}% say buy
+            You voted {myVote === "skip" ? "not buy" : myVote} · {buyPct}% say buy
           </p>
         )}
       </div>

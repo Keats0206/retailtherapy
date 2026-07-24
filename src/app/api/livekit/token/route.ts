@@ -1,12 +1,25 @@
-import { currentUser } from "@clerk/nextjs/server";
-
 import { createAccessToken, getLiveKitConfig } from "@/lib/livekit";
+import {
+  checkRateLimit,
+  clientIp,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 
-// POST /api/livekit/token — mint a LiveKit access token for a room.
-// Body: { room: string, role?: "host" | "viewer" }.
-// Signed-in users may publish when role is "host"; everyone else is subscribe-only.
-// Viewers do not need to be signed in.
+// POST /api/livekit/token — mint a subscribe-only LiveKit token for viewers.
+// Body: { room: string }.
+//
+// Host publish tokens are only issued from POST /api/shows and
+// POST /api/shows/<slug>/resume after ownership checks — never here.
 export async function POST(request: Request) {
+  const ip = clientIp(request);
+  const limit = checkRateLimit(`livekit-token:${ip}`, {
+    limit: 30,
+    windowMs: 60_000,
+  });
+  if (!limit.ok) {
+    return rateLimitResponse(limit.retryAfterSec ?? 60);
+  }
+
   let body: { room?: string; role?: string };
   try {
     body = await request.json();
@@ -14,43 +27,29 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  if (body.role === "host") {
+    return Response.json(
+      { error: "Host tokens must be requested via /api/shows" },
+      { status: 403 },
+    );
+  }
+
   const room = body.room?.trim();
   if (!room) {
     return Response.json({ error: "Missing room" }, { status: 400 });
   }
 
-  // Clerk may be unconfigured (e.g. keys not yet set); treat that as anonymous
-  // so viewers still work. Publishing requires a signed-in user.
-  let user: Awaited<ReturnType<typeof currentUser>> = null;
-  try {
-    user = await currentUser();
-  } catch {
-    user = null;
-  }
-
-  const wantsHost = body.role === "host";
-
-  if (wantsHost && !user) {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const canPublish = wantsHost && !!user;
-  const identity =
-    user?.id ?? `viewer-${crypto.randomUUID().slice(0, 8)}`;
-  const name =
-    user?.username ??
-    user?.firstName ??
-    (canPublish ? "Host" : "Viewer");
+  const identity = `viewer-${crypto.randomUUID().slice(0, 8)}`;
 
   try {
     const token = await createAccessToken({
       room,
       identity,
-      name: name ?? undefined,
-      canPublish,
+      name: "Viewer",
+      canPublish: false,
     });
     const { url } = getLiveKitConfig();
-    return Response.json({ token, url, room, identity, canPublish });
+    return Response.json({ token, url, room, identity, canPublish: false });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Failed to mint access token";

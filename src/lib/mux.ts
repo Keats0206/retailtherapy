@@ -70,6 +70,24 @@ export async function completeMuxLiveStream(liveStreamId: string) {
   await getMux().video.liveStreams.complete(liveStreamId);
 }
 
+/** Best-effort cleanup when a show is deleted or create fails mid-flight. */
+export async function deleteMuxLiveStream(liveStreamId: string) {
+  try {
+    await getMux().video.liveStreams.delete(liveStreamId);
+  } catch {
+    // Already gone or Mux is unavailable — nothing to do.
+  }
+}
+
+/** Removes a packaged recording asset. */
+export async function deleteMuxAsset(assetId: string) {
+  try {
+    await getMux().video.assets.delete(assetId);
+  } catch {
+    // Already gone or Mux is unavailable — nothing to do.
+  }
+}
+
 /**
  * Finds the recording produced by a finished live stream.
  *

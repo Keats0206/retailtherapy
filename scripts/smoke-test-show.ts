@@ -47,7 +47,7 @@ async function main() {
       mux_live_stream_id, mux_stream_key, snapshot, started_at
     ) VALUES (
       ${slug}, ${title}, ${"smoke-test-user"}, ${"Smoke Test Host"}, ${"live"},
-      ${`show_${slug}`}, ${liveStreamId}, ${streamKey}, ${JSON.stringify({ trail: [], pinnedId: null, votes: {} })}::jsonb,
+      ${`show_${slug}`}, ${liveStreamId}, ${streamKey}, ${JSON.stringify({ trail: [], active: null, votes: {}, verseVotes: {} })}::jsonb,
       ${new Date().toISOString()}
     )
   `;

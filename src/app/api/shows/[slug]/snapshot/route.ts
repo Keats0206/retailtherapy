@@ -1,6 +1,9 @@
 import { getHostUser } from "@/lib/auth";
 import { saveSnapshot } from "@/lib/shows";
-import type { StreamSnapshot } from "@/lib/stream-store";
+import {
+  snapshotTooLarge,
+  validateSnapshot,
+} from "@/lib/snapshot-validation";
 
 // PUT /api/shows/<slug>/snapshot — checkpoint the shopping state mid-show.
 //
@@ -18,20 +21,27 @@ export async function PUT(
   }
 
   const { slug } = await params;
+  const raw = await request.text();
+  if (snapshotTooLarge(raw)) {
+    return Response.json({ error: "Snapshot too large" }, { status: 413 });
+  }
 
-  let body: { snapshot?: StreamSnapshot };
+  let body: { snapshot?: unknown };
   try {
-    body = await request.json();
+    body = JSON.parse(raw);
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body.snapshot) {
-    return Response.json({ error: "Missing snapshot" }, { status: 400 });
+  if (!body.snapshot || !validateSnapshot(body.snapshot)) {
+    return Response.json({ error: "Invalid snapshot" }, { status: 400 });
   }
 
   try {
-    await saveSnapshot(slug, host.id, body.snapshot);
+    const saved = await saveSnapshot(slug, host.id, body.snapshot);
+    if (!saved) {
+      return Response.json({ error: "Show not found or not live" }, { status: 404 });
+    }
     return Response.json({ ok: true });
   } catch (err) {
     const message =

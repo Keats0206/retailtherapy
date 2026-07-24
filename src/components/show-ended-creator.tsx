@@ -50,7 +50,7 @@ export function ShowEndedCreator({
   const stats = [
     { label: "Peak viewers", value: formatCount(recap.peakViewers) },
     { label: "Duration", value: formatDuration(recap.durationMs) },
-    { label: "Products pinned", value: String(recap.snapshot.trail.length) },
+    { label: "Links added", value: String(recap.snapshot.trail.length) },
     { label: "Audience votes", value: formatCount(votes.total) },
     { label: "Chat messages", value: formatCount(recap.chatCount) },
     {
@@ -68,7 +68,7 @@ export function ShowEndedCreator({
         <h1 className="text-2xl font-normal tracking-tight">{recap.title}</h1>
         <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
           Nice work — your recap is live for viewers. Share the link so they can
-          rewatch and shop everything you pinned.
+          rewatch and shop everything you added.
         </p>
       </header>
 

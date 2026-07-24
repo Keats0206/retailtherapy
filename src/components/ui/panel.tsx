@@ -37,11 +37,20 @@ function PanelHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function PanelTitle({ className, ...props }: React.ComponentProps<"div">) {
+function PanelTitle({
+  className,
+  tone = "default",
+  ...props
+}: React.ComponentProps<"div"> & { tone?: "default" | "muted" }) {
   return (
     <div
       data-slot="panel-title"
-      className={cn("micro text-muted-foreground", className)}
+      className={cn(
+        tone === "muted"
+          ? "micro text-muted-foreground"
+          : "text-sm font-medium text-foreground",
+        className,
+      )}
       {...props}
     />
   )

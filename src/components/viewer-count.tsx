@@ -19,8 +19,8 @@ export function ViewerCount({ className }: { className?: string }) {
 }
 
 /**
- * The count with no room attached — used by /prototype, which has no
- * participants to count.
+ * The count display with no room attached — for callers that already have a
+ * viewer total.
  */
 export function ViewerCountView({
   count,

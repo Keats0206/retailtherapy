@@ -1,11 +1,12 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Next 16 renamed the `middleware` file convention to `proxy`. Clerk's
-// middleware runs here as the default export.
-//
-// Public surface: the dashboard and the viewer experience (`/watch/*`) stay
-// open so anyone can watch a stream. Hosting a stream requires an account.
-const isProtectedRoute = createRouteMatcher(["/host(.*)"]);
+// Public surface: viewers at /s/* and /watch/* stay open. Hosting and the
+// dashboard require an account.
+const isProtectedRoute = createRouteMatcher([
+  "/host(.*)",
+  "/dashboard",
+  "/admin",
+]);
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {

@@ -31,7 +31,16 @@ export async function POST(
   try {
     const show = await endShow(slug, host.id, snapshot);
     if (!show) {
-      return Response.json({ error: "Show not found" }, { status: 404 });
+      return Response.json(
+        { error: "Show not found or already ended" },
+        { status: 404 },
+      );
+    }
+    if (show.status !== "ended") {
+      return Response.json(
+        { error: "Failed to end the show" },
+        { status: 500 },
+      );
     }
     return Response.json({ slug: show.slug, status: show.status });
   } catch (err) {

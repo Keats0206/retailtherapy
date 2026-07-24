@@ -88,8 +88,8 @@ export default function Player({ room }: { room: string }) {
 
 /**
  * The watch experience, wired to the live room. The layout itself lives in
- * `components/watch-layout.tsx` so /prototype can render it without LiveKit.
- * Must be inside <LiveKitRoom> so the hooks find the room.
+ * `components/watch-layout.tsx`. Must be inside <LiveKitRoom> so the hooks
+ * find the room.
  */
 function Watch() {
   const stream = useStreamState({ isHost: false });
