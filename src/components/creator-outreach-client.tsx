@@ -184,42 +184,24 @@ export function CreatorOutreachClient({
     }
   }
 
-  async function send(ids: string[]) {
-    if (ids.length === 0 || sending) return;
-
-    setSending(true);
+  /** Confirms an email the admin sent by hand from Gmail. */
+  async function markSent(id: string) {
+    setRowBusy(id, true);
     setError(null);
-    setMessage(null);
-
     try {
-      const res = await fetch("/api/admin/creator-outreach/send", {
+      const res = await fetch(`/api/admin/creator-outreach/${id}/sent`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
       });
       const data = (await res.json()) as {
         error?: string;
-        sent?: number;
-        dryRun?: boolean;
-        skipped?: { reason: string }[];
-        failed?: { error: string }[];
+        prospect?: Prospect;
       };
-      if (!res.ok) throw new Error(data.error ?? "Send failed");
-
-      const parts = [
-        `${data.sent ?? 0} sent${data.dryRun ? " (dry run — nothing left the app)" : ""}`,
-      ];
-      if (data.skipped?.length) parts.push(`${data.skipped.length} skipped`);
-      if (data.failed?.length) parts.push(`${data.failed.length} failed`);
-      setMessage(parts.join(" · "));
-      if (data.failed?.[0]) setError(data.failed[0].error);
-
-      setSelected(new Set());
-      await reload();
+      if (!res.ok) throw new Error(data.error ?? "Couldn't record the send");
+      if (data.prospect) replaceProspect(data.prospect);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Send failed");
+      setError(err instanceof Error ? err.message : "Couldn't record the send");
     } finally {
-      setSending(false);
+      setRowBusy(id, false);
     }
   }
 
@@ -237,7 +219,7 @@ export function CreatorOutreachClient({
     }
   }
 
-  const selectable = visible.filter(
+  const ready = visible.filter(
     (p) => p.email && !p.contactedAt && p.draftSubject && p.draftBody,
   );
 
@@ -283,15 +265,6 @@ export function CreatorOutreachClient({
           aria-label="Optional angle to work into drafts"
         />
       </section>
-
-      {dryRun ? (
-        <p className="rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">
-          <strong className="font-medium text-foreground">Dry run is on.</strong>{" "}
-          Sends are logged, not delivered. Unset{" "}
-          <code className="text-xs">OUTREACH_DRY_RUN</code> once your Resend
-          domain is verified.
-        </p>
-      ) : null}
 
       {message ? (
         <p className="text-sm text-muted-foreground" role="status">
