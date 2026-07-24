@@ -6,6 +6,15 @@ export function formatPrice(amount: number, currency = "USD"): string {
   }).format(amount);
 }
 
+/** Elapsed show time, e.g. "42 min" / "1h 8m". */
+export function formatDuration(ms: number): string {
+  const mins = Math.round(ms / 60_000);
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
 export function formatCount(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k`;
   return String(n);

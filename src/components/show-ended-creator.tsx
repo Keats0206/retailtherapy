@@ -15,17 +15,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { VideoFrame, VideoPlaceholder } from "@/components/video-placeholder";
-import { formatCount } from "@/lib/format";
+import { formatCount, formatDuration } from "@/lib/format";
 import type { EndedShowRecap } from "@/lib/show-recap";
 import { cn } from "@/lib/utils";
-
-function formatDuration(ms: number): string {
-  const mins = Math.round(ms / 60_000);
-  if (mins < 60) return `${mins} min`;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return m ? `${h}h ${m}m` : `${h}h`;
-}
 
 function tallyVotes(recap: EndedShowRecap) {
   let buy = 0;
