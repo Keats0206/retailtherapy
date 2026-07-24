@@ -20,11 +20,6 @@ export default async function CreatorOutreachPage() {
     countProspectsByStatus(),
   ]);
 
-  // Surfaced in the UI so it's obvious whether a "Send" actually mails anyone.
-  const dryRun = ["1", "true"].includes(
-    process.env.OUTREACH_DRY_RUN?.trim().toLowerCase() ?? "",
-  );
-
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 px-6 py-24">
       <div className="flex flex-col gap-6">

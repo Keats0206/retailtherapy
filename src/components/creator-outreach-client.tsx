@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
+  Check,
   ExternalLink,
   Loader2,
   Mail,
@@ -295,43 +296,10 @@ export function CreatorOutreachClient({
           ))}
         </div>
 
-        {selectable.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setSelected(
-                  selected.size === selectable.length
-                    ? new Set()
-                    : new Set(selectable.map((p) => p.id)),
-                )
-              }
-            >
-              {selected.size === selectable.length
-                ? "Clear selection"
-                : `Select all ${selectable.length} ready`}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              disabled={selected.size === 0 || sending}
-              onClick={() => void send([...selected])}
-            >
-              {sending ? (
-                <>
-                  <Loader2 className="animate-spin" />
-                  Sending…
-                </>
-              ) : (
-                <>
-                  <Send />
-                  Send {selected.size || ""}
-                </>
-              )}
-            </Button>
-          </div>
+        {ready.length > 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {ready.length} drafted and ready to send from Gmail.
+          </p>
         ) : null}
 
         {visible.length === 0 ? (
@@ -347,22 +315,12 @@ export function CreatorOutreachClient({
                 key={prospect.id}
                 prospect={prospect}
                 busy={busy.has(prospect.id)}
-                sending={sending}
-                selected={selected.has(prospect.id)}
                 expanded={expanded === prospect.id}
-                onToggleSelect={() =>
-                  setSelected((current) => {
-                    const next = new Set(current);
-                    if (next.has(prospect.id)) next.delete(prospect.id);
-                    else next.add(prospect.id);
-                    return next;
-                  })
-                }
                 onToggleExpand={() =>
                   setExpanded(expanded === prospect.id ? null : prospect.id)
                 }
                 onDraft={() => void writeDraft(prospect.id)}
-                onSend={() => void send([prospect.id])}
+                onMarkSent={() => void markSent(prospect.id)}
                 onPatch={(body) => void patch(prospect.id, body)}
                 onRemove={() => void remove(prospect.id)}
               />
@@ -403,51 +361,42 @@ function FilterChip({
 function ProspectRow({
   prospect,
   busy,
-  sending,
-  selected,
   expanded,
-  onToggleSelect,
   onToggleExpand,
   onDraft,
-  onSend,
+  onMarkSent,
   onPatch,
   onRemove,
 }: {
   prospect: Prospect;
   busy: boolean;
-  sending: boolean;
-  selected: boolean;
   expanded: boolean;
-  onToggleSelect: () => void;
   onToggleExpand: () => void;
   onDraft: () => void;
-  onSend: () => void;
+  onMarkSent: () => void;
   onPatch: (body: Record<string, unknown>) => void;
   onRemove: () => void;
 }) {
   const [email, setEmail] = useState(prospect.email ?? "");
   const [subject, setSubject] = useState(prospect.draftSubject ?? "");
   const [body, setBody] = useState(prospect.draftBody ?? "");
+  // Flips once the composer has been opened, so "mark as sent" only appears
+  // after there was actually something to send.
+  const [opened, setOpened] = useState(false);
 
-  const hasDraft = Boolean(prospect.draftSubject && prospect.draftBody);
-  const canSend = Boolean(prospect.email) && !prospect.contactedAt && hasDraft;
+  const hasDraft = Boolean(subject.trim() && body.trim());
+  const canSend = Boolean(email.trim()) && !prospect.contactedAt && hasDraft;
+
+  // Built from the live field values, not the saved row, so an edit in the
+  // textarea is what lands in Gmail even before the blur-save round-trips.
+  const composeUrl = canSend
+    ? gmailComposeUrl({ to: email.trim(), subject, body })
+    : null;
 
   return (
     <Card className="py-0 ring-foreground/8 transition-colors hover:ring-foreground/15">
       <div className="flex flex-col gap-3 px-4 py-3.5">
         <div className="flex items-start gap-3">
-          {canSend ? (
-            <input
-              type="checkbox"
-              checked={selected}
-              onChange={onToggleSelect}
-              aria-label={`Select @${prospect.handle} to send`}
-              className="mt-2 size-4 shrink-0 accent-foreground"
-            />
-          ) : (
-            <span className="mt-2 size-4 shrink-0" aria-hidden />
-          )}
-
           {prospect.avatarUrl ? (
             // Remote TikTok CDN avatars with signed, expiring URLs — not worth
             // routing through next/image's optimizer.
@@ -628,15 +577,45 @@ function ProspectRow({
                 >
                   <Trash2 />
                 </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={!canSend || sending || busy}
-                  onClick={onSend}
-                >
-                  <Send />
-                  {prospect.contactedAt ? "Already sent" : "Send email"}
-                </Button>
+
+                {prospect.contactedAt ? (
+                  <span className="micro text-muted-foreground">
+                    Already sent
+                  </span>
+                ) : (
+                  <>
+                    {opened ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={onMarkSent}
+                      >
+                        <Check />
+                        Mark as sent
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!composeUrl}
+                      render={
+                        composeUrl ? (
+                          <a
+                            href={composeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => setOpened(true)}
+                          />
+                        ) : undefined
+                      }
+                    >
+                      <Send />
+                      Open in Gmail
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>
