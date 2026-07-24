@@ -1,9 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
 import { CreatorOutreachClient } from "@/components/creator-outreach-client";
 import { buttonVariants } from "@/components/ui/button";
-import { getAdminUser } from "@/lib/auth";
 import { countProspectsByStatus, listProspects } from "@/lib/creator-outreach";
 import { cn } from "@/lib/utils";
 
@@ -11,10 +9,9 @@ export const metadata = {
   title: "Creator outreach — frontrow",
 };
 
+// Ungated while we're still shaping this tool — anyone who knows the URL can
+// open it. Re-add the `getAdminUser()` check before this ships publicly.
 export default async function CreatorOutreachPage() {
-  const admin = await getAdminUser();
-  if (!admin) notFound();
-
   const [prospects, counts] = await Promise.all([
     listProspects(),
     countProspectsByStatus(),
