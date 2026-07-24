@@ -114,6 +114,21 @@ export async function listLiveShowsForAdmin(limit = 50): Promise<Show[]> {
   return listLiveShowRows(limit);
 }
 
+/** Force-end every live show. Returns slugs that were successfully ended. */
+export async function endAllLiveShows(limit = 50): Promise<string[]> {
+  const live = await listLiveShowRows(limit);
+  const endedSlugs: string[] = [];
+
+  for (const show of live) {
+    const ended = await endShow(show.slug, show.hostUserId, snapshotOf(show));
+    if (ended?.status === "ended") {
+      endedSlugs.push(ended.slug);
+    }
+  }
+
+  return endedSlugs;
+}
+
 async function listLiveShowRows(limit: number): Promise<Show[]> {
   return db
     .select()
@@ -144,8 +159,14 @@ export async function getLiveShowForHost(
   return show ?? null;
 }
 
-/** Hours without a snapshot update before a live show is considered stale. */
-export const STALE_SHOW_HOURS = 6;
+/**
+ * Hours without a snapshot update before a live show is considered stale. This
+ * is only a backstop now — the LiveKit `room_finished` webhook ends shows
+ * within minutes of the host leaving. It catches the case where the webhook
+ * never arrives (misconfigured, or LiveKit couldn't reach us), while still
+ * leaving a comfortable window for a host to reconnect a dropped session.
+ */
+export const STALE_SHOW_HOURS = 2;
 
 /**
  * Opens a show. The row and the Mux live stream are created up front so the
@@ -319,6 +340,20 @@ export async function endShow(
   }
 
   return updated;
+}
+
+/**
+ * Ends the show attached to a LiveKit room. Called from the `room_finished`
+ * webhook: a room going empty is the authoritative "the host is gone" signal,
+ * so we end promptly instead of waiting for the stale sweep hours later.
+ *
+ * No-ops unless the show is still live, so a duplicate webhook delivery (LiveKit
+ * retries) can't disturb an already-frozen recap.
+ */
+export async function endShowByRoomName(roomName: string): Promise<Show | null> {
+  const show = await getShowByRoomName(roomName);
+  if (!show || show.status !== "live") return null;
+  return endShow(show.slug, show.hostUserId, null);
 }
 
 /**

@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/end-stale-shows",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 * * * *"
     }
   ]
 }
