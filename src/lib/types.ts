@@ -35,3 +35,27 @@ export interface VoteTally {
   buy: number;
   skip: number;
 }
+
+export type PollStatus = "open" | "closed" | "dismissed";
+
+export interface PollOption {
+  /** Stable within its poll: "opt-0".."opt-3". */
+  id: string;
+  label: string;
+  emoji: string;
+  count: number;
+}
+
+/** An audience poll the host runs over the stream. See `lib/poll-store.ts`. */
+export interface Poll {
+  id: string;
+  question: string;
+  /** 2–4 entries. Counts live here — options never outlive their poll. */
+  options: PollOption[];
+  /** `dismissed` is a state, not a deletion, so it can travel as a message. */
+  status: PollStatus;
+  /** Epoch ms. Duration kept explicit so a remounted countdown can resume. */
+  startedAt: number;
+  endsAt: number;
+  durationMs: number;
+}

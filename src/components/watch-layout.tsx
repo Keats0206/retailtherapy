@@ -32,11 +32,14 @@ export function WatchLayout({
   stage,
   viewers,
   chat,
+  overlay,
 }: {
   stream: StreamState;
   stage: React.ReactNode;
   viewers: React.ReactNode;
   chat: React.ReactNode;
+  /** Interactive layer riding the video (live polls); positions itself. */
+  overlay?: React.ReactNode;
 }) {
   const { pinned, trail, votesFor, myVotes, vote } = stream;
 
@@ -91,6 +94,8 @@ export function WatchLayout({
             {viewers}
           </div>
         </div>
+
+        {overlay}
       </div>
 
       <aside className="flex min-h-0 w-full flex-col border-border max-lg:flex-1 max-lg:border-t lg:w-90 lg:shrink-0 lg:border-l">

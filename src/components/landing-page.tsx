@@ -154,7 +154,7 @@ export function LandingPage() {
                     />
                   </div>
                   <div className="flex flex-col gap-2">
-                    <h3 className="text-base font-medium">{step.title}</h3>
+                    <h3 className="text-[26px] font-medium">{step.title}</h3>
                     <p className="text-sm leading-relaxed text-muted-foreground">
                       {step.description}
                     </p>
