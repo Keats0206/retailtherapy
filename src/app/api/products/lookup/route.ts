@@ -1,5 +1,10 @@
-import { isHost } from "@/lib/auth";
+import { getHostUser, isHost } from "@/lib/auth";
 import { LookupError, lookupProduct } from "@/lib/channel3";
+import {
+  checkRateLimit,
+  clientIp,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 
 // POST /api/products/lookup — resolve a retailer product URL via Channel3.
 // Body: { url: string }.
@@ -16,6 +21,16 @@ export async function POST(request: Request) {
 
   if (!host) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const hostUser = await getHostUser();
+  const rateKey = hostUser?.id ?? clientIp(request);
+  const limit = checkRateLimit(`product-lookup:${rateKey}`, {
+    limit: 20,
+    windowMs: 60_000,
+  });
+  if (!limit.ok) {
+    return rateLimitResponse(limit.retryAfterSec ?? 60);
   }
 
   let body: { url?: string };

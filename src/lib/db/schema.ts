@@ -146,6 +146,98 @@ export const streamProducts = pgTable(
   ],
 );
 
+/**
+ * Hosting is invite-only, so /apply collects interest instead of granting
+ * access. One row per email — a repeat signup refreshes the details rather
+ * than stacking duplicates.
+ */
+export const waitlistSignups = pgTable(
+  "waitlist_signups",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    // Stored lowercased and trimmed so the unique index actually dedupes.
+    email: text("email").notNull(),
+    name: text("name"),
+    // Where they already publish ("@you", "youtube.com/c/you").
+    handle: text("handle"),
+    // What they'd shop live, in their words.
+    pitch: text("pitch"),
+    // Clerk user id when they were signed in — lets us grant hosting later
+    // without matching on email.
+    userId: text("user_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [uniqueIndex("waitlist_signups_email_idx").on(table.email)],
+);
+
+/**
+ * Creators we've sourced from TikTok search and want to recruit as hosts.
+ *
+ * Unlike `waitlist_signups` (inbound — they came to us), these are outbound:
+ * an admin searches a keyword at /admin/creator-outreach, we pull matching
+ * accounts, and any that publish a contact email in their bio become
+ * prospects. One row per platform account, so re-running the same search
+ * refreshes follower counts instead of stacking duplicates.
+ */
+export const outreachStatus = pgEnum("outreach_status", [
+  "new",
+  "drafted",
+  "contacted",
+  "replied",
+  "onboarded",
+  "passed",
+]);
+
+export const creatorProspects = pgTable(
+  "creator_prospects",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    // Only TikTok today, but the column keeps the table honest when we add IG.
+    platform: text("platform").notNull().default("tiktok"),
+    // Platform's own numeric id — survives a handle change.
+    platformUserId: text("platform_user_id"),
+    // Stored lowercased so the unique index dedupes across search runs.
+    handle: text("handle").notNull(),
+    displayName: text("display_name"),
+    avatarUrl: text("avatar_url"),
+    // Full profile bio. Kept verbatim: it's what the email draft is grounded in.
+    bio: text("bio"),
+    // Link in their bio (Linktree, IG, store) — useful context for the draft.
+    bioLink: text("bio_link"),
+    followerCount: integer("follower_count").notNull().default(0),
+    verified: boolean("verified").notNull().default(false),
+    // Scraped out of `bio` on import, then editable by hand. Null means we
+    // found no public contact address and can't email them.
+    email: text("email"),
+    // The search keyword that surfaced them, for judging which queries work.
+    discoveredVia: text("discovered_via"),
+    status: outreachStatus("status").notNull().default("new"),
+    // Last AI-generated draft, held so an admin can edit before sending.
+    draftSubject: text("draft_subject"),
+    draftBody: text("draft_body"),
+    notes: text("notes"),
+    contactedAt: timestamp("contacted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("creator_prospects_platform_handle_idx").on(
+      table.platform,
+      table.handle,
+    ),
+    index("creator_prospects_status_idx").on(table.status),
+  ],
+);
+
 export const streamsRelations = relations(streams, ({ many }) => ({
   streamProducts: many(streamProducts),
 }));
@@ -172,3 +264,8 @@ export type Stream = typeof streams.$inferSelect;
 export type NewStream = typeof streams.$inferInsert;
 export type StreamProduct = typeof streamProducts.$inferSelect;
 export type NewStreamProduct = typeof streamProducts.$inferInsert;
+export type WaitlistSignup = typeof waitlistSignups.$inferSelect;
+export type NewWaitlistSignup = typeof waitlistSignups.$inferInsert;
+export type CreatorProspect = typeof creatorProspects.$inferSelect;
+export type NewCreatorProspect = typeof creatorProspects.$inferInsert;
+export type OutreachStatus = (typeof outreachStatus.enumValues)[number];

@@ -1,5 +1,10 @@
 import { getHostUser } from "@/lib/auth";
 import { createAccessToken, getLiveKitConfig } from "@/lib/livekit";
+import {
+  checkRateLimit,
+  clientIp,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 import { createShow, listLiveShows } from "@/lib/shows";
 
 // GET /api/shows?status=live — public list of live shows for discovery.
@@ -34,6 +39,15 @@ export async function POST(request: Request) {
   const host = await getHostUser();
   if (!host) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const ip = clientIp(request);
+  const limit = checkRateLimit(`create-show:${host.id}:${ip}`, {
+    limit: 5,
+    windowMs: 60_000,
+  });
+  if (!limit.ok) {
+    return rateLimitResponse(limit.retryAfterSec ?? 60);
   }
 
   let body: { title?: string };
@@ -76,6 +90,7 @@ export async function POST(request: Request) {
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Failed to start the show";
-    return Response.json({ error: message }, { status: 500 });
+    const status = message.includes("already have a live show") ? 409 : 500;
+    return Response.json({ error: message }, { status });
   }
 }

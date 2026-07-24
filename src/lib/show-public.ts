@@ -11,6 +11,7 @@ export type PublicShow = {
   roomName: string;
   muxPlaybackId: string | null;
   snapshot: StreamSnapshot;
+  scheduledFor: string | null;
   startedAt: string | null;
   endedAt: string | null;
 };
@@ -24,6 +25,7 @@ export function toPublicShow(show: Show): PublicShow {
     roomName: show.roomName,
     muxPlaybackId: show.muxPlaybackId,
     snapshot: snapshotOf(show),
+    scheduledFor: show.scheduledFor?.toISOString() ?? null,
     startedAt: show.startedAt?.toISOString() ?? null,
     endedAt: show.endedAt?.toISOString() ?? null,
   };

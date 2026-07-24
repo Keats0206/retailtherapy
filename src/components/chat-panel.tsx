@@ -49,8 +49,8 @@ export function ChatPanel({ className }: { className?: string }) {
 }
 
 /**
- * The chat markup, with no room attached. Split out from `ChatPanel` so the
- * /prototype route renders the same panel against in-memory messages.
+ * The chat markup, with no room attached. Split out from `ChatPanel` so callers
+ * can supply messages from any transport.
  */
 export function ChatPanelView({
   messages,

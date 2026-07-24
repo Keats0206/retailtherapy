@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   LiveKitRoom,
@@ -24,8 +25,9 @@ import {
 } from "lucide-react";
 
 import { ChatPanel } from "@/components/chat-panel";
+import { EndLiveShowButton } from "@/components/end-live-show-button";
 import { EndShowDialog } from "@/components/end-show-dialog";
-import { ShowEndedCreator } from "@/components/show-ended-creator";
+import { ShareShowLinkButton } from "@/components/share-show-link-button";
 import { StudioLayout } from "@/components/studio-layout";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,14 +43,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  MONITOR_ASIDE,
-  MONITOR_CAMERA,
-  MONITOR_SHARE,
+  HOST_CAMERA_BUBBLE,
+  HOST_CONTROL_BAR,
+  HOST_CONTROL_BAR_INNER,
+  HOST_STAGE,
   VideoFrame,
   VideoPlaceholder,
 } from "@/components/video-placeholder";
 import { ViewerCount } from "@/components/viewer-count";
-import { buildEndedRecap, type EndedShowRecap } from "@/lib/show-recap";
 import { useStreamState } from "@/lib/stream-state";
 import { cn } from "@/lib/utils";
 
@@ -57,12 +59,6 @@ const STORE_LINKS = [
   { name: "SSENSE", url: "https://www.ssense.com" },
   { name: "Sephora", url: "https://www.sephora.com" },
   { name: "REI", url: "https://www.rei.com" },
-] as const;
-
-const PRESHOW_TIPS = [
-  "Open each store in a new browser tab before you go live — you'll paste product URLs from there.",
-  "Open the viewer page in a separate window so you can see what your audience sees.",
-  "Check your camera and mic here first. Screen share starts once you're live.",
 ] as const;
 
 type ShowSession = {
@@ -86,18 +82,64 @@ type MediaControls = {
 export default function HostClient({
   hostName,
   channel3Configured,
+  resumeSlug,
+  liveShowSlug,
+  liveShowTitle,
 }: {
   hostName: string | null;
   channel3Configured: boolean;
+  resumeSlug?: string | null;
+  liveShowSlug?: string | null;
+  liveShowTitle?: string | null;
 }) {
-  const [phase, setPhase] = useState<"preshow" | "live" | "ended">("preshow");
+  const router = useRouter();
+  const [phase, setPhase] = useState<"preshow" | "live" | "disconnected">(
+    "preshow",
+  );
   const [session, setSession] = useState<ShowSession | null>(null);
-  const [recap, setRecap] = useState<EndedShowRecap | null>(null);
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const liveStartedAt = useRef<number | null>(null);
   const media = useMediaPreview();
+  const stopMediaRef = useRef(media.stop);
+  useEffect(() => {
+    stopMediaRef.current = media.stop;
+  }, [media.stop]);
+
+  const resumeShow = useCallback(async (slug: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/shows/${slug}/resume`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to reconnect");
+
+      stopMediaRef.current();
+      if (!liveStartedAt.current) liveStartedAt.current = Date.now();
+      setSession({
+        slug: data.slug,
+        title: data.title,
+        room: data.room,
+        token: data.token,
+        url: data.url,
+      });
+      setPhase("live");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setPhase("preshow");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!resumeSlug) return;
+    const timer = window.setTimeout(() => {
+      void resumeShow(resumeSlug);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [resumeSlug, resumeShow]);
 
   async function goLive() {
     setLoading(true);
@@ -111,9 +153,16 @@ export default function HostClient({
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to start show");
+      if (!res.ok) {
+        if (res.status === 409 && liveShowSlug) {
+          throw new Error(
+            "You already have a live show. Reconnect below or end it first.",
+          );
+        }
+        throw new Error(data.error ?? "Failed to start show");
+      }
 
-      media.stop();
+      stopMediaRef.current();
       liveStartedAt.current = Date.now();
       setSession({
         slug: data.slug,
@@ -130,35 +179,41 @@ export default function HostClient({
     }
   }
 
-  function handleShowEnded(ended: EndedShowRecap) {
-    setRecap(ended);
+  function handleShowEnded(slug: string) {
     setSession(null);
-    setPhase("ended");
-  }
-
-  function startNewShow() {
-    setRecap(null);
-    setSession(null);
-    setTitle("");
-    liveStartedAt.current = null;
     setPhase("preshow");
-  }
-
-  if (phase === "ended" && recap) {
-    return <ShowEndedCreator recap={recap} onStartNew={startNewShow} />;
+    router.replace(`/host/${slug}`);
   }
 
   if (phase === "live" && session) {
     return (
       <LiveBroadcast
         session={session}
-        hostName={hostName}
         channel3Configured={channel3Configured}
-        startedAt={liveStartedAt}
         onShowEnded={handleShowEnded}
-        onDisconnected={() => {
+        onDisconnected={() => setPhase("disconnected")}
+      />
+    );
+  }
+
+  if (phase === "disconnected" && session) {
+    return (
+      <DisconnectedPanel
+        slug={session.slug}
+        title={session.title}
+        loading={loading}
+        error={error}
+        onReconnect={() => void resumeShow(session.slug)}
+        onBack={() => {
           setSession(null);
           setPhase("preshow");
+          setError(null);
+        }}
+        onShowEnded={() => {
+          setSession(null);
+          setPhase("preshow");
+          setError(null);
+          router.replace(`/host/${session.slug}`);
         }}
       />
     );
@@ -172,35 +227,109 @@ export default function HostClient({
       loading={loading}
       error={error}
       media={media}
+      liveShowSlug={liveShowSlug}
+      liveShowTitle={liveShowTitle}
+      onResumeLiveShow={
+        liveShowSlug ? () => void resumeShow(liveShowSlug) : undefined
+      }
+      resumeLoading={loading}
     />
+  );
+}
+
+function DisconnectedPanel({
+  slug,
+  title,
+  loading,
+  error,
+  onReconnect,
+  onBack,
+  onShowEnded,
+}: {
+  slug: string;
+  title: string;
+  loading: boolean;
+  error: string | null;
+  onReconnect: () => void;
+  onBack: () => void;
+  onShowEnded: () => void;
+}) {
+  return (
+    <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center gap-4 px-6 py-24">
+      <h1 className="text-2xl font-normal tracking-tight">Connection lost</h1>
+      <p className="text-sm text-muted-foreground">
+        Your show <span className="text-foreground">{title}</span> is still live
+        for viewers. Reconnect to continue hosting, or end the show below.
+      </p>
+      {error ? (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={onReconnect} disabled={loading}>
+          {loading ? "Reconnecting…" : "Reconnect"}
+        </Button>
+        <EndLiveShowButton
+          slug={slug}
+          title={title}
+          onEnded={onShowEnded}
+        />
+        <Button variant="outline" render={<Link href={`/s/${slug}`} target="_blank" />}>
+          Open viewer page
+        </Button>
+        <Button variant="ghost" onClick={onBack}>
+          Back to studio
+        </Button>
+      </div>
+    </main>
   );
 }
 
 function LiveBroadcast({
   session,
-  hostName,
   channel3Configured,
-  startedAt,
   onShowEnded,
   onDisconnected,
 }: {
   session: ShowSession;
-  hostName: string | null;
   channel3Configured: boolean;
-  startedAt: React.RefObject<number | null>;
-  onShowEnded: (recap: EndedShowRecap) => void;
+  onShowEnded: (slug: string) => void;
   onDisconnected: () => void;
 }) {
   const recordingStarted = useRef(false);
+  const [studioError, setStudioError] = useState<string | null>(null);
 
   function handleConnected() {
     if (recordingStarted.current) return;
     recordingStarted.current = true;
-    void fetch(`/api/shows/${session.slug}/recording`, { method: "POST" });
+    void (async () => {
+      try {
+        const res = await fetch(`/api/shows/${session.slug}/recording`, {
+          method: "POST",
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error ?? "Failed to start recording");
+        }
+      } catch (err) {
+        setStudioError(
+          err instanceof Error ? err.message : "Failed to start recording",
+        );
+      }
+    })();
   }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {studioError ? (
+        <div
+          className="border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+          role="alert"
+        >
+          {studioError}
+        </div>
+      ) : null}
       <LiveKitRoom
         token={session.token}
         serverUrl={session.url}
@@ -214,10 +343,9 @@ function LiveBroadcast({
       >
         <BroadcastStudio
           session={session}
-          hostName={hostName}
           channel3Configured={channel3Configured}
-          startedAt={startedAt}
           onShowEnded={onShowEnded}
+          onStudioError={setStudioError}
         />
       </LiveKitRoom>
     </div>
@@ -226,16 +354,14 @@ function LiveBroadcast({
 
 function BroadcastStudio({
   session,
-  hostName,
   channel3Configured,
-  startedAt,
   onShowEnded,
+  onStudioError,
 }: {
   session: ShowSession;
-  hostName: string | null;
   channel3Configured: boolean;
-  startedAt: React.RefObject<number | null>;
-  onShowEnded: (recap: EndedShowRecap) => void;
+  onShowEnded: (slug: string) => void;
+  onStudioError: (message: string | null) => void;
 }) {
   const stream = useStreamState({ isHost: true });
   const room = useRoomContext();
@@ -246,6 +372,7 @@ function BroadcastStudio({
   const [endDialogOpen, setEndDialogOpen] = useState(false);
   const [ending, setEnding] = useState(false);
   const [endingStep, setEndingStep] = useState(0);
+  const [endError, setEndError] = useState<string | null>(null);
 
   const viewerPath = `/s/${session.slug}`;
 
@@ -264,18 +391,32 @@ function BroadcastStudio({
 
   useEffect(() => {
     const id = setInterval(() => {
-      void fetch(`/api/shows/${session.slug}/snapshot`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ snapshot: stream.snapshot }),
-      });
+      void (async () => {
+        try {
+          const res = await fetch(`/api/shows/${session.slug}/snapshot`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ snapshot: stream.snapshot }),
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error ?? "Failed to save snapshot");
+          }
+        } catch (err) {
+          onStudioError(
+            err instanceof Error ? err.message : "Failed to save snapshot",
+          );
+        }
+      })();
     }, 30_000);
     return () => clearInterval(id);
-  }, [session.slug, stream.snapshot]);
+  }, [onStudioError, session.slug, stream.snapshot]);
 
   const confirmEndShow = useCallback(async () => {
     setEnding(true);
     setEndingStep(0);
+    setEndError(null);
+    onStudioError(null);
 
     const snapshotWithStats = {
       ...stream.snapshot,
@@ -286,20 +427,22 @@ function BroadcastStudio({
     };
 
     try {
-      await fetch(`/api/shows/${session.slug}/snapshot`, {
+      const snapshotRes = await fetch(`/api/shows/${session.slug}/snapshot`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ snapshot: snapshotWithStats }),
       });
-      setEndingStep(1);
+      if (snapshotRes.ok) {
+        setEndingStep(1);
+      }
 
       const res = await fetch(`/api/shows/${session.slug}/end`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ snapshot: snapshotWithStats }),
       });
-      if (!res.ok) {
-        const data = await res.json();
+      const data = (await res.json()) as { error?: string; status?: string };
+      if (!res.ok || data.status !== "ended") {
         throw new Error(data.error ?? "Failed to end show");
       }
       setEndingStep(2);
@@ -307,129 +450,130 @@ function BroadcastStudio({
       room.disconnect();
       setEndingStep(3);
 
-      onShowEnded(
-        buildEndedRecap({
-          slug: session.slug,
-          title: session.title,
-          host: hostName ?? "Host",
-          snapshot: snapshotWithStats,
-          startedAt: startedAt.current,
-          peakViewers: peakViewers.current,
-          chatCount: peakChat.current,
-        }),
-      );
-    } catch {
+      onShowEnded(session.slug);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to end show";
+      setEndError(message);
+      onStudioError(message);
       setEnding(false);
       setEndingStep(0);
-      setEndDialogOpen(false);
-    } finally {
-      setEnding(false);
-      setEndDialogOpen(false);
     }
   }, [
-    hostName,
     onShowEnded,
+    onStudioError,
     room,
     session.slug,
-    session.title,
-    startedAt,
     stream.snapshot,
   ]);
 
   return (
     <>
-      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5 sm:px-6 sm:py-3">
+      <div className="flex flex-col gap-3 border-b border-border px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-3">
         <span className="micro inline-flex shrink-0 items-center gap-2 text-live">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-live" />
           You&rsquo;re live
         </span>
-        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-          <ViewerCount />
-          <Link
-            href={viewerPath}
-            target="_blank"
-            aria-label="Open viewer page"
-            className="micro inline-flex shrink-0 items-center gap-1 text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline max-sm:rounded-md max-sm:border max-sm:border-border max-sm:p-2 max-sm:no-underline"
-          >
-            <span className="max-sm:sr-only">Open viewer page</span>
-            <ExternalLink className="size-3.5 sm:size-3" />
-          </Link>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setEndDialogOpen(true)}
-                  aria-label="End show"
-                  className="hidden border-live/40 text-live hover:bg-live hover:text-live-foreground sm:inline-flex"
-                >
-                  <LogOut />
-                </Button>
-              }
-            />
-            <TooltipContent>End show</TooltipContent>
-          </Tooltip>
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <ShareShowLinkButton
+            slug={session.slug}
+            className="h-11 w-full text-base sm:w-auto"
+            showPath
+          />
+          <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-4">
+            <ViewerCount />
+            <Link
+              href={viewerPath}
+              target="_blank"
+              aria-label="Open viewer page"
+              className="micro inline-flex shrink-0 items-center gap-1 text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline max-sm:rounded-md max-sm:border max-sm:border-border max-sm:p-2 max-sm:no-underline"
+            >
+              <span className="max-sm:sr-only">Open viewer page</span>
+              <ExternalLink className="size-3.5 sm:size-3" />
+            </Link>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setEndDialogOpen(true)}
+                    aria-label="End show"
+                    className="hidden border-live/40 text-live hover:bg-live hover:text-live-foreground sm:inline-flex"
+                  >
+                    <LogOut />
+                  </Button>
+                }
+              />
+              <TooltipContent>End show</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
       </div>
 
       <StudioLayout
         stream={stream}
         channel3Configured={channel3Configured}
-        monitor={<ConfidenceMonitor onEndShow={() => setEndDialogOpen(true)} />}
-        chat={<ChatPanel className="min-h-0 flex-1 ring-0 xl:min-h-64" />}
+        stage={<HostStage onEndShow={() => setEndDialogOpen(true)} />}
+        chat={<ChatPanel className="min-h-0 flex-1 ring-0" />}
       />
 
       <EndShowDialog
         open={endDialogOpen}
-        onOpenChange={setEndDialogOpen}
+        onOpenChange={(open) => {
+          setEndDialogOpen(open);
+          if (!open) setEndError(null);
+        }}
         onConfirm={confirmEndShow}
         ending={ending}
         endingStep={endingStep}
+        error={endError}
       />
     </>
   );
 }
 
-function ConfidenceMonitor({ onEndShow }: { onEndShow: () => void }) {
+function HostStage({ onEndShow }: { onEndShow: () => void }) {
   const tracks = useTracks(
-    [Track.Source.Camera, Track.Source.ScreenShare],
+    [Track.Source.ScreenShare, Track.Source.Camera],
     { onlySubscribed: false },
   );
   const local = tracks.filter((t) => t.participant.isLocal);
-  const camera = local.find((t) => t.source === Track.Source.Camera);
   const share = local.find((t) => t.source === Track.Source.ScreenShare);
+  const camera = local.find((t) => t.source === Track.Source.Camera);
 
   return (
-    <aside className={MONITOR_ASIDE}>
-      <div className="flex flex-col gap-3 max-lg:gap-2">
-        <div className="flex flex-col gap-3 max-lg:flex-row max-lg:items-stretch max-lg:gap-2">
-        <VideoFrame label="You" className={MONITOR_CAMERA}>
-          {camera ? (
-            <VideoTrack
-              trackRef={camera}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <VideoPlaceholder>Camera off</VideoPlaceholder>
+    <div className={HOST_STAGE}>
+      {!share && !camera ? (
+        <VideoPlaceholder>Share your screen to start</VideoPlaceholder>
+      ) : !share ? (
+        <VideoTrack
+          trackRef={camera!}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="relative h-full w-full">
+          <VideoTrack
+            trackRef={share}
+            className="h-full w-full object-contain"
+          />
+          {camera && (
+            <VideoFrame className={HOST_CAMERA_BUBBLE}>
+              <VideoTrack
+                trackRef={camera}
+                className="h-full w-full object-cover"
+              />
+            </VideoFrame>
           )}
-        </VideoFrame>
+        </div>
+      )}
 
-        <VideoFrame label="On screen" className={MONITOR_SHARE}>
-          {share ? (
-            <VideoTrack
-              trackRef={share}
-              className="h-full w-full object-contain"
-            />
-          ) : (
-            <VideoPlaceholder>Not sharing</VideoPlaceholder>
-          )}
-        </VideoFrame>
+      <div className={HOST_CONTROL_BAR}>
+        <div className={HOST_CONTROL_BAR_INNER}>
+          <StudioControlBar sharing={Boolean(share)} onEndShow={onEndShow} />
         </div>
       </div>
-
-      <StudioControlBar sharing={Boolean(share)} onEndShow={onEndShow} />
-    </aside>
+    </div>
   );
 }
 
@@ -529,6 +673,10 @@ function Preshow({
   loading,
   error,
   media,
+  liveShowSlug,
+  liveShowTitle,
+  onResumeLiveShow,
+  resumeLoading,
 }: {
   title: string;
   onTitleChange: (value: string) => void;
@@ -536,38 +684,96 @@ function Preshow({
   loading: boolean;
   error: string | null;
   media: MediaControls;
+  liveShowSlug?: string | null;
+  liveShowTitle?: string | null;
+  onResumeLiveShow?: () => void;
+  resumeLoading?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { cameraOn, micOn, toggleCamera, toggleMic, cameraError } = media;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-6 sm:gap-10 sm:px-6 sm:py-8">
-      <header className="flex flex-col gap-5 sm:gap-6">
-        <div className="flex flex-col gap-2 sm:gap-3">
-          <span className="micro text-muted-foreground">Show creator</span>
-          <h1 className="text-xl font-normal tracking-tight sm:text-2xl">
+      <header className="flex flex-col gap-4">
+        {liveShowSlug ? (
+          <div className="flex flex-col gap-3 rounded-xl bg-muted/40 p-4 ring-1 ring-foreground/8">
+            <div className="flex flex-col gap-1">
+              <span className="micro inline-flex items-center gap-2 text-live">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-live" />
+                Show still live
+              </span>
+              <p className="text-sm text-muted-foreground">
+                {liveShowTitle ? (
+                  <>
+                    <span className="text-foreground">{liveShowTitle}</span> is
+                    still live at /s/{liveShowSlug}. Reconnect to keep hosting,
+                    or end it before starting a new one.
+                  </>
+                ) : (
+                  <>
+                    You still have a live show at /s/{liveShowSlug}. Reconnect
+                    to keep hosting, or end it before starting a new one.
+                  </>
+                )}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {onResumeLiveShow ? (
+                <Button
+                  type="button"
+                  disabled={resumeLoading}
+                  className="bg-live text-live-foreground hover:bg-live/90"
+                  onClick={onResumeLiveShow}
+                >
+                  {resumeLoading ? "Reconnecting…" : "Open studio"}
+                </Button>
+              ) : null}
+              <EndLiveShowButton
+                slug={liveShowSlug}
+                title={liveShowTitle ?? "Live show"}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <h1 className="text-xl font-medium tracking-tight text-foreground sm:text-2xl">
             Prep your show
           </h1>
-          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Set up your camera, open the stores you&rsquo;ll shop from, and go
-            live when you&rsquo;re ready. Your share link appears once the show
-            starts.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <p className="text-sm text-muted-foreground">
-            Going live creates a shareable show and starts recording
-            automatically.
-          </p>
           <Button
-            size="micro"
             onClick={onGoLive}
-            disabled={loading}
+            disabled={loading || Boolean(liveShowSlug)}
+            title={
+              liveShowSlug
+                ? "End your current live show before starting another"
+                : "Creates a shareable show and starts recording automatically"
+            }
             className="w-full shrink-0 bg-live text-live-foreground hover:bg-live/90 sm:w-fit"
           >
             {loading ? "Starting…" : "Go live"}
           </Button>
+        </div>
+
+        {liveShowSlug ? (
+          <ShareShowLinkButton
+            slug={liveShowSlug}
+            className="h-11 w-full text-base sm:max-w-md"
+            showPath
+          />
+        ) : null}
+
+        <div className="flex max-w-md flex-col gap-2">
+          <Input
+            value={title}
+            onChange={(e) => onTitleChange(e.target.value)}
+            placeholder="Untitled show"
+            aria-label="Show title"
+          />
+          <p className="text-sm text-muted-foreground">
+            {liveShowSlug
+              ? "Share the link above so viewers can join before you reconnect."
+              : "Your share link unlocks as soon as you go live."}
+          </p>
         </div>
       </header>
 
@@ -635,70 +841,31 @@ function Preshow({
           </PanelContent>
         </Panel>
 
-        <div className="flex flex-col gap-6">
-          <Panel>
-            <PanelHeader>
-              <PanelTitle>Show title</PanelTitle>
-            </PanelHeader>
-            <PanelContent>
-              <Input
-                value={title}
-                onChange={(e) => onTitleChange(e.target.value)}
-                placeholder="Untitled show"
-              />
-            </PanelContent>
-          </Panel>
-
-          <Panel>
-            <PanelHeader>
-              <PanelTitle>Store links</PanelTitle>
-            </PanelHeader>
-            <PanelContent className="flex flex-col gap-3">
-              <p className="text-sm text-muted-foreground">
-                Open these in new tabs so you can grab product URLs while
-                you&rsquo;re live.
-              </p>
-              <ul className="flex flex-col gap-2">
-                {STORE_LINKS.map((store) => (
-                  <li key={store.url}>
-                    <a
-                      href={store.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={cn(
-                        buttonVariants({ variant: "outline", size: "sm" }),
-                        "w-full justify-between",
-                      )}
-                    >
-                      {store.name}
-                      <ExternalLink className="size-3.5 text-muted-foreground" />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </PanelContent>
-          </Panel>
-
-          <Panel>
-            <PanelHeader>
-              <PanelTitle>Before you go live</PanelTitle>
-            </PanelHeader>
-            <PanelContent className="flex flex-col gap-4">
-              <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
-                {PRESHOW_TIPS.map((tip) => (
-                  <li key={tip} className="flex gap-2">
-                    <span className="mt-1.5 size-1 shrink-0 rounded-full bg-muted-foreground/50" />
-                    <span>{tip}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <p className="border-t border-border pt-4 text-sm text-muted-foreground">
-                Your viewer link appears in the header once you go live.
-              </p>
-            </PanelContent>
-          </Panel>
-        </div>
+        <Panel>
+          <PanelHeader>
+            <PanelTitle>Store links</PanelTitle>
+          </PanelHeader>
+          <PanelContent>
+            <ul className="flex flex-col gap-2">
+              {STORE_LINKS.map((store) => (
+                <li key={store.url}>
+                  <a
+                    href={store.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      buttonVariants({ variant: "outline", size: "sm" }),
+                      "w-full justify-between",
+                    )}
+                  >
+                    {store.name}
+                    <ExternalLink className="size-3.5 text-foreground/60" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </PanelContent>
+        </Panel>
       </div>
     </main>
   );

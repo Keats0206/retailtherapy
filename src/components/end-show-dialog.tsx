@@ -30,6 +30,7 @@ export function EndShowDialog({
   onConfirm,
   ending,
   endingStep,
+  error,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -38,6 +39,7 @@ export function EndShowDialog({
   ending: boolean;
   /** 0–ENDING_STEPS.length while ending. */
   endingStep: number;
+  error?: string | null;
 }) {
   const progress = ending
     ? Math.round((endingStep / ENDING_STEPS.length) * 100)
@@ -109,6 +111,12 @@ export function EndShowDialog({
                 shopping trail. You can&rsquo;t go live again on this link.
               </DialogDescription>
             </DialogHeader>
+
+            {error ? (
+              <p className="text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            ) : null}
 
             <DialogFooter>
               <Button
