@@ -31,7 +31,8 @@ export default async function CreatorOutreachPage() {
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
             Search TikTok for creators in a niche, pull the ones who publish a
             contact address in their bio, and write them a first-touch invite.
-            Drafts are always yours to edit before anything sends.
+            Drafts open in your own Gmail, so you review and send every one by
+            hand.
           </p>
         </div>
 
@@ -48,7 +49,6 @@ export default async function CreatorOutreachPage() {
       <CreatorOutreachClient
         initialProspects={prospects}
         initialCounts={counts}
-        dryRun={dryRun}
       />
     </main>
   );
