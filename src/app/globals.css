@@ -381,3 +381,17 @@
     font-family: var(--font-sans);
   }
 }
+
+/**
+ * Poll countdown, duration set inline from the poll. Runs on the compositor —
+ * a negative `animation-delay` lets a countdown mounted mid-poll resume
+ * partway through instead of restarting from full.
+ */
+@keyframes poll-countdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
