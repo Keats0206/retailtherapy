@@ -1,4 +1,3 @@
-import { getAdminUser } from "@/lib/auth";
 import { deleteProspect, updateProspect } from "@/lib/creator-outreach";
 import type { OutreachStatus } from "@/lib/outreach-status";
 import { OUTREACH_STATUSES } from "@/lib/outreach-status";
@@ -12,16 +11,11 @@ function isStatus(value: unknown): value is OutreachStatus {
 }
 
 // PATCH /api/admin/creator-outreach/<id> — edit a prospect's status, contact
-// address, notes, or saved draft (admin only).
+// address, notes, or saved draft. Ungated for now, same as the page it backs.
 export async function PATCH(
   request: Request,
   { params }: RouteContext<"/api/admin/creator-outreach/[id]">,
 ) {
-  const admin = await getAdminUser();
-  if (!admin) {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
-  }
-
   const { id } = await params;
 
   let body: {
@@ -87,15 +81,11 @@ export async function PATCH(
 }
 
 // DELETE /api/admin/creator-outreach/<id> — drop a prospect from the list.
+// Ungated for now, same as the page it backs.
 export async function DELETE(
   _request: Request,
   { params }: RouteContext<"/api/admin/creator-outreach/[id]">,
 ) {
-  const admin = await getAdminUser();
-  if (!admin) {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
-  }
-
   const { id } = await params;
   await deleteProspect(id);
   return Response.json({ ok: true });

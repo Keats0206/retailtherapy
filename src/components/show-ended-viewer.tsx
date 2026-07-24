@@ -1,23 +1,51 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import MuxPlayer from "@mux/mux-player-react";
+import { ArrowUpRight, Check, Link2, Play } from "lucide-react";
 
-import { ShoppingTrail } from "@/components/shopping-trail";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { VideoFrame, VideoPlaceholder } from "@/components/video-placeholder";
+  cleanProductTitle,
+  formatCount,
+  formatDuration,
+  formatPrice,
+  normalizeProductImageUrl,
+} from "@/lib/format";
 import type { EndedShowRecap } from "@/lib/show-recap";
+import type { Product, VoteTally } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+/** How the shop rail is ordered. Default mirrors the show itself. */
+const SORTS = [
+  { id: "order", label: "Show order" },
+  { id: "wanted", label: "Most wanted" },
+  { id: "price", label: "Price" },
+] as const;
+
+type SortId = (typeof SORTS)[number]["id"];
+
+/** UTC so the server and client render the same string — no hydration drift. */
+const DATE_FMT = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+function buyPct(votes: VoteTally): number | null {
+  const total = votes.buy + votes.skip;
+  return total ? Math.round((votes.buy / total) * 100) : null;
+}
+
+/**
+ * The replay page: recording on the left, everything the host pinned on the
+ * right. This is the page that outlives the stream, so it's built to be
+ * browsed — the rail scrolls independently and re-sorts, and every row is a
+ * buy link.
+ */
 export function ShowEndedViewer({
   recap,
   polling = false,
@@ -30,6 +58,7 @@ export function ShowEndedViewer({
 }) {
   const sharePath = `/s/${recap.slug}`;
   const [copied, setCopied] = useState(false);
+  const [sort, setSort] = useState<SortId>("order");
 
   useEffect(() => {
     if (!polling || recap.muxPlaybackId || !onRecordingReady) return;
@@ -44,73 +73,381 @@ export function ShowEndedViewer({
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const trail = recap.snapshot.trail;
+  const votesFor = (id: string): VoteTally =>
+    recap.snapshot.votes[id] ?? { buy: 0, skip: 0 };
+
+  const sorted = useMemo(() => {
+    const items = [...trail];
+    if (sort === "price") return items.sort((a, b) => a.price - b.price);
+    if (sort === "wanted") {
+      return items.sort((a, b) => {
+        const av = votesFor(a.id);
+        const bv = votesFor(b.id);
+        // Rank by buy count first — a 100% from one voter shouldn't outrank a
+        // 90% from thirty — then fall back to the percentage.
+        return bv.buy - av.buy || (buyPct(bv) ?? 0) - (buyPct(av) ?? 0);
+      });
+    }
+    return items;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trail, sort, recap.snapshot.votes]);
+
+  const topPick = useMemo(() => {
+    let best: Product | null = null;
+    let bestBuys = 0;
+    for (const p of trail) {
+      const { buy } = votesFor(p.id);
+      if (buy > bestBuys) {
+        best = p;
+        bestBuys = buy;
+      }
+    }
+    return best;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trail, recap.snapshot.votes]);
+
+  const retailers = new Set(trail.map((p) => p.retailer).filter(Boolean)).size;
+
+  const meta = [
+    recap.durationMs ? formatDuration(recap.durationMs) : null,
+    recap.peakViewers
+      ? `${formatCount(recap.peakViewers)} ${recap.peakViewers === 1 ? "viewer" : "viewers"}`
+      : null,
+    recap.chatCount
+      ? `${formatCount(recap.chatCount)} ${recap.chatCount === 1 ? "message" : "messages"}`
+      : null,
+    DATE_FMT.format(new Date(recap.endedAt)),
+  ].filter(Boolean) as string[];
+
+  const heroImage = normalizeProductImageUrl(recap.thumbnailUrl);
+
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-8">
-      <header className="flex flex-col gap-3">
-        <Badge variant="secondary" className="w-fit">
-          Show ended
-        </Badge>
-        <h1 className="text-2xl font-normal tracking-tight">{recap.title}</h1>
-        <p className="text-sm text-muted-foreground">
-          {recap.host} · Rewatch the show and shop everything that was added.
-        </p>
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <header className="sticky top-0 z-30 flex shrink-0 items-center justify-between gap-4 border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur-xl sm:px-6">
+        <Link
+          href="/"
+          className="text-base font-bold uppercase tracking-widest"
+        >
+          frontrow
+        </Link>
+        <div className="flex items-center gap-2">
+          <Button size="micro" variant="ghost" onClick={() => void copyLink()}>
+            {copied ? <Check /> : <Link2 />}
+            {copied ? "Copied" : "Share"}
+          </Button>
+          <Button size="micro" variant="outline" render={<Link href="/browse" />}>
+            Browse shows
+          </Button>
+        </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <Card className="overflow-hidden">
-          <CardHeader>
-            <CardTitle>Rewatch</CardTitle>
-            <CardDescription>
-              Full recording — scrub back to any moment.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <VideoFrame label="Recording" className="aspect-video w-full">
+      <main className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-8 lg:py-8 xl:grid-cols-[minmax(0,1fr)_420px]">
+        {/* ── Theatre ─────────────────────────────────────────────────── */}
+        <section className="flex min-w-0 flex-col gap-5">
+          <div className="relative">
+            {/* Ambient wash pulled from the first pinned product — the colour
+                of the show bleeding out behind the player. */}
+            {heroImage && (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute -inset-10 -z-10 overflow-hidden opacity-35 blur-3xl saturate-150 dark:opacity-25"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={heroImage}
+                  alt=""
+                  className="h-full w-full scale-125 object-cover"
+                />
+              </div>
+            )}
+
+            <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black ring-1 ring-foreground/10 shadow-xl sm:rounded-3xl">
               {recap.muxPlaybackId ? (
                 <MuxPlayer
                   playbackId={recap.muxPlaybackId}
                   className="h-full w-full"
                   streamType="on-demand"
+                  accentColor="#ffffff"
+                  metadata={{ video_title: recap.title }}
                 />
               ) : (
-                <VideoPlaceholder>
-                  Recording is processing — check back in a few minutes
-                </VideoPlaceholder>
+                <RecordingProcessing />
               )}
-            </VideoFrame>
-          </CardContent>
-        </Card>
+            </div>
+          </div>
 
-        <div className="flex flex-col gap-6">
-          <ShoppingTrail
-            products={recap.snapshot.trail}
-            pinnedId={null}
-            votesFor={(id) => recap.snapshot.votes[id] ?? { buy: 0, skip: 0 }}
-            size="comfortable"
-            className="min-h-0 flex-1"
-          />
-
-          <Card size="sm">
-            <CardHeader>
-              <CardTitle className="text-sm">Share this recap</CardTitle>
-              <CardDescription>
-                Send friends the link — the trail stays shoppable after the show.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => void copyLink()}>
-                {copied ? "Copied!" : "Copy link"}
-              </Button>
-              <Link
-                href="/dashboard"
-                className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                variant="outline"
+                size="micro"
+                className="gap-1.5 border-border/70 text-muted-foreground"
               >
-                Back to home
-              </Link>
-            </CardContent>
-          </Card>
+                <span className="size-1.5 rounded-full bg-muted-foreground/60" />
+                Replay
+              </Badge>
+              <span className="micro text-muted-foreground">
+                {trail.length} {trail.length === 1 ? "item" : "items"}
+                {retailers > 1 ? ` · ${retailers} retailers` : ""}
+              </span>
+            </div>
+
+            <h1 className="font-heading text-2xl font-medium leading-tight tracking-tight text-balance sm:text-3xl">
+              {recap.title}
+            </h1>
+
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border/60 pb-5">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
+                {recap.host.trim().charAt(0).toUpperCase() || "?"}
+              </span>
+              <div className="mr-auto min-w-0">
+                <p className="truncate text-sm font-medium">{recap.host}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {meta.join(" · ")}
+                </p>
+              </div>
+              <Button size="micro" variant="secondary" onClick={() => void copyLink()}>
+                {copied ? <Check /> : <Link2 />}
+                {copied ? "Link copied" : "Copy link"}
+              </Button>
+            </div>
+          </div>
+
+          {topPick && <TopPick product={topPick} votes={votesFor(topPick.id)} />}
+        </section>
+
+        {/* ── Shop rail ───────────────────────────────────────────────── */}
+        {/* self-start keeps the rail from stretching to the row height, which
+            is what lets it actually stick while the theatre column scrolls. */}
+        <aside className="flex min-w-0 flex-col lg:sticky lg:top-20 lg:max-h-[calc(100dvh-7rem)] lg:self-start">
+          <div className="relative flex flex-col gap-3 rounded-2xl bg-card p-3 ring-1 ring-foreground/10 lg:min-h-0 lg:flex-1 lg:overflow-hidden">
+            <div className="flex items-center justify-between gap-2 px-1 pt-1">
+              <h2 className="font-heading text-base font-medium">
+                Shop the show
+              </h2>
+              <Badge variant="secondary" className="tabular-nums">
+                {trail.length}
+              </Badge>
+            </div>
+
+            {trail.length > 1 && (
+              <div className="flex gap-0.5 rounded-full bg-muted p-0.5">
+                {SORTS.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSort(s.id)}
+                    className={cn(
+                      "flex-1 rounded-full px-2 py-1.5 text-xs font-medium transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                      sort === s.id
+                        ? "bg-background text-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {trail.length === 0 ? (
+              <p className="px-1 py-10 text-center text-sm text-muted-foreground">
+                No links were added during this show.
+              </p>
+            ) : (
+              <div className="-mr-1 flex flex-col gap-1 overflow-y-auto pr-1 lg:min-h-0 lg:flex-1">
+                {sorted.map((p, i) => (
+                  <ProductRow
+                    key={p.id}
+                    product={p}
+                    votes={votesFor(p.id)}
+                    index={sort === "order" ? i + 1 : null}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Only the rail scrolls on desktop — fade its last row so it reads
+                as "there's more" rather than a hard crop. */}
+            {trail.length > 4 && (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-px bottom-px hidden h-12 rounded-b-2xl bg-gradient-to-t from-card to-transparent lg:block"
+              />
+            )}
+          </div>
+        </aside>
+      </main>
+
+      <footer className="mx-auto w-full max-w-[1600px] px-4 pb-10 sm:px-6">
+        <p className="text-xs text-muted-foreground">
+          Links stay shoppable after the show. frontrow may earn a commission on
+          purchases.
+        </p>
+      </footer>
+    </div>
+  );
+}
+
+/** Placeholder while Mux packages the recording. */
+function RecordingProcessing() {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 text-white/50">
+      <span className="flex size-12 items-center justify-center rounded-full bg-white/10">
+        <Play className="size-5 translate-x-px" />
+      </span>
+      <p className="micro">Recording is processing</p>
+      <p className="text-xs text-white/35">
+        This page will pick it up automatically — usually a few minutes.
+      </p>
+    </div>
+  );
+}
+
+/** The item the room most wanted — the one thing worth a big card. */
+function TopPick({ product, votes }: { product: Product; votes: VoteTally }) {
+  const pct = buyPct(votes);
+  const imageUrl = normalizeProductImageUrl(product.imageUrl);
+  const name = cleanProductTitle(product.name, product.retailer);
+
+  return (
+    <a
+      href={product.buyUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex items-center gap-4 rounded-2xl bg-card p-3 ring-1 ring-foreground/10 transition-all hover:ring-foreground/25 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:gap-5 sm:p-4"
+    >
+      {imageUrl && (
+        <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-muted sm:size-24">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl}
+            alt={name}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
         </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <span className="micro text-live-foreground/70 dark:text-live">
+          Crowd favourite
+        </span>
+        <p className="mt-1 truncate font-heading text-base font-medium">
+          {name}
+        </p>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          {formatPrice(product.price, product.currency)}
+          {product.retailer ? ` · ${product.retailer}` : ""}
+          {pct !== null ? ` · ${pct}% said buy` : ""}
+        </p>
       </div>
-    </main>
+      <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors group-hover:bg-primary/85 sm:inline-flex">
+        Shop
+        <ArrowUpRight className="size-4" />
+      </span>
+      <ArrowUpRight className="size-5 shrink-0 text-muted-foreground sm:hidden" />
+    </a>
+  );
+}
+
+/** One row in the shop rail. The whole row is the buy link. */
+function ProductRow({
+  product,
+  votes,
+  index,
+}: {
+  product: Product;
+  votes: VoteTally;
+  index: number | null;
+}) {
+  const imageUrl = normalizeProductImageUrl(product.imageUrl);
+  const name = cleanProductTitle(product.name, product.retailer);
+  const pct = buyPct(votes);
+  const total = votes.buy + votes.skip;
+  const soldOut = product.availability === "OutOfStock";
+
+  return (
+    <a
+      href={product.buyUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group relative flex gap-3 rounded-xl p-2 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+    >
+      <div className="relative size-24 shrink-0 overflow-hidden rounded-lg bg-muted">
+        {imageUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={imageUrl}
+            alt={name}
+            loading="lazy"
+            className={cn(
+              "h-full w-full object-cover transition-transform duration-500 group-hover:scale-105",
+              soldOut && "opacity-50",
+            )}
+          />
+        ) : (
+          <span className="flex h-full items-center justify-center text-xs text-muted-foreground">
+            No image
+          </span>
+        )}
+        {index !== null && (
+          <span className="absolute left-1 top-1 rounded-full bg-black/65 px-1.5 py-0.5 text-[0.625rem] font-medium tabular-nums text-white backdrop-blur-sm">
+            {String(index).padStart(2, "0")}
+          </span>
+        )}
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+        <p
+          className="line-clamp-2 text-sm font-medium leading-snug decoration-1 underline-offset-2 group-hover:underline"
+          title={name}
+        >
+          {name}
+        </p>
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium tabular-nums">
+            {formatPrice(product.price, product.currency)}
+          </span>
+          {product.retailer && (
+            <span className="truncate text-xs text-muted-foreground">
+              {product.retailer}
+            </span>
+          )}
+          {soldOut && (
+            <Badge
+              variant="outline"
+              size="micro"
+              className="shrink-0 text-muted-foreground"
+            >
+              Sold out
+            </Badge>
+          )}
+        </div>
+
+        {pct !== null && (
+          <div className="flex items-center gap-2">
+            <span className="h-1 w-14 shrink-0 overflow-hidden rounded-full bg-muted-foreground/20">
+              <span
+                className="block h-full rounded-full bg-live"
+                style={{ width: `${pct}%` }}
+              />
+            </span>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {pct}% said buy · {total} {total === 1 ? "vote" : "votes"}
+            </span>
+          </div>
+        )}
+
+        {product.note && (
+          <p className="line-clamp-2 border-l border-border pl-2 text-xs leading-relaxed text-muted-foreground">
+            {product.note}
+          </p>
+        )}
+      </div>
+
+      <ArrowUpRight className="absolute right-2 top-2 size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+    </a>
   );
 }
