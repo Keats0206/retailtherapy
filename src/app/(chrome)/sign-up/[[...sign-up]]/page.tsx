@@ -6,7 +6,7 @@ export default async function Page() {
   const { isAuthenticated } = await auth();
 
   if (isAuthenticated) {
-    redirect("/dashboard");
+    redirect("/home");
   }
 
   return (

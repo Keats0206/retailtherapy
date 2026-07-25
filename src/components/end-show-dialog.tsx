@@ -17,6 +17,7 @@ import {
   ProgressTrack,
   ProgressValue,
 } from "@/components/ui/progress";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 
 const ENDING_STEPS = [
   "Stopping broadcast",
@@ -81,7 +82,7 @@ export function EndShowDialog({
                       className="flex items-center gap-2 text-sm text-muted-foreground"
                     >
                       {done ? (
-                        <span className="size-4 rounded-full bg-primary/15 text-center text-[10px] leading-4 text-primary">
+                        <span className="size-4 rounded-full bg-primary/15 text-center text-xs leading-4 text-primary">
                           ✓
                         </span>
                       ) : active ? (
@@ -129,7 +130,12 @@ export function EndShowDialog({
               <Button
                 type="button"
                 variant="destructive"
-                onClick={onConfirm}
+                onClick={() => {
+                  trackEvent(AnalyticsEvent.HOST_END_SHOW, {
+                    area: "host_studio",
+                  });
+                  onConfirm();
+                }}
                 className="bg-live text-live-foreground hover:bg-live/90"
               >
                 End show

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/ui/themes";
 import { Agentation } from "agentation";
@@ -54,19 +55,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider appearance={clerkAppearance}>
-      <html
-        lang="en"
-        className={cn("h-full", "antialiased", "font-sans", alpino.variable, geistMono.variable)}
-      >
-        {/* h-full + overflow-hidden so /watch can fill the viewport exactly and
-            scroll only inside its rail. The header lives in (chrome)/layout,
-            which every route except /watch renders under. */}
-        <body className="flex h-full flex-col overflow-hidden">
+    <html
+      lang="en"
+      className={cn("h-full", "antialiased", "font-sans", alpino.variable, geistMono.variable)}
+    >
+      {/* h-full + overflow-hidden so /watch can fill the viewport exactly and
+          scroll only inside its rail. The header lives in (chrome)/layout,
+          which every route except /watch renders under. */}
+      <body className="flex h-full flex-col overflow-hidden">
+        <ClerkProvider appearance={clerkAppearance}>
           <TooltipProvider>{children}</TooltipProvider>
+          <Analytics debug={process.env.NODE_ENV === "development"} />
           {process.env.NODE_ENV === "development" && <Agentation />}
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }

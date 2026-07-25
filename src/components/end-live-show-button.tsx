@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 
 export function EndLiveShowButton({
   slug,
@@ -56,6 +57,9 @@ export function EndLiveShowButton({
         throw new Error(data.error ?? "Failed to end show");
       }
 
+      trackEvent(AnalyticsEvent.SHOW_END, {
+        area: variant === "admin" ? "admin" : "browse",
+      });
       setOpen(false);
       onEnded?.();
       router.refresh();

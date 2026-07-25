@@ -29,11 +29,18 @@ export const HOST_STAGE =
 export const HOST_CAMERA_BUBBLE =
   "absolute bottom-4 right-4 aspect-square w-24 border border-white/60 sm:w-36";
 
+/** Tiny camera bubble inside the Document PiP preview. */
+export const PIP_CAMERA_BUBBLE =
+  "absolute bottom-1 right-1 aspect-square w-10 border border-white/60";
+
+/** Compact screen-share preview in the Document PiP window. */
+export const PIP_PREVIEW = "aspect-video max-h-28 w-full shrink-0";
+
 /** Meet-style floating control bar centered at the bottom of the host stage. */
 export const HOST_CONTROL_BAR =
   "pointer-events-none absolute inset-x-0 bottom-4 flex justify-center";
 export const HOST_CONTROL_BAR_INNER =
-  "pointer-events-auto flex items-center gap-1 rounded-full border border-white/20 bg-black/60 px-2 py-1.5 backdrop-blur-sm max-lg:gap-0.5 sm:gap-1.5";
+  "pointer-events-auto flex items-center gap-1 rounded-full border border-white/15 bg-zinc-950 px-2 py-1.5 shadow-lg shadow-black/40 max-lg:gap-0.5 sm:gap-1.5";
 
 /**
  * A black video box with a corner label. Wraps real `<VideoTrack>`s on /host

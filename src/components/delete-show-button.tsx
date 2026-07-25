@@ -18,6 +18,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 
 export function DeleteShowButton({
   slug,
@@ -44,6 +45,7 @@ export function DeleteShowButton({
         throw new Error(data.error ?? "Failed to delete show");
       }
 
+      trackEvent(AnalyticsEvent.SHOW_DELETE, { area: "browse" });
       setOpen(false);
       router.refresh();
     } catch (err) {
@@ -92,7 +94,7 @@ export function DeleteShowButton({
             <DialogTitle>Delete this show?</DialogTitle>
             <DialogDescription>
               &ldquo;{title}&rdquo; and its recap will be removed from your
-              dashboard. The viewer link at /s/{slug} will stop working.
+              home. The viewer link at /s/{slug} will stop working.
             </DialogDescription>
           </DialogHeader>
 

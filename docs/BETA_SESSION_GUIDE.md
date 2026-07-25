@@ -14,7 +14,7 @@ Run **3 structured sessions** after the polish deploy lands in production. Goal:
 
 ### 1. Go live solo (< 5 min target)
 
-Host path: sign in → `/dashboard` → **Go live as host** → `/host` preshow → **Go live**
+Host path: sign in → `/home` → **Go live as host** → `/host` preshow → **Go live**
 
 | Check | Pass | Notes |
 |---|---|---|
@@ -46,7 +46,7 @@ Host path: paste retailer URL → pin → spotlight or verse
 
 ### 4. End show
 
-Host path: **End show** from studio **or** dashboard
+Host path: **End show** from studio **or** home
 
 | Check | Pass | Notes |
 |---|---|---|

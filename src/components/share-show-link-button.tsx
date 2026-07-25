@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Link2, Share2 } from "lucide-react";
+import { Check, Link2, Share2 } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import type { VariantProps } from "class-variance-authority";
 
@@ -13,6 +14,8 @@ type ShareShowLinkButtonProps = {
   size?: VariantProps<typeof buttonVariants>["size"];
   variant?: VariantProps<typeof buttonVariants>["variant"];
   showPath?: boolean;
+  /** Compact icon-only style for stage overlay */
+  compact?: boolean;
 };
 
 export function ShareShowLinkButton({
@@ -21,25 +24,43 @@ export function ShareShowLinkButton({
   size = "lg",
   variant = "outline",
   showPath = false,
+  compact = false,
 }: ShareShowLinkButtonProps) {
   const [copied, setCopied] = useState(false);
   const sharePath = `/s/${slug}`;
 
   async function shareLink() {
     const url = `${window.location.origin}${sharePath}`;
-
-    if (typeof navigator.share === "function") {
-      try {
-        await navigator.share({ url, title: "Join my show" });
-        return;
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-      }
-    }
-
     await navigator.clipboard.writeText(url);
+    trackEvent(AnalyticsEvent.HOST_SHARE_LINK, { area: "host_studio" });
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2000);
+  }
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={() => void shareLink()}
+        className={cn(
+          "inline-flex h-9 items-center gap-1.5 rounded-full bg-black/50 px-3 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-black/70",
+          className,
+        )}
+      >
+        {copied ? (
+          <>
+            <Check className="size-3.5" />
+            Copied!
+          </>
+        ) : (
+          <>
+            <Share2 className="size-3.5" />
+            Share
+            <span className="font-normal text-white/70">{sharePath}</span>
+          </>
+        )}
+      </button>
+    );
   }
 
   return (

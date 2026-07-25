@@ -13,7 +13,7 @@ import {
   selectActiveProduct,
   selectVerse,
 } from "@/lib/interaction-models";
-import type { Product, VoteChoice, VoteTally } from "@/lib/types";
+import type { Product, VoteChoice, VoteRecord, VoteTally } from "@/lib/types";
 
 export type { ActiveInteraction, VerseChoice, VerseTally };
 export { selectVerse } from "@/lib/interaction-models";
@@ -24,6 +24,8 @@ export interface StreamSnapshot {
   /** Every product pinned this session, oldest first. */
   trail: Product[];
   votes: Record<string, VoteTally>;
+  /** Who voted on each product — for "who voted" UI. */
+  voters: Record<string, VoteRecord[]>;
   verseVotes: Record<string, VerseTally>;
   /** Frozen when the host ends the show — used for the recap page. */
   stats?: { peakViewers: number; chatCount: number };
@@ -33,6 +35,7 @@ export const EMPTY: StreamSnapshot = {
   active: null,
   trail: [],
   votes: {},
+  voters: {},
   verseVotes: {},
 };
 
@@ -47,7 +50,15 @@ export function applyVote(
   state: StreamSnapshot,
   productId: string,
   choice: VoteChoice,
+  voter?: Pick<VoteRecord, "voterId" | "displayName">,
 ): StreamSnapshot {
+  const voters = state.voters ?? {};
+  const productVoters = voters[productId] ?? [];
+
+  if (voter && productVoters.some((v) => v.voterId === voter.voterId)) {
+    return state;
+  }
+
   const current = state.votes[productId] ?? NO_VOTES;
   return {
     ...state,
@@ -55,6 +66,12 @@ export function applyVote(
       ...state.votes,
       [productId]: { ...current, [choice]: current[choice] + 1 },
     },
+    voters: voter
+      ? {
+          ...voters,
+          [productId]: [...productVoters, { ...voter, choice }],
+        }
+      : voters,
   };
 }
 
@@ -130,6 +147,27 @@ export function applySetNote(
   };
 }
 
+/** Host-only: flag a product for featured/sponsored top placement on replay. */
+export function applySetFeatured(
+  state: StreamSnapshot,
+  productId: string,
+  featured: boolean,
+): StreamSnapshot {
+  return {
+    ...state,
+    trail: state.trail.map((p) =>
+      p.id === productId ? { ...p, featured } : p,
+    ),
+  };
+}
+
+export function selectVotersFor(
+  state: StreamSnapshot,
+  productId: string,
+): VoteRecord[] {
+  return (state.voters ?? {})[productId] ?? [];
+}
+
 export function selectPinned(state: StreamSnapshot): Product | null {
   return selectActiveProduct(state);
 }
@@ -164,6 +202,7 @@ export interface StreamState {
    */
   snapshot: StreamSnapshot;
   votesFor: (productId: string) => VoteTally;
+  votersFor: (productId: string) => VoteRecord[];
   verseVotesFor: (verseId: string) => VerseTally;
   /** Choices this browser already made, so the UI can lock its buttons. */
   myVotes: Record<string, VoteChoice>;
@@ -172,6 +211,7 @@ export interface StreamState {
   unpin: () => void;
   endInteraction: () => void;
   setNote: (productId: string, note: string) => void;
+  setFeatured: (productId: string, featured: boolean) => void;
   vote: (productId: string, choice: VoteChoice) => void;
   startVerse: (left: Product, right: Product) => void;
   verseVote: (verseId: string, choice: VerseChoice) => void;

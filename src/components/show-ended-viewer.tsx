@@ -15,17 +15,15 @@ import {
   normalizeProductImageUrl,
 } from "@/lib/format";
 import type { EndedShowRecap } from "@/lib/show-recap";
-import type { Product, VoteTally } from "@/lib/types";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import { sortTrailForReplay, TRAIL_SORTS, type TrailSortId } from "@/lib/trail-sort";
+import type { Product, VoteRecord, VoteTally } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /** How the shop rail is ordered. Default mirrors the show itself. */
-const SORTS = [
-  { id: "order", label: "Show order" },
-  { id: "wanted", label: "Most wanted" },
-  { id: "price", label: "Price" },
-] as const;
+const SORTS = TRAIL_SORTS;
 
-type SortId = (typeof SORTS)[number]["id"];
+type SortId = TrailSortId;
 
 /** UTC so the server and client render the same string — no hydration drift. */
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
@@ -69,6 +67,7 @@ export function ShowEndedViewer({
   async function copyLink() {
     const url = `${window.location.origin}${sharePath}`;
     await navigator.clipboard.writeText(url);
+    trackEvent(AnalyticsEvent.REPLAY_SHARE, { area: "replay" });
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -76,20 +75,11 @@ export function ShowEndedViewer({
   const trail = recap.snapshot.trail;
   const votesFor = (id: string): VoteTally =>
     recap.snapshot.votes[id] ?? { buy: 0, skip: 0 };
+  const votersFor = (id: string): VoteRecord[] =>
+    recap.snapshot.voters?.[id] ?? [];
 
   const sorted = useMemo(() => {
-    const items = [...trail];
-    if (sort === "price") return items.sort((a, b) => a.price - b.price);
-    if (sort === "wanted") {
-      return items.sort((a, b) => {
-        const av = votesFor(a.id);
-        const bv = votesFor(b.id);
-        // Rank by buy count first — a 100% from one voter shouldn't outrank a
-        // 90% from thirty — then fall back to the percentage.
-        return bv.buy - av.buy || (buyPct(bv) ?? 0) - (buyPct(av) ?? 0);
-      });
-    }
-    return items;
+    return sortTrailForReplay(trail, sort, votesFor);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trail, sort, recap.snapshot.votes]);
 
@@ -263,7 +253,8 @@ export function ShowEndedViewer({
                     key={p.id}
                     product={p}
                     votes={votesFor(p.id)}
-                    index={sort === "order" ? i + 1 : null}
+                    voters={votersFor(p.id)}
+                    index={sort === "order" && !p.featured ? i + 1 : null}
                   />
                 ))}
               </div>
@@ -355,10 +346,12 @@ function TopPick({ product, votes }: { product: Product; votes: VoteTally }) {
 function ProductRow({
   product,
   votes,
+  voters,
   index,
 }: {
   product: Product;
   votes: VoteTally;
+  voters?: VoteRecord[];
   index: number | null;
 }) {
   const imageUrl = normalizeProductImageUrl(product.imageUrl);
@@ -410,6 +403,11 @@ function ProductRow({
           <span className="text-sm font-medium tabular-nums">
             {formatPrice(product.price, product.currency)}
           </span>
+          {product.featured && (
+            <Badge variant="secondary" size="micro" className="shrink-0">
+              Featured
+            </Badge>
+          )}
           {product.retailer && (
             <span className="truncate text-xs text-muted-foreground">
               {product.retailer}
@@ -427,16 +425,23 @@ function ProductRow({
         </div>
 
         {pct !== null && (
-          <div className="flex items-center gap-2">
-            <span className="h-1 w-14 shrink-0 overflow-hidden rounded-full bg-muted-foreground/20">
-              <span
-                className="block h-full rounded-full bg-live"
-                style={{ width: `${pct}%` }}
-              />
-            </span>
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {pct}% said buy · {total} {total === 1 ? "vote" : "votes"}
-            </span>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="h-1 w-14 shrink-0 overflow-hidden rounded-full bg-muted-foreground/20">
+                <span
+                  className="block h-full rounded-full bg-live"
+                  style={{ width: `${pct}%` }}
+                />
+              </span>
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {pct}% said buy · {total} {total === 1 ? "vote" : "votes"}
+              </span>
+            </div>
+            {voters && voters.length > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {voters.map((v) => v.displayName).join(", ")}
+              </span>
+            )}
           </div>
         )}
 

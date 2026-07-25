@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
-import { getShowBySlug, resolveRecording } from "@/lib/shows";
+import { createAccessToken, getLiveKitConfig } from "@/lib/livekit";
+import { getShowBySlug } from "@/lib/shows";
 import { toPublicShow } from "@/lib/show-public";
 
 import ShowPageClient from "./show-page-client";
@@ -9,12 +10,30 @@ export default async function ShowPage({
   params,
 }: PageProps<"/s/[slug]">) {
   const { slug } = await params;
-  let show = await getShowBySlug(slug);
+  const show = await getShowBySlug(slug);
   if (!show) notFound();
 
-  if (show.status === "ended") {
-    show = await resolveRecording(show);
+  let liveConnection: { token: string; url: string } | null = null;
+  if (show.status === "live") {
+    try {
+      const identity = `viewer-${crypto.randomUUID().slice(0, 8)}`;
+      const token = await createAccessToken({
+        room: show.roomName,
+        identity,
+        name: "Viewer",
+        canPublish: false,
+      });
+      const { url } = getLiveKitConfig();
+      liveConnection = { token, url };
+    } catch {
+      // Client falls back to POST /api/livekit/token if minting fails.
+    }
   }
 
-  return <ShowPageClient initialShow={toPublicShow(show)} />;
+  return (
+    <ShowPageClient
+      initialShow={toPublicShow(show)}
+      liveConnection={liveConnection}
+    />
+  );
 }

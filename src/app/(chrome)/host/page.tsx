@@ -27,10 +27,10 @@ export default async function HostPage({
         </p>
         <div className="flex flex-wrap gap-2">
           <Button size="micro" className="bg-live text-live-foreground hover:bg-live/90" render={<Link href="/apply" />}>
-            Join the waitlist
+            Apply to host
           </Button>
-          <Button variant="outline" size="micro" className="w-fit" render={<Link href="/dashboard" />}>
-            Back to dashboard
+          <Button variant="outline" size="micro" className="w-fit" render={<Link href="/home" />}>
+            Back to home
           </Button>
         </div>
       </main>

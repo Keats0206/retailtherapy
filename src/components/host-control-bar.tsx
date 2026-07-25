@@ -1,0 +1,229 @@
+"use client";
+
+import { useTrackToggle } from "@livekit/components-react";
+import { Track, type Room } from "livekit-client";
+import { LogOut, Mic, MicOff, MonitorUp, Video, VideoOff } from "lucide-react";
+
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useStartScreenShare } from "@/hooks/use-start-screen-share";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import { cn } from "@/lib/utils";
+
+export function HostControlBar({
+  room,
+  sharing,
+  onEndShow,
+  onBeforeShare,
+  pipSupported = false,
+  variant = "stage",
+}: {
+  room?: Room;
+  sharing: boolean;
+  onEndShow: () => void;
+  /** Called in the same user gesture before screen share starts (for PiP). */
+  onBeforeShare?: () => void | Promise<void>;
+  pipSupported?: boolean;
+  variant?: "stage" | "pip" | "pip-overlay";
+}) {
+  const isOverlay = variant === "pip-overlay";
+  const isPip = variant === "pip" || isOverlay;
+
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-0.5",
+        !isOverlay && isPip && "gap-1 px-1",
+        !isPip && "max-lg:gap-0.5 sm:gap-1.5",
+      )}
+    >
+      <ToggleControl
+        room={room}
+        source={Track.Source.Microphone}
+        label="Microphone"
+        on={<Mic />}
+        off={<MicOff />}
+        variant={variant}
+      />
+      <ToggleControl
+        room={room}
+        source={Track.Source.Camera}
+        label="Camera"
+        on={<Video />}
+        off={<VideoOff />}
+        variant={variant}
+      />
+      <ScreenShareControl
+        room={room}
+        sharing={sharing}
+        onBeforeShare={onBeforeShare}
+        pipSupported={pipSupported}
+        variant={variant}
+      />
+
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              type="button"
+              aria-label="End show"
+              onClick={onEndShow}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "icon" }),
+                isOverlay
+                  ? "size-8 rounded-full border-live/50 bg-black/50 text-live backdrop-blur-sm hover:bg-live hover:text-live-foreground"
+                  : isPip
+                    ? "ml-0.5 size-9 rounded-full border-live/50 bg-background text-live hover:bg-live hover:text-live-foreground"
+                    : "ml-1 size-10 rounded-full border-live/50 bg-black/40 text-live hover:bg-live hover:text-live-foreground",
+              )}
+            >
+              <LogOut className={isOverlay ? "size-3.5" : isPip ? "size-4" : undefined} />
+            </Button>
+          }
+        />
+        <TooltipContent>End show</TooltipContent>
+      </Tooltip>
+    </div>
+  );
+}
+
+function ScreenShareControl({
+  room,
+  sharing,
+  onBeforeShare,
+  pipSupported,
+  variant,
+}: {
+  room?: Room;
+  sharing: boolean;
+  onBeforeShare?: () => void | Promise<void>;
+  pipSupported?: boolean;
+  variant?: "stage" | "pip" | "pip-overlay";
+}) {
+  const { buttonProps, startScreenShare } = useStartScreenShare({
+    room,
+    sharing,
+    onBeforeShare,
+    pipSupported,
+  });
+  const isOverlay = variant === "pip-overlay";
+  const isPip = variant === "pip";
+  const label = sharing ? "Stop sharing" : "Share screen";
+  const pipHint =
+    !pipSupported && !sharing
+      ? "Use Chrome for floating controls while sharing"
+      : null;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            type="button"
+            {...buttonProps}
+            onClick={startScreenShare}
+            aria-label={label}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "icon" }),
+              isOverlay
+                ? "size-8 rounded-full text-white"
+                : isPip
+                  ? "size-9 rounded-full"
+                  : "size-10 rounded-full text-white",
+              (isOverlay || !isPip) &&
+                (sharing
+                  ? "border-white/25 bg-white/10 hover:bg-white/20"
+                  : "border-white/30 bg-black/40 text-white/60 hover:bg-black/60"),
+              isPip &&
+                !isOverlay &&
+                (sharing
+                  ? "border-foreground/20 bg-foreground/10"
+                  : "text-muted-foreground"),
+            )}
+          >
+            <MonitorUp className={isOverlay ? "size-3.5" : isPip ? "size-4" : undefined} />
+          </Button>
+        }
+      />
+      <TooltipContent>{pipHint ?? label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function ToggleControl({
+  room,
+  source,
+  label,
+  on,
+  off,
+  variant = "stage",
+}: {
+  room?: Room;
+  source:
+    | Track.Source.Microphone
+    | Track.Source.Camera
+    | Track.Source.ScreenShare;
+  label: string;
+  on: React.ReactNode;
+  off: React.ReactNode;
+  variant?: "stage" | "pip" | "pip-overlay";
+}) {
+  const { enabled, buttonProps } = useTrackToggle({ source, room });
+  const isOverlay = variant === "pip-overlay";
+  const isPip = variant === "pip";
+  const event =
+    source === Track.Source.Microphone
+      ? AnalyticsEvent.HOST_MIC_TOGGLE
+      : source === Track.Source.Camera
+        ? AnalyticsEvent.HOST_CAMERA_TOGGLE
+        : null;
+
+  function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
+    if (event) {
+      trackEvent(event, {
+        area: "host_studio",
+        enabled: !enabled,
+      });
+    }
+    buttonProps.onClick?.(e);
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            type="button"
+            {...buttonProps}
+            onClick={handleClick}
+            aria-label={label}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "icon" }),
+              isOverlay
+                ? "size-8 rounded-full text-white [&_svg]:size-3.5"
+                : isPip
+                  ? "size-9 rounded-full"
+                  : "size-10 rounded-full text-white",
+              (isOverlay || !isPip) &&
+                (enabled
+                  ? "border-white/25 bg-white/10 hover:bg-white/20"
+                  : "border-white/30 bg-black/40 text-white/60 hover:bg-black/60"),
+              isPip &&
+                !isOverlay &&
+                (enabled
+                  ? "border-foreground/20 bg-foreground/10"
+                  : "text-muted-foreground"),
+            )}
+          >
+            {enabled ? on : off}
+          </Button>
+        }
+      />
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}

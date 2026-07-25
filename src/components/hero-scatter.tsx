@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 type ScatterCard = {
@@ -189,11 +190,7 @@ export function HeroScatter() {
           variants={textItem}
           className="text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl"
         >
-          watch people{" "}
-          <span className="bg-gradient-to-r from-pop via-live to-pop bg-clip-text text-transparent">
-            shop
-          </span>
-          .
+          watch people shop.
         </motion.h1>
         <motion.p
           variants={textItem}
@@ -207,6 +204,9 @@ export function HeroScatter() {
             size="lg"
             className="rounded-full bg-foreground px-8 text-background hover:bg-foreground/90"
             render={<Link href="/browse" />}
+            onClick={() =>
+              trackEvent(AnalyticsEvent.CTA_BROWSE, { area: "hero" })
+            }
           >
             Browse live shows
           </Button>
@@ -215,8 +215,11 @@ export function HeroScatter() {
             size="micro"
             className="text-muted-foreground"
             render={<Link href="/apply" />}
+            onClick={() =>
+              trackEvent(AnalyticsEvent.CTA_APPLY, { area: "hero" })
+            }
           >
-            Join the host waitlist &rarr;
+            Apply to host &rarr;
           </Button>
         </motion.div>
       </motion.div>

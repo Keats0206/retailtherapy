@@ -8,6 +8,7 @@ import {
   EMPTY,
   applyEndInteraction,
   applyPin,
+  applySetFeatured,
   applySetNote,
   applyStartVerse,
   applyUnpin,
@@ -16,12 +17,14 @@ import {
   selectPinned,
   selectVerse,
   selectVerseVotesFor,
+  selectVotersFor,
   selectVotesFor,
   type StreamSnapshot,
   type StreamState,
   type VerseChoice,
 } from "@/lib/stream-store";
 import type { Product, VoteChoice } from "@/lib/types";
+import { getVoterDisplayName, getVoterId } from "@/lib/voter-identity";
 
 /**
  * Shared shopping state for a live room, carried over the LiveKit data channel.
@@ -49,13 +52,27 @@ const decoder = new TextDecoder();
 type StreamEvent =
   | { t: "hello" }
   | { t: "snapshot"; state: StreamSnapshot }
-  | { t: "vote"; productId: string; choice: VoteChoice }
+  | {
+      t: "vote";
+      productId: string;
+      choice: VoteChoice;
+      voterId: string;
+      displayName: string;
+    }
   | { t: "verseVote"; verseId: string; choice: VerseChoice };
 
 export type { StreamSnapshot };
 
-export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
-  const [state, setState] = useState<StreamSnapshot>(EMPTY);
+export function useStreamState({
+  isHost,
+  initialSnapshot,
+}: {
+  isHost: boolean;
+  initialSnapshot?: StreamSnapshot;
+}): StreamState {
+  const [state, setState] = useState<StreamSnapshot>(
+    () => initialSnapshot ?? EMPTY,
+  );
   /** Choices this browser already made, so the UI can lock its buttons. */
   const [myVotes, setMyVotes] = useState<Record<string, VoteChoice>>({});
   const [myVerseVotes, setMyVerseVotes] = useState<
@@ -86,7 +103,12 @@ export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
           // A viewer just joined; catch them up.
           sendRef.current?.({ t: "snapshot", state: stateRef.current });
         } else if (event.t === "vote") {
-          setState((prev) => applyVote(prev, event.productId, event.choice));
+          setState((prev) =>
+            applyVote(prev, event.productId, event.choice, {
+              voterId: event.voterId,
+              displayName: event.displayName,
+            }),
+          );
         } else if (event.t === "verseVote") {
           setState((prev) =>
             applyVerseVote(prev, event.verseId, event.choice),
@@ -166,6 +188,10 @@ export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
     setState((prev) => applySetNote(prev, productId, note));
   }, []);
 
+  const setFeatured = useCallback((productId: string, featured: boolean) => {
+    setState((prev) => applySetFeatured(prev, productId, featured));
+  }, []);
+
   const startVerse = useCallback((left: Product, right: Product) => {
     setState((prev) => applyStartVerse(prev, left, right));
   }, []);
@@ -179,10 +205,21 @@ export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
 
       setMyVotes((prev) => ({ ...prev, [productId]: choice }));
 
+      const voter = {
+        voterId: getVoterId(),
+        displayName: getVoterDisplayName(),
+      };
+
       if (isHost) {
-        setState((prev) => applyVote(prev, productId, choice));
+        setState((prev) => applyVote(prev, productId, choice, voter));
       } else {
-        sendRef.current?.({ t: "vote", productId, choice });
+        sendRef.current?.({
+          t: "vote",
+          productId,
+          choice,
+          voterId: voter.voterId,
+          displayName: voter.displayName,
+        });
       }
     },
     [isHost, connected, myVotes],
@@ -212,6 +249,11 @@ export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
     [state],
   );
 
+  const votersFor = useCallback(
+    (productId: string) => selectVotersFor(state, productId),
+    [state],
+  );
+
   const verseVotesFor = useCallback(
     (verseId: string) => selectVerseVotesFor(state, verseId),
     [state],
@@ -224,6 +266,7 @@ export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
     trail: state.trail,
     snapshot: state,
     votesFor,
+    votersFor,
     verseVotesFor,
     myVotes,
     myVerseVotes,
@@ -231,6 +274,7 @@ export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
     unpin,
     endInteraction,
     setNote,
+    setFeatured,
     vote,
     startVerse,
     verseVote,

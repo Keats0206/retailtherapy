@@ -6,6 +6,7 @@ import { Show, SignInButton, SignUpButton } from "@clerk/nextjs";
 import { HeroScatter } from "@/components/hero-scatter";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/user-menu";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 
 export function LandingPage() {
   return (
@@ -21,17 +22,32 @@ export function LandingPage() {
               size="micro"
               className="hidden sm:inline-flex"
               render={<Link href="/browse" />}
+              onClick={() =>
+                trackEvent(AnalyticsEvent.NAV_BROWSE, { area: "landing" })
+              }
             >
               Browse shows
             </Button>
             <Show when="signed-out">
               <SignInButton mode="modal">
-                <Button variant="ghost" size="micro">
+                <Button
+                  variant="ghost"
+                  size="micro"
+                  onClick={() =>
+                    trackEvent(AnalyticsEvent.NAV_SIGN_IN, { area: "landing" })
+                  }
+                >
                   Sign in
                 </Button>
               </SignInButton>
               <SignUpButton mode="modal">
-                <Button variant="secondary" size="micro">
+                <Button
+                  variant="secondary"
+                  size="micro"
+                  onClick={() =>
+                    trackEvent(AnalyticsEvent.NAV_SIGN_UP, { area: "landing" })
+                  }
+                >
                   Get started
                 </Button>
               </SignUpButton>
@@ -40,13 +56,16 @@ export function LandingPage() {
               <Button variant="ghost" size="micro" render={<Link href="/browse" />}>
                 Browse
               </Button>
-              <Button variant="ghost" size="micro" render={<Link href="/dashboard" />}>
-                Dashboard
+              <Button variant="ghost" size="micro" render={<Link href="/home" />}>
+                Home
               </Button>
               <Button
                 size="micro"
                 className="bg-live text-live-foreground hover:bg-live/90"
-                render={<Link href="/host" />}
+                render={<Link href="/host/setup" />}
+                onClick={() =>
+                  trackEvent(AnalyticsEvent.NAV_GO_LIVE, { area: "landing" })
+                }
               >
                 Go live
               </Button>

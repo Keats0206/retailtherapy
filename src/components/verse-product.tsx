@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { formatPrice, normalizeProductImageUrl } from "@/lib/format";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import type { VerseChoice, VerseTally } from "@/lib/interaction-models";
 import type { Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -56,9 +57,14 @@ function VerseCard({
           variant="ghost"
           size="micro"
           className="mt-1 w-full text-muted-foreground"
-          onClick={() =>
-            window.open(product.buyUrl, "_blank", "noopener,noreferrer")
-          }
+        onClick={() => {
+          trackEvent(AnalyticsEvent.PRODUCT_SHOP_CLICK, {
+            area: "watch",
+            context: "verse",
+            side,
+          });
+          window.open(product.buyUrl, "_blank", "noopener,noreferrer");
+        }}
         >
           Shop
         </Button>
@@ -99,7 +105,14 @@ export function VerseProduct({
           selected={myVote === "left"}
           disabled={!!myVote}
           count={votes.left}
-          onSelect={() => onVote("left")}
+          onSelect={() => {
+            trackEvent(AnalyticsEvent.PRODUCT_VOTE, {
+              area: "watch",
+              context: "verse",
+              choice: "left",
+            });
+            onVote("left");
+          }}
         />
         <VerseCard
           product={right}
@@ -107,7 +120,14 @@ export function VerseProduct({
           selected={myVote === "right"}
           disabled={!!myVote}
           count={votes.right}
-          onSelect={() => onVote("right")}
+          onSelect={() => {
+            trackEvent(AnalyticsEvent.PRODUCT_VOTE, {
+              area: "watch",
+              context: "verse",
+              choice: "right",
+            });
+            onVote("right");
+          }}
         />
       </div>
 

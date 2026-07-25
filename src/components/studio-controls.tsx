@@ -1,31 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { Check, Link2, Sparkles, Swords } from "lucide-react";
 
 import { AudienceVerseVotes } from "@/components/audience-verse-votes";
 import { AudienceVotes } from "@/components/audience-votes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Panel,
-  PanelContent,
-  PanelHeader,
-} from "@/components/ui/panel";
-import { Separator } from "@/components/ui/separator";
 import { formatPrice, normalizeProductImageUrl } from "@/lib/format";
-import type { Product, VoteTally } from "@/lib/types";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import type { Product, VoteRecord, VoteTally } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type InteractionMode = "spotlight" | "verse";
 
-/**
- * Host-side controls: paste retailer URLs and start a spotlight or verse
- * interaction for every viewer.
- *
- * The lookup goes through our own route (not Channel3 directly) so the API key
- * stays server-side and only signed-in hosts can spend credits.
- */
 async function lookupProduct(url: string): Promise<Product> {
   const res = await fetch("/api/products/lookup", {
     method: "POST",
@@ -41,28 +29,34 @@ export function StudioControls({
   pinned,
   verse,
   votes,
+  voters,
   verseVotes,
   onPin,
   onUnpin,
   onEndInteraction,
   onStartVerse,
   onNote,
+  onSetFeatured,
   onResolve = lookupProduct,
   channel3Configured = true,
   className,
+  variant = "panel",
 }: {
   pinned: Product | null;
   verse: { left: Product; right: Product; id: string } | null;
   votes?: VoteTally;
+  voters?: VoteRecord[];
   verseVotes?: { left: number; right: number };
   onPin: (product: Product) => void;
   onUnpin: () => void;
   onEndInteraction: () => void;
   onStartVerse: (left: Product, right: Product) => void;
   onNote: (productId: string, note: string) => void;
+  onSetFeatured?: (productId: string, featured: boolean) => void;
   onResolve?: (url: string) => Promise<Product>;
   channel3Configured?: boolean;
   className?: string;
+  variant?: "panel" | "rail" | "pip";
 }) {
   const [mode, setMode] = useState<InteractionMode>("spotlight");
   const [url, setUrl] = useState("");
@@ -71,7 +65,6 @@ export function StudioControls({
   const [resolving, setResolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const interactionActive = !!pinned || !!verse;
   const pinnedImageUrl = pinned
     ? normalizeProductImageUrl(pinned.imageUrl)
     : null;
@@ -85,12 +78,13 @@ export function StudioControls({
   async function resolveSpotlight(e: React.FormEvent) {
     e.preventDefault();
     const value = url.trim();
-    if (!value || resolving || interactionActive) return;
+    if (!value || resolving) return;
 
     setResolving(true);
     setError(null);
     try {
       onPin(await onResolve(value));
+      trackEvent(AnalyticsEvent.HOST_PRODUCT_ADD, { area: "host_studio" });
       setUrl("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Lookup failed");
@@ -103,7 +97,7 @@ export function StudioControls({
     e.preventDefault();
     const left = leftUrl.trim();
     const right = rightUrl.trim();
-    if (!left || !right || resolving || interactionActive) return;
+    if (!left || !right || resolving) return;
 
     setResolving(true);
     setError(null);
@@ -113,6 +107,7 @@ export function StudioControls({
         onResolve(right),
       ]);
       onStartVerse(leftProduct, rightProduct);
+      trackEvent(AnalyticsEvent.HOST_VERSE_START, { area: "host_studio" });
       setLeftUrl("");
       setRightUrl("");
     } catch (err) {
@@ -122,67 +117,113 @@ export function StudioControls({
     }
   }
 
-  return (
-    <Panel accent className={className}>
-      <PanelHeader className="gap-1.5">
-        <h2 className="text-base font-semibold text-foreground">
-          Interaction
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Paste links to put a product or A/B matchup on screen for viewers.
-        </p>
-      </PanelHeader>
+  const isRail = variant === "rail" || variant === "pip";
+  const isPip = variant === "pip";
 
-      <PanelContent className="flex flex-col gap-4">
-        {!interactionActive && (
-          <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
-            {(["spotlight", "verse"] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setMode(value)}
-                className={cn(
-                  "rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  mode === value
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {value === "spotlight" ? "Spotlight" : "Verses"}
-              </button>
-            ))}
-          </div>
-        )}
+  return (
+    <div
+      className={cn(
+        "flex flex-col",
+        isRail ? (isPip ? "gap-0 p-0 text-sm" : "gap-0 p-0") : "gap-3 rounded-xl bg-card py-4 ring-1 ring-foreground/10",
+        className,
+      )}
+    >
+      {/* Active interaction — compact banner when something is on screen */}
+      {pinned && (
+        <ActiveSpotlight
+          product={pinned}
+          imageUrl={pinnedImageUrl}
+          votes={votes}
+          voters={voters}
+          onDone={onUnpin}
+          onNote={onNote}
+          onSetFeatured={onSetFeatured}
+          isRail={isRail}
+        />
+      )}
+
+      {verse && (
+        <ActiveVerse
+          verse={verse}
+          leftImageUrl={leftImageUrl}
+          rightImageUrl={rightImageUrl}
+          verseVotes={verseVotes}
+          onEnd={onEndInteraction}
+          isRail={isRail}
+        />
+      )}
+
+      {/* Add form — always available so the host can keep building the trail */}
+      <div className={cn(isRail && (isPip ? "p-3" : "p-4"))}>
+        <div className="mb-4">
+          <h2 className="text-sm font-semibold text-foreground">
+            Add to trail
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Paste a product link — it joins the trail and goes on screen.
+          </p>
+        </div>
+
+        <div className="mb-4 flex gap-1 rounded-lg border border-border/60 p-1">
+          {(
+            [
+              { id: "spotlight" as const, label: "Spotlight", icon: Sparkles },
+              { id: "verse" as const, label: "Verses", icon: Swords },
+            ] as const
+          ).map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => {
+                setMode(id);
+                trackEvent(AnalyticsEvent.HOST_MODE_SWITCH, {
+                  area: "host_studio",
+                  mode: id,
+                });
+              }}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-all",
+                mode === id
+                  ? "bg-foreground text-background shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon className="size-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
 
         {!channel3Configured ? (
-          <p className="border-l-2 border-muted-foreground/40 py-1 pl-3 text-sm leading-relaxed text-muted-foreground">
-            Adding links requires a Channel3 API key. Add{" "}
+          <p className="rounded-lg border border-dashed border-border px-3 py-4 text-sm leading-relaxed text-muted-foreground">
+            Product lookup requires a Channel3 API key. Add{" "}
             <code className="text-foreground">CHANNEL3_API_KEY</code> to{" "}
-            <code className="text-foreground">.env.local</code> and restart the
-            dev server.
+            <code className="text-foreground">.env.local</code>.
           </p>
-        ) : !interactionActive && mode === "spotlight" ? (
-          <form onSubmit={resolveSpotlight} className="flex flex-col gap-2.5">
-            <Input
-              id="product-url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="Paste a product URL…"
-              disabled={resolving}
-              aria-label="Product URL"
-              className="h-10"
-            />
+        ) : mode === "spotlight" ? (
+          <form onSubmit={resolveSpotlight} className="flex flex-col gap-3">
+            <div className="relative">
+              <Link2 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="product-url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="Paste a product URL…"
+                disabled={resolving}
+                aria-label="Product URL"
+                className="h-11 pl-10"
+              />
+            </div>
             <Button
               type="submit"
-              size="lg"
-              className="w-full"
+              className="h-11 w-full bg-foreground text-background hover:bg-foreground/90"
               disabled={resolving || !url.trim()}
             >
-              {resolving ? "Resolving…" : "Add link"}
+              {resolving ? "Resolving…" : "Add to trail"}
             </Button>
           </form>
-        ) : !interactionActive && mode === "verse" ? (
-          <form onSubmit={resolveVerse} className="flex flex-col gap-2.5">
+        ) : (
+          <form onSubmit={resolveVerse} className="flex flex-col gap-3">
             <Input
               id="verse-left-url"
               value={leftUrl}
@@ -190,7 +231,7 @@ export function StudioControls({
               placeholder="Left product URL…"
               disabled={resolving}
               aria-label="Left product URL"
-              className="h-10"
+              className="h-11"
             />
             <Input
               id="verse-right-url"
@@ -199,137 +240,182 @@ export function StudioControls({
               placeholder="Right product URL…"
               disabled={resolving}
               aria-label="Right product URL"
-              className="h-10"
+              className="h-11"
             />
             <Button
               type="submit"
-              size="lg"
-              className="w-full"
+              className="h-11 w-full bg-foreground text-background hover:bg-foreground/90"
               disabled={resolving || !leftUrl.trim() || !rightUrl.trim()}
             >
               {resolving ? "Resolving…" : "Start verse"}
             </Button>
           </form>
-        ) : null}
+        )}
 
         {error && (
-          <p className="border-l-2 border-destructive py-1 pl-3 text-sm text-destructive">
+          <p
+            className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            role="alert"
+          >
             {error}
           </p>
         )}
+      </div>
+    </div>
+  );
+}
 
-        {pinned && (
-          <>
-            <Separator />
-            <div className="flex flex-col gap-3">
-              <div className="flex items-start justify-between gap-2">
-                <span className="micro text-muted-foreground">
-                  Spotlight on screen
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onUnpin}
-                  className="shrink-0 text-muted-foreground"
-                >
-                  <X />
-                  Remove
-                </Button>
-              </div>
+function ActiveSpotlight({
+  product,
+  imageUrl,
+  votes,
+  voters,
+  onDone,
+  onNote,
+  onSetFeatured,
+  isRail,
+}: {
+  product: Product;
+  imageUrl: string | null;
+  votes?: VoteTally;
+  voters?: VoteRecord[];
+  onDone: () => void;
+  onNote: (productId: string, note: string) => void;
+  onSetFeatured?: (productId: string, featured: boolean) => void;
+  isRail: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "border-b border-border/60 bg-live/5",
+        isRail ? "p-4" : "px-4 pb-4",
+      )}
+    >
+      <div className="mb-3 flex items-center justify-between">
+        <span className="micro text-live">On screen now</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onDone}
+          className="h-7 gap-1 px-2 text-xs text-muted-foreground"
+        >
+          <Check className="size-3.5" />
+          Done
+        </Button>
+      </div>
 
-              <div className="flex gap-3">
-                {pinnedImageUrl && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={pinnedImageUrl}
-                    alt={pinned.name}
-                    className="size-20 shrink-0 rounded-lg bg-muted object-cover"
-                  />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p
-                    className="truncate font-medium text-foreground"
-                    title={pinned.name}
-                  >
-                    {pinned.name}
-                  </p>
-                  <p className="mt-0.5 text-sm tabular-nums">
-                    {formatPrice(pinned.price, pinned.currency)}
-                  </p>
-                  {pinned.retailer && (
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {pinned.retailer}
-                    </p>
-                  )}
-                </div>
-              </div>
+      <div className="flex gap-3 rounded-xl bg-muted/50 p-3">
+        {imageUrl && (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={imageUrl}
+            alt={product.name}
+            className="size-16 shrink-0 rounded-lg bg-muted object-cover"
+          />
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium text-foreground" title={product.name}>
+            {product.name}
+          </p>
+          <p className="mt-0.5 text-sm tabular-nums text-muted-foreground">
+            {formatPrice(product.price, product.currency)}
+          </p>
+          {product.retailer && (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {product.retailer}
+            </p>
+          )}
+        </div>
+      </div>
 
-              <Input
-                value={pinned.note}
-                onChange={(e) => onNote(pinned.id, e.target.value)}
-                placeholder="Add a note viewers will see…"
-                aria-label="Note about this product"
+      <Input
+        value={product.note}
+        onChange={(e) => onNote(product.id, e.target.value)}
+        placeholder="Add a note for viewers…"
+        aria-label="Note about this product"
+        className="mt-3 h-10"
+      />
+
+      {onSetFeatured && (
+        <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={Boolean(product.featured)}
+            onChange={(e) => onSetFeatured(product.id, e.target.checked)}
+            className="size-4 rounded border-border accent-live"
+          />
+          <span className="text-muted-foreground">
+            Feature at top of replay
+            {product.featured ? " (sponsored placement)" : ""}
+          </span>
+        </label>
+      )}
+
+      {votes && (
+        <AudienceVotes votes={votes} voters={voters} className="mt-3" />
+      )}
+    </div>
+  );
+}
+
+function ActiveVerse({
+  verse,
+  leftImageUrl,
+  rightImageUrl,
+  verseVotes,
+  onEnd,
+  isRail,
+}: {
+  verse: { left: Product; right: Product; id: string };
+  leftImageUrl: string | null;
+  rightImageUrl: string | null;
+  verseVotes?: { left: number; right: number };
+  onEnd: () => void;
+  isRail: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "border-b border-border/60 bg-live/5",
+        isRail ? "p-4" : "px-4 pb-4",
+      )}
+    >
+      <div className="mb-3 flex items-center justify-between">
+        <span className="micro text-live">Verse on screen</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onEnd}
+          className="h-7 gap-1 px-2 text-xs text-muted-foreground"
+        >
+          <Check className="size-3.5" />
+          Done
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { product: verse.left, imageUrl: leftImageUrl, label: "A" },
+          { product: verse.right, imageUrl: rightImageUrl, label: "B" },
+        ].map(({ product, imageUrl, label }) => (
+          <div key={product.id} className="min-w-0 rounded-xl bg-muted/50 p-2">
+            {imageUrl && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={imageUrl}
+                alt={product.name}
+                className="aspect-square w-full rounded-lg bg-muted object-cover"
               />
-              {votes && <AudienceVotes votes={votes} className="pt-0.5" />}
-            </div>
-          </>
-        )}
+            )}
+            <p className="micro mt-1.5 text-muted-foreground">{label}</p>
+            <p className="truncate text-xs font-medium">{product.name}</p>
+          </div>
+        ))}
+      </div>
 
-        {verse && (
-          <>
-            <Separator />
-            <div className="flex flex-col gap-3">
-              <div className="flex items-start justify-between gap-2">
-                <span className="micro text-muted-foreground">
-                  Verse on screen
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onEndInteraction}
-                  className="shrink-0 text-muted-foreground"
-                >
-                  <X />
-                  End verse
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="min-w-0">
-                  {leftImageUrl && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={leftImageUrl}
-                      alt={verse.left.name}
-                      className="aspect-square w-full rounded-lg bg-muted object-cover"
-                    />
-                  )}
-                  <p className="micro mt-1.5 text-muted-foreground">Left</p>
-                  <p className="truncate text-sm font-medium">{verse.left.name}</p>
-                </div>
-                <div className="min-w-0">
-                  {rightImageUrl && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={rightImageUrl}
-                      alt={verse.right.name}
-                      className="aspect-square w-full rounded-lg bg-muted object-cover"
-                    />
-                  )}
-                  <p className="micro mt-1.5 text-muted-foreground">Right</p>
-                  <p className="truncate text-sm font-medium">
-                    {verse.right.name}
-                  </p>
-                </div>
-              </div>
-
-              {verseVotes && (
-                <AudienceVerseVotes votes={verseVotes} className="pt-0.5" />
-              )}
-            </div>
-          </>
-        )}
-      </PanelContent>
-    </Panel>
+      {verseVotes && (
+        <AudienceVerseVotes votes={verseVotes} className="mt-3" />
+      )}
+    </div>
   );
 }

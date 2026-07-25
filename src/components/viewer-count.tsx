@@ -31,8 +31,7 @@ export function ViewerCountView({
 }) {
   return (
     <span className={cn("micro inline-flex items-center gap-2", className)}>
-      {/* Same red as the live indicator — one accent, one meaning. */}
-      <span className="h-1 w-1 rounded-full bg-live" />
+      <span className="h-1.5 w-1.5 rounded-full bg-live" />
       {formatCount(count)} watching
     </span>
   );

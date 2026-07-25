@@ -5,10 +5,9 @@ export const metadata = {
 };
 
 /**
- * Creator onboarding, prototype edition. Establishes what the show is shopping
- * for (a season, an event, or just browsing), builds the item list, and names
- * the show — with the "AI" suggestion mocked locally. Like /prototype, it runs
- * on in-memory state only: nothing is saved, no APIs are called.
+ * Creator onboarding, prototype edition. Shares UI with production
+ * `/host/setup`, but finishes into the in-memory creator studio — nothing is
+ * persisted. Prefer `/host/setup` for the connected go-live path.
  */
 export default function OnboardingPage() {
   return <OnboardingClient />;

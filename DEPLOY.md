@@ -81,6 +81,16 @@ Or against production:
 SMOKE_TEST_BASE_URL=https://<your-domain> npm run smoke
 ```
 
+## 5b. Web Analytics (optional but recommended)
+
+The app ships with `@vercel/analytics` for automatic pageviews and custom button-click events (see `src/lib/analytics.ts`).
+
+1. Vercel dashboard → Project → **Analytics** → enable **Web Analytics**
+2. Or CLI: `vercel project web-analytics`
+3. Custom events appear in production only; locally, open the browser console and look for `[Vercel Web Analytics]` debug logs when clicking instrumented buttons (`<Analytics debug />` is enabled in development)
+
+No extra env vars are required on Vercel-hosted deployments.
+
 ## 6. Invite beta hosts
 
 Add host emails to `HOST_ALLOWLIST` in Vercel, redeploy if needed, and share:

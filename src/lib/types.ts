@@ -27,6 +27,8 @@ export interface Product {
   note: string;
   /** Epoch ms, set when the host pinned it. Orders the shopping trail. */
   addedAt: number;
+  /** Host-curated or brand-sponsored placement — pinned to top on replay. */
+  featured?: boolean;
 }
 
 export type VoteChoice = "buy" | "skip";
@@ -34,6 +36,12 @@ export type VoteChoice = "buy" | "skip";
 export interface VoteTally {
   buy: number;
   skip: number;
+}
+
+export interface VoteRecord {
+  voterId: string;
+  displayName: string;
+  choice: VoteChoice;
 }
 
 export type PollStatus = "open" | "closed" | "dismissed";

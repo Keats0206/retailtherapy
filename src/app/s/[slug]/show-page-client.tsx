@@ -1,18 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
   VideoTrack,
+  useRoomContext,
   useTracks,
 } from "@livekit/components-react";
-import { Track } from "livekit-client";
+import { ConnectionState, Track } from "livekit-client";
 import "@livekit/components-styles";
 
 import { ChatPanel } from "@/components/chat-panel";
 import { ShowEndedViewer } from "@/components/show-ended-viewer";
+import { WatchShellSkeleton } from "@/components/show-shell-skeleton";
 import { Button } from "@/components/ui/button";
 import {
   CAMERA_BUBBLE,
@@ -22,7 +24,9 @@ import {
 import { ViewerCount } from "@/components/viewer-count";
 import { WatchLayout } from "@/components/watch-layout";
 import { buildEndedRecap } from "@/lib/show-recap";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import type { PublicShow } from "@/lib/show-public";
+import type { StreamSnapshot } from "@/lib/stream-state";
 import { useStreamState } from "@/lib/stream-state";
 
 type Connection = { token: string; url: string };
@@ -31,8 +35,10 @@ const POLL_MS = 5_000;
 
 export default function ShowPageClient({
   initialShow,
+  liveConnection = null,
 }: {
   initialShow: PublicShow;
+  liveConnection?: Connection | null;
 }) {
   const [show, setShow] = useState(initialShow);
 
@@ -70,20 +76,23 @@ export default function ShowPageClient({
     );
   }
 
-  return <LiveViewer show={show} onShowEnded={setShow} />;
+  return (
+    <LiveViewer show={show} liveConnection={liveConnection} />
+  );
 }
 
 function LiveViewer({
   show,
-  onShowEnded,
+  liveConnection,
 }: {
   show: PublicShow;
-  onShowEnded: (show: PublicShow) => void;
+  liveConnection: Connection | null;
 }) {
-  const [conn, setConn] = useState<Connection | null>(null);
+  const [conn, setConn] = useState<Connection | null>(liveConnection);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (conn) return;
     let cancelled = false;
     (async () => {
       try {
@@ -104,24 +113,14 @@ function LiveViewer({
     return () => {
       cancelled = true;
     };
-  }, [show.roomName]);
-
-  useEffect(() => {
-    const id = setInterval(async () => {
-      const res = await fetch(`/api/shows/${show.slug}`);
-      if (!res.ok) return;
-      const data = (await res.json()) as PublicShow;
-      if (data.status === "ended") onShowEnded(data);
-    }, POLL_MS);
-    return () => clearInterval(id);
-  }, [onShowEnded, show.slug]);
+  }, [conn, show.roomName]);
 
   if (error) {
     return (
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-center gap-6 px-6 py-16 text-center">
         <h1 className="text-xl font-normal tracking-tight">{show.title}</h1>
         <p className="text-sm text-destructive">{error}</p>
-        <Link href="/dashboard">
+        <Link href="/home">
           <Button variant="outline" size="micro">
             Back to home
           </Button>
@@ -132,9 +131,11 @@ function LiveViewer({
 
   if (!conn) {
     return (
-      <div className="micro flex flex-1 items-center justify-center bg-black text-white/40">
-        Connecting…
-      </div>
+      <WatchShellSkeleton
+        statusLabel="Joining room…"
+        title={show.title}
+        hostName={show.hostName}
+      />
     );
   }
 
@@ -148,14 +149,28 @@ function LiveViewer({
       data-lk-theme="retail"
       className="flex min-h-0 flex-1 flex-col"
     >
-      <Watch />
+      <WatchEnterTracker />
+      <Watch initialSnapshot={show.snapshot} />
       <RoomAudioRenderer />
     </LiveKitRoom>
   );
 }
 
-function Watch() {
-  const stream = useStreamState({ isHost: false });
+function WatchEnterTracker() {
+  const room = useRoomContext();
+  const tracked = useRef(false);
+
+  useEffect(() => {
+    if (tracked.current || room.state !== ConnectionState.Connected) return;
+    tracked.current = true;
+    trackEvent(AnalyticsEvent.WATCH_ENTER, { area: "watch" });
+  }, [room.state]);
+
+  return null;
+}
+
+function Watch({ initialSnapshot }: { initialSnapshot: StreamSnapshot }) {
+  const stream = useStreamState({ isHost: false, initialSnapshot });
 
   return (
     <main className="flex min-h-0 flex-1 flex-col">
@@ -163,7 +178,7 @@ function Watch() {
         stream={stream}
         stage={<Stage />}
         viewers={<ViewerCount />}
-        chat={<ChatPanel className="min-h-0 flex-1" />}
+        chat={<ChatPanel variant="rail" className="min-h-0 flex-1" />}
       />
     </main>
   );
@@ -178,13 +193,11 @@ function Stage() {
   const share = tracks.find((t) => t.source === Track.Source.ScreenShare);
   const camera = tracks.find((t) => t.source === Track.Source.Camera);
 
-  if (!share && !camera) {
-    return <VideoPlaceholder>Waiting for the host to start…</VideoPlaceholder>;
-  }
-
   if (!share) {
     return (
-      <VideoTrack trackRef={camera!} className="h-full w-full object-cover" />
+      <VideoPlaceholder>
+        Waiting for the host to share their screen…
+      </VideoPlaceholder>
     );
   }
 

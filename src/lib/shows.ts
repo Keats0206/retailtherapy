@@ -14,6 +14,7 @@ import {
   deleteMuxLiveStream,
   resolveMuxRecording,
 } from "@/lib/mux";
+import type { ShowSetup } from "@/lib/show-setup";
 import { EMPTY, type StreamSnapshot } from "@/lib/stream-store";
 import { normalizeSnapshot, spotlightProductId } from "@/lib/interaction-models";
 import type { Product } from "@/lib/types";
@@ -53,7 +54,28 @@ export type Show = Stream;
 
 /** A show, plus the shopping state it recorded. */
 export function snapshotOf(show: Show): StreamSnapshot {
-  return show.snapshot ? normalizeSnapshot(show.snapshot) : EMPTY;
+  if (!show.snapshot) return EMPTY;
+  const normalized = normalizeSnapshot(show.snapshot);
+  return {
+    ...EMPTY,
+    ...normalized,
+    voters: normalized.voters ?? {},
+  };
+}
+
+export type TrailPreviewItem = {
+  imageUrl: string;
+  name: string;
+};
+
+/** First few pinned products for show list cards. */
+export function trailPreview(show: Show, limit = 4): TrailPreviewItem[] {
+  return snapshotOf(show)
+    .trail.slice(0, limit)
+    .map((product) => ({
+      imageUrl: product.imageUrl ?? "",
+      name: product.name,
+    }));
 }
 
 export async function getShowBySlug(slug: string): Promise<Show | null> {
@@ -81,6 +103,9 @@ export type DiscoveryShow = {
   host: string;
   pinnedProduct?: string;
   thumbnailUrl: string;
+  trailPreview: TrailPreviewItem[];
+  trailExtraCount: number;
+  endedAt?: string | null;
 };
 
 function discoveryThumbnail(label: string, tone = 18): string {
@@ -90,23 +115,35 @@ function discoveryThumbnail(label: string, tone = 18): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-export function toDiscoveryShow(show: Show): DiscoveryShow {
+export function toDiscoveryShow(
+  show: Show,
+  opts?: { placeholderLabel?: string; includeEndedAt?: boolean },
+): DiscoveryShow {
   const snapshot = snapshotOf(show);
   const pinned =
     snapshot.trail.find((p) => p.id === spotlightProductId(snapshot)) ??
     snapshot.trail[0];
+  const previewLimit = 4;
+  const previews = trailPreview(show, previewLimit);
+  const trailExtraCount = Math.max(0, snapshot.trail.length - previewLimit);
+  const placeholder = opts?.placeholderLabel ?? "LIVE";
   return {
     slug: show.slug,
     title: show.title,
     host: show.hostName ?? "Host",
     pinnedProduct: pinned?.name,
-    thumbnailUrl: pinned?.imageUrl ?? discoveryThumbnail("LIVE"),
+    thumbnailUrl: pinned?.imageUrl ?? discoveryThumbnail(placeholder),
+    trailPreview: previews,
+    trailExtraCount,
+    ...(opts?.includeEndedAt
+      ? { endedAt: show.endedAt?.toISOString() ?? null }
+      : {}),
   };
 }
 
 export async function listLiveShows(limit = 12): Promise<DiscoveryShow[]> {
   const rows = await listLiveShowRows(limit);
-  return rows.map(toDiscoveryShow);
+  return rows.map((show) => toDiscoveryShow(show));
 }
 
 /** All live shows, for admin moderation. */
@@ -136,6 +173,22 @@ async function listLiveShowRows(limit: number): Promise<Show[]> {
     .where(eq(streams.status, "live"))
     .orderBy(desc(streams.startedAt))
     .limit(limit);
+}
+
+async function listEndedShowRows(limit: number): Promise<Show[]> {
+  return db
+    .select()
+    .from(streams)
+    .where(eq(streams.status, "ended"))
+    .orderBy(desc(streams.endedAt))
+    .limit(limit);
+}
+
+export async function listEndedShows(limit = 24): Promise<DiscoveryShow[]> {
+  const rows = await listEndedShowRows(limit);
+  return rows.map((show) =>
+    toDiscoveryShow(show, { placeholderLabel: "RECAP", includeEndedAt: true }),
+  );
 }
 
 export async function listShowsForHost(hostUserId: string): Promise<Show[]> {
@@ -178,6 +231,7 @@ export async function createShow(opts: {
   hostUserId: string;
   hostName: string | null;
   title: string;
+  setup?: ShowSetup | null;
 }): Promise<Show> {
   const existing = await getLiveShowForHost(opts.hostUserId);
   if (existing) {
@@ -206,6 +260,7 @@ export async function createShow(opts: {
         muxLiveStreamId: liveStreamId,
         muxStreamKey: streamKey,
         snapshot: EMPTY,
+        setup: opts.setup ?? null,
         startedAt: new Date(),
       })
       .returning();
@@ -436,7 +491,7 @@ function toProductRow(item: Product) {
  * the page renders a "still processing" state and polls.
  */
 /**
- * Removes a finished show from the host's dashboard. Live shows must be ended
+ * Removes a finished show from the host's home. Live shows must be ended
  * first — deleting an active room would strand viewers on a dead link.
  */
 export async function deleteShow(
