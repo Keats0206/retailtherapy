@@ -213,13 +213,22 @@ function useCountdownSeconds(endsAt: number): number {
   );
 
   useEffect(() => {
-    // 100ms so the displayed second flips close to the wall clock; React
-    // bails out of re-rendering while the value is unchanged.
     const tick = () =>
       setSeconds(Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)));
+
     tick();
-    const interval = setInterval(tick, 100);
-    return () => clearInterval(interval);
+    const msUntilNextSecond = 1000 - (Date.now() % 1000);
+    let interval: ReturnType<typeof setInterval> | undefined;
+
+    const align = setTimeout(() => {
+      tick();
+      interval = setInterval(tick, 1000);
+    }, msUntilNextSecond);
+
+    return () => {
+      clearTimeout(align);
+      if (interval) clearInterval(interval);
+    };
   }, [endsAt]);
 
   return seconds;

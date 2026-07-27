@@ -51,6 +51,7 @@ import {
   VideoPlaceholder,
 } from "@/components/video-placeholder";
 import { ViewerCount } from "@/components/viewer-count";
+import { useShowStatusBroadcaster } from "@/lib/show-status-state";
 import { useStreamState } from "@/lib/stream-state";
 import { cn } from "@/lib/utils";
 
@@ -367,14 +368,56 @@ function BroadcastStudio({
   const room = useRoomContext();
   const participants = useParticipants();
   const { chatMessages } = useChat();
+  const broadcastEnded = useShowStatusBroadcaster();
   const peakViewers = useRef(0);
   const peakChat = useRef(0);
+  const snapshotRef = useRef(stream.snapshot);
   const [endDialogOpen, setEndDialogOpen] = useState(false);
   const [ending, setEnding] = useState(false);
   const [endingStep, setEndingStep] = useState(0);
   const [endError, setEndError] = useState<string | null>(null);
 
   const viewerPath = `/s/${session.slug}`;
+
+  useEffect(() => {
+    snapshotRef.current = stream.snapshot;
+  }, [stream.snapshot]);
+
+  const persistSnapshot = useCallback(
+    async (snapshot: typeof stream.snapshot) => {
+      try {
+        const res = await fetch(`/api/shows/${session.slug}/snapshot`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ snapshot }),
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error ?? "Failed to save snapshot");
+        }
+      } catch (err) {
+        onStudioError(
+          err instanceof Error ? err.message : "Failed to save snapshot",
+        );
+      }
+    },
+    [onStudioError, session.slug],
+  );
+
+  useEffect(() => {
+    const debounceMs = 2_000;
+    const timer = setTimeout(() => {
+      void persistSnapshot(snapshotRef.current);
+    }, debounceMs);
+    return () => clearTimeout(timer);
+  }, [stream.snapshot, persistSnapshot]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      void persistSnapshot(snapshotRef.current);
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [persistSnapshot]);
 
   useEffect(() => {
     const viewers = participants.filter(
@@ -388,29 +431,6 @@ function BroadcastStudio({
       peakChat.current = chatMessages.length;
     }
   }, [chatMessages.length]);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      void (async () => {
-        try {
-          const res = await fetch(`/api/shows/${session.slug}/snapshot`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ snapshot: stream.snapshot }),
-          });
-          if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.error ?? "Failed to save snapshot");
-          }
-        } catch (err) {
-          onStudioError(
-            err instanceof Error ? err.message : "Failed to save snapshot",
-          );
-        }
-      })();
-    }, 30_000);
-    return () => clearInterval(id);
-  }, [onStudioError, session.slug, stream.snapshot]);
 
   const confirmEndShow = useCallback(async () => {
     setEnding(true);
@@ -447,6 +467,7 @@ function BroadcastStudio({
       }
       setEndingStep(2);
 
+      broadcastEnded();
       room.disconnect();
       setEndingStep(3);
 
@@ -462,6 +483,7 @@ function BroadcastStudio({
   }, [
     onShowEnded,
     onStudioError,
+    broadcastEnded,
     room,
     session.slug,
     stream.snapshot,

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { randomBytes } from "node:crypto";
+import { unstable_cache } from "next/cache";
 import { and, desc, eq } from "drizzle-orm";
 
 import { db, products, streamProducts, streams } from "@/lib/db";
@@ -104,9 +105,17 @@ export function toDiscoveryShow(show: Show): DiscoveryShow {
   };
 }
 
+const listLiveShowsCached = unstable_cache(
+  async (limit: number) => {
+    const rows = await listLiveShowRows(limit);
+    return rows.map(toDiscoveryShow);
+  },
+  ["list-live-shows"],
+  { revalidate: 10 },
+);
+
 export async function listLiveShows(limit = 12): Promise<DiscoveryShow[]> {
-  const rows = await listLiveShowRows(limit);
-  return rows.map(toDiscoveryShow);
+  return listLiveShowsCached(limit);
 }
 
 /** All live shows, for admin moderation. */
