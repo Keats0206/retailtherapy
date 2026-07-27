@@ -128,9 +128,8 @@ export function EndShowDialog({
               </Button>
               <Button
                 type="button"
-                variant="destructive"
+                variant="live"
                 onClick={onConfirm}
-                className="bg-live text-live-foreground hover:bg-live/90"
               >
                 End show
               </Button>

@@ -392,7 +392,7 @@ function ProductRow({
           </span>
         )}
         {index !== null && (
-          <span className="absolute left-1 top-1 rounded-full bg-black/65 px-1.5 py-0.5 text-[0.625rem] font-medium tabular-nums text-white backdrop-blur-sm">
+          <span className="cinema-glass absolute left-1 top-1 rounded-full border px-1.5 py-0.5 text-[0.625rem] font-medium tabular-nums">
             {String(index).padStart(2, "0")}
           </span>
         )}

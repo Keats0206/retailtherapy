@@ -696,7 +696,7 @@ function Preshow({
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-6 sm:gap-10 sm:px-6 sm:py-8">
       <header className="flex flex-col gap-4">
         {liveShowSlug ? (
-          <div className="flex flex-col gap-3 rounded-xl bg-muted/40 p-4 ring-1 ring-foreground/8">
+          <div className="soft-panel flex flex-col gap-3 p-4">
             <div className="flex flex-col gap-1">
               <span className="micro inline-flex items-center gap-2 text-live">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-live" />
@@ -721,8 +721,8 @@ function Preshow({
               {onResumeLiveShow ? (
                 <Button
                   type="button"
+                  variant="live"
                   disabled={resumeLoading}
-                  className="bg-live text-live-foreground hover:bg-live/90"
                   onClick={onResumeLiveShow}
                 >
                   {resumeLoading ? "Reconnecting…" : "Open studio"}
@@ -741,6 +741,7 @@ function Preshow({
             Prep your show
           </h1>
           <Button
+            variant="live"
             onClick={onGoLive}
             disabled={loading || Boolean(liveShowSlug)}
             title={
@@ -748,7 +749,7 @@ function Preshow({
                 ? "End your current live show before starting another"
                 : "Creates a shareable show and starts recording automatically"
             }
-            className="w-full shrink-0 bg-live text-live-foreground hover:bg-live/90 sm:w-fit"
+            className="w-full shrink-0 sm:w-fit"
           >
             {loading ? "Starting…" : "Go live"}
           </Button>

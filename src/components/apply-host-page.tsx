@@ -132,7 +132,7 @@ export function ApplyHostPage() {
                   {PERKS.map((perk) => (
                     <div
                       key={perk.title}
-                      className="flex gap-4 rounded-xl bg-muted/40 p-5 ring-1 ring-foreground/8"
+                      className="soft-panel flex gap-4 p-5"
                     >
                       <perk.icon
                         className="mt-0.5 size-4 shrink-0 text-live"
@@ -149,7 +149,7 @@ export function ApplyHostPage() {
                 </div>
 
                 {submitted ? (
-                  <div className="flex flex-col items-center gap-4 rounded-xl bg-muted/40 px-6 py-12 text-center ring-1 ring-foreground/8">
+                  <div className="soft-panel flex flex-col items-center gap-4 px-6 py-12 text-center">
                     <CheckCircle2
                       className="size-10 text-live"
                       strokeWidth={1.5}
@@ -174,7 +174,7 @@ export function ApplyHostPage() {
                 ) : (
                   <form
                     onSubmit={handleSubmit}
-                    className="flex flex-col gap-5 rounded-xl bg-muted/40 p-6 ring-1 ring-foreground/8 lg:p-8"
+                    className="soft-panel flex flex-col gap-5 p-6 lg:p-8"
                   >
                     <div className="flex flex-col gap-1">
                       <h2 className="text-xl font-normal tracking-tight">
@@ -225,8 +225,8 @@ export function ApplyHostPage() {
 
                     <Button
                       type="submit"
+                      variant="live"
                       size="lg"
-                      className="bg-live text-live-foreground hover:bg-live/90"
                       disabled={submitting}
                     >
                       {submitting ? "Joining…" : "Join the waitlist"}

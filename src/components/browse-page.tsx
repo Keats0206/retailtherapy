@@ -84,7 +84,7 @@ export function BrowsePage({
               ))}
             </div>
           ) : (
-            <div className="rounded-xl bg-muted/40 p-6 text-sm leading-relaxed text-muted-foreground ring-1 ring-foreground/8">
+            <div className="soft-panel p-6 text-sm leading-relaxed text-muted-foreground">
               <Show when="signed-out">
                 No one is live right now. Hosts can go live from the browser — sign
                 in and hit Go live when you&rsquo;re ready.
@@ -103,7 +103,7 @@ export function BrowsePage({
           )}
         </section>
 
-        <section className="mt-auto flex flex-col gap-4 rounded-xl bg-muted/40 p-6 ring-1 ring-foreground/8 sm:flex-row sm:items-center sm:justify-between">
+        <section className="soft-panel mt-auto flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-2">
             <span className="micro text-muted-foreground">Host a show</span>
             <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
@@ -156,11 +156,7 @@ function ShowCard({
               alt=""
               className="h-full w-full object-cover"
             />
-            <Badge
-              variant="destructive"
-              size="micro"
-              className="absolute left-3 top-3 bg-live text-live-foreground"
-            >
+            <Badge variant="live" size="micro" className="absolute left-3 top-3">
               Live
             </Badge>
           </div>

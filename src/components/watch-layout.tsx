@@ -34,10 +34,7 @@ import { cn } from "@/lib/utils";
  * Video, viewer count, and chat come in as slots — they're the LiveKit-bound
  * parts. `/watch/[playbackId]` and `/s/[slug]` pass the real ones.
  */
-const OVERLAY_BUTTON = cn(
-  buttonVariants({ variant: "outline", size: "icon-sm" }),
-  "rounded-full border-white/30 bg-black/40 text-white backdrop-blur-sm hover:bg-black/60 hover:text-white",
-);
+const OVERLAY_BUTTON = buttonVariants({ variant: "cinema", size: "icon-sm" });
 
 export function WatchLayout({
   stream,

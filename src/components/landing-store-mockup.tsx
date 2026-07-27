@@ -156,7 +156,7 @@ export function LandingStoreMockup({
                 className={cn(
                   "micro shrink-0 rounded-sm px-2 py-1 text-[10px] transition-colors",
                   activeTab === tab
-                    ? "bg-foreground text-white"
+                    ? "bg-primary text-primary-foreground"
                     : "bg-black/5 text-foreground/60 hover:bg-black/10",
                 )}
               >

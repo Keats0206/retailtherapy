@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Timer, Vote } from "lucide-react";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   selectPollLeader,
   selectPollShares,
@@ -55,7 +55,7 @@ export function PollOverlay({
       <div
         key={poll.id}
         className={cn(
-          "pointer-events-auto flex flex-col rounded-2xl border border-white/15 bg-black/55 text-white shadow-lg backdrop-blur-md",
+          "pointer-events-auto cinema-glass-panel flex flex-col rounded-2xl border",
           "animate-in fade-in-0 slide-in-from-bottom-6 duration-300 ease-out",
           compact ? "gap-1.5 p-2" : "gap-2 p-3",
         )}
@@ -74,8 +74,7 @@ export function PollOverlay({
               <Button
                 type="button"
                 size="micro"
-                variant="ghost"
-                className="text-white/70 hover:bg-white/10 hover:text-white"
+                variant="cinema-ghost"
                 onClick={onDismiss}
               >
                 Dismiss
@@ -83,8 +82,7 @@ export function PollOverlay({
               <Button
                 type="button"
                 size="micro"
-                variant="outline"
-                className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                variant="cinema"
                 onClick={onNewVote}
               >
                 New vote
@@ -230,16 +228,15 @@ function useCountdownSeconds(endsAt: number): number {
 /** The on-video pill that opens the composer. Matches WatchLayout's chrome. */
 export function PollLaunchButton({ onClick }: { onClick: () => void }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="cinema"
+      size="icon-sm"
       onClick={onClick}
       aria-label="Start a vote"
-      className={cn(
-        buttonVariants({ variant: "outline", size: "icon-sm" }),
-        "pointer-events-auto rounded-full border-white/30 bg-black/40 text-white backdrop-blur-sm hover:bg-black/60 hover:text-white",
-      )}
+      className="pointer-events-auto"
     >
       <Vote className="size-4" />
-    </button>
+    </Button>
   );
 }

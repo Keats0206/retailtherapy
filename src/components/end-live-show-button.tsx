@@ -126,8 +126,8 @@ export function EndLiveShowButton({
             </Button>
             <Button
               type="button"
+              variant="live"
               disabled={ending}
-              className="bg-live text-live-foreground hover:bg-live/90"
               onClick={() => void confirmEnd()}
             >
               {ending ? (

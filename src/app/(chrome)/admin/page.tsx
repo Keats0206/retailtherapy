@@ -88,11 +88,7 @@ export default async function AdminPage() {
                       <span className="truncate text-base font-normal">
                         {show.title}
                       </span>
-                      <Badge
-                        variant="destructive"
-                        size="micro"
-                        className="shrink-0 bg-live text-live-foreground"
-                      >
+                      <Badge variant="live" size="micro" className="shrink-0">
                         Live
                       </Badge>
                     </div>

@@ -205,7 +205,7 @@ export function HeroScatter() {
         <motion.div variants={textItem} className="flex flex-col items-center gap-3">
           <Button
             size="lg"
-            className="rounded-full bg-foreground px-8 text-background hover:bg-foreground/90"
+            className="px-8"
             render={<Link href="/browse" />}
           >
             Browse live shows
