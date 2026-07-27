@@ -99,8 +99,8 @@ export function AdminCloseAllButton({
             </Button>
             <Button
               type="button"
+              variant="live"
               disabled={closing}
-              className="bg-live text-live-foreground hover:bg-live/90"
               onClick={() => void confirmCloseAll()}
             >
               {closing ? (

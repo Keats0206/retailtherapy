@@ -101,7 +101,7 @@ export function HostEarningsMockup({ className }: { className?: string }) {
         </div>
       </div>
 
-      <div className="rounded-xl bg-muted/40 p-4 ring-1 ring-foreground/8">
+      <div className="soft-panel p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <label htmlFor="subscriber-slider" className="text-sm font-medium">
             Your audience size

@@ -1,8 +1,8 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ExternalLink, RotateCcw } from "lucide-react";
-import MuxPlayer from "@mux/mux-player-react";
 
 import { ShoppingTrail } from "@/components/shopping-trail";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,10 @@ import { VideoFrame, VideoPlaceholder } from "@/components/video-placeholder";
 import { formatCount, formatDuration } from "@/lib/format";
 import type { EndedShowRecap } from "@/lib/show-recap";
 import { cn } from "@/lib/utils";
+
+const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), {
+  ssr: false,
+});
 
 function tallyVotes(recap: EndedShowRecap) {
   let buy = 0;

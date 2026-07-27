@@ -33,7 +33,7 @@ export const HOST_CAMERA_BUBBLE =
 export const HOST_CONTROL_BAR =
   "pointer-events-none absolute inset-x-0 bottom-4 flex justify-center";
 export const HOST_CONTROL_BAR_INNER =
-  "pointer-events-auto flex items-center gap-1 rounded-full border border-white/20 bg-black/60 px-2 py-1.5 backdrop-blur-sm max-lg:gap-0.5 sm:gap-1.5";
+  "pointer-events-auto cinema-bar flex items-center gap-1 rounded-full border px-2 py-1.5 max-lg:gap-0.5 sm:gap-1.5";
 
 /**
  * A black video box with a corner label. Wraps real `<VideoTrack>`s on /host

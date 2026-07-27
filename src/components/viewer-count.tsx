@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useParticipants } from "@livekit/components-react";
 
 import { formatCount } from "@/lib/format";
@@ -11,11 +12,15 @@ import { cn } from "@/lib/utils";
  */
 export function ViewerCount({ className }: { className?: string }) {
   const participants = useParticipants();
-  const viewers = participants.filter(
-    (p) => !p.permissions?.canPublish,
-  ).length;
+  const viewerCount = useMemo(() => {
+    let count = 0;
+    for (const participant of participants) {
+      if (!participant.permissions?.canPublish) count += 1;
+    }
+    return count;
+  }, [participants]);
 
-  return <ViewerCountView count={viewers} className={className} />;
+  return <ViewerCountView count={viewerCount} className={className} />;
 }
 
 /**

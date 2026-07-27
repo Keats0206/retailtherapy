@@ -45,7 +45,7 @@ export function LandingPage() {
               </Button>
               <Button
                 size="micro"
-                className="bg-live text-live-foreground hover:bg-live/90"
+                variant="live"
                 render={<Link href="/host" />}
               >
                 Go live

@@ -130,7 +130,7 @@ function DemoChatOverlay({
           <div
             key={`${line.text}-${index}`}
             className={cn(
-              "max-w-[75%] rounded-2xl rounded-bl-sm bg-black/55 px-3 py-1.5 text-xs text-white backdrop-blur-sm transition-all duration-500 ease-out",
+              "max-w-[75%] cinema-glass-panel rounded-2xl rounded-bl-sm border px-3 py-1.5 text-xs transition-all duration-500 ease-out",
               index % 2 === 1 && "self-end rounded-bl-2xl rounded-br-sm",
               visible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
             )}
@@ -276,16 +276,12 @@ export function LandingShowDemo({ className }: { className?: string }) {
               )}
             />
 
-            <Badge
-              variant="destructive"
-              size="micro"
-              className="absolute left-3 top-3 bg-live text-live-foreground"
-            >
+            <Badge variant="live" size="micro" className="absolute left-3 top-3">
               <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-live-foreground/80" />
               Live
             </Badge>
 
-            <span className="micro absolute right-3 top-3 rounded-md bg-black/50 px-2 py-1 tabular-nums text-white backdrop-blur-sm">
+            <span className="micro cinema-glass absolute right-3 top-3 rounded-md border px-2 py-1 tabular-nums">
               {formatCount(viewers)} watching
             </span>
 

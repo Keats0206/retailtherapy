@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
+import { cache } from "react";
+
 import { getShowBySlug } from "@/lib/shows";
 import { toPublicShow } from "@/lib/show-public";
 
 import WaitroomClient from "./waitroom-client";
 
+const getShowBySlugCached = cache(getShowBySlug);
+
 export async function generateMetadata({
   params,
 }: PageProps<"/waitroom/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const show = await getShowBySlug(slug);
+  const show = await getShowBySlugCached(slug);
   if (!show) return { title: "Waitroom" };
   return {
     title: `${show.title} — starting soon`,
@@ -22,7 +26,7 @@ export default async function WaitroomPage({
   params,
 }: PageProps<"/waitroom/[slug]">) {
   const { slug } = await params;
-  const show = await getShowBySlug(slug);
+  const show = await getShowBySlugCached(slug);
   if (!show) notFound();
 
   // The waitroom is only for a show that hasn't started. Once it's live (or

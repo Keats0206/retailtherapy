@@ -239,7 +239,8 @@ export default function OnboardingClient() {
           {last ? (
             <Button
               size="lg"
-              className="h-12 gap-2 bg-live px-8 text-base text-live-foreground hover:bg-live/90"
+              variant="live"
+              className="h-12 gap-2 px-8 text-base"
               render={<Link href="/prototype?view=creator" />}
             >
               Start the show

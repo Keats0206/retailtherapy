@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { memo, useMemo } from "react";
 import { ArrowLeft, ShoppingBag } from "lucide-react";
 
 import { CurrentProduct } from "@/components/current-product";
@@ -34,10 +35,7 @@ import { cn } from "@/lib/utils";
  * Video, viewer count, and chat come in as slots — they're the LiveKit-bound
  * parts. `/watch/[playbackId]` and `/s/[slug]` pass the real ones.
  */
-const OVERLAY_BUTTON = cn(
-  buttonVariants({ variant: "outline", size: "icon-sm" }),
-  "rounded-full border-white/30 bg-black/40 text-white backdrop-blur-sm hover:bg-black/60 hover:text-white",
-);
+const OVERLAY_BUTTON = buttonVariants({ variant: "cinema", size: "icon-sm" });
 
 export function WatchLayout({
   stream,
@@ -66,6 +64,29 @@ export function WatchLayout({
     myVerseVotes,
     verseVote,
   } = stream;
+
+  const productRail = useMemo(
+    () => (
+      <WatchProductRail
+        pinned={pinned}
+        verse={verse}
+        votesFor={votesFor}
+        myVotes={myVotes}
+        vote={vote}
+        myVerseVotes={myVerseVotes}
+        verseVote={verseVote}
+      />
+    ),
+    [
+      pinned,
+      verse,
+      votesFor,
+      myVotes,
+      vote,
+      myVerseVotes,
+      verseVote,
+    ],
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
@@ -137,26 +158,51 @@ export function WatchLayout({
       </div>
 
       <aside className="flex min-h-0 w-full flex-col border-border max-lg:flex-1 max-lg:border-t lg:w-90 lg:shrink-0 lg:border-l">
-        {verse ? (
-          <VerseProduct
-            left={verse.left}
-            right={verse.right}
-            votes={verse.tallies}
-            myVote={myVerseVotes[verse.id]}
-            onVote={(choice) => verseVote(verse.id, choice)}
-            className="min-h-0 shrink-0 overflow-y-auto"
-          />
-        ) : (
-          <CurrentProduct
-            product={pinned}
-            votes={votesFor(pinned?.id ?? "")}
-            myVote={pinned ? myVotes[pinned.id] : undefined}
-            onVote={(choice) => pinned && vote(pinned.id, choice)}
-            className="min-h-0 shrink-0 overflow-y-auto"
-          />
-        )}
+        {productRail}
         <div className="flex min-h-0 flex-1 flex-col p-3 pt-0">{chat}</div>
       </aside>
     </div>
   );
 }
+
+const WatchProductRail = memo(function WatchProductRail({
+  pinned,
+  verse,
+  votesFor,
+  myVotes,
+  vote,
+  myVerseVotes,
+  verseVote,
+}: Pick<
+  StreamState,
+  | "pinned"
+  | "verse"
+  | "votesFor"
+  | "myVotes"
+  | "vote"
+  | "myVerseVotes"
+  | "verseVote"
+>) {
+  if (verse) {
+    return (
+      <VerseProduct
+        left={verse.left}
+        right={verse.right}
+        votes={verse.tallies}
+        myVote={myVerseVotes[verse.id]}
+        onVote={(choice) => verseVote(verse.id, choice)}
+        className="min-h-0 shrink-0 overflow-y-auto"
+      />
+    );
+  }
+
+  return (
+    <CurrentProduct
+      product={pinned}
+      votes={votesFor(pinned?.id ?? "")}
+      myVote={pinned ? myVotes[pinned.id] : undefined}
+      onVote={(choice) => pinned && vote(pinned.id, choice)}
+      className="min-h-0 shrink-0 overflow-y-auto"
+    />
+  );
+});

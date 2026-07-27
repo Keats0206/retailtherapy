@@ -35,10 +35,7 @@ export default async function Dashboard() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <Link
                 href={`/host?slug=${liveShows[0].slug}`}
-                className={cn(
-                  ctaClasses,
-                  "bg-live text-live-foreground hover:bg-live/90",
-                )}
+                className={ctaClasses}
               >
                 <Radio className="size-4" />
                 Back to your studio
@@ -57,10 +54,7 @@ export default async function Dashboard() {
           <>
             <Link
               href="/host"
-              className={cn(
-                ctaClasses,
-                "bg-live text-live-foreground hover:bg-live/90",
-              )}
+              className={ctaClasses}
             >
               <Radio className="size-4" />
               Go live as host
@@ -105,7 +99,7 @@ export default async function Dashboard() {
 }
 
 const ctaClasses = cn(
-  buttonVariants({ size: "lg" }),
+  buttonVariants({ size: "lg", variant: "live" }),
   "h-12 w-full gap-2 rounded-full px-6 text-base font-medium sm:w-fit",
 );
 

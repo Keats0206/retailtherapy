@@ -3,6 +3,17 @@
 @import "shadcn/tailwind.css";
 @import "@clerk/ui/themes/shadcn.css";
 
+/**
+ * Design Tokens — single source of truth for app styling.
+ *
+ * Brand: --live (chartreuse), --pop (hot pink), --primary (black CTAs).
+ * App chrome: semantic tokens (bg-background, text-muted-foreground, …).
+ * Video overlays: cinema utilities below (white/black for legibility over video).
+ * Inset sections: soft-panel utility (muted wash, not Card).
+ *
+ * Retheme by editing :root / .dark and the @theme inline block.
+ */
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -229,6 +240,56 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+/** Glass chip / icon button over video — polls, watch chrome, share controls. */
+@utility cinema-glass {
+  border-color: color-mix(in oklch, white 15%, transparent);
+  background-color: color-mix(in oklch, black 50%, transparent);
+  color: white;
+  backdrop-filter: blur(4px);
+}
+
+/** Larger cinema surface — poll overlay panel, chat bubbles on stage. */
+@utility cinema-glass-panel {
+  border-color: color-mix(in oklch, white 15%, transparent);
+  background-color: color-mix(in oklch, black 55%, transparent);
+  color: white;
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-lg);
+}
+
+/** Host floating control bar shell (Meet-style pill at bottom of stage). */
+@utility cinema-bar {
+  border-color: color-mix(in oklch, white 20%, transparent);
+  background-color: color-mix(in oklch, black 60%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+/** Top gradient scrim over video (title bars, stage chrome). */
+@utility cinema-scrim-top {
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in oklch, black 70%, transparent),
+    color-mix(in oklch, black 30%, transparent),
+    transparent
+  );
+}
+
+/** Bottom gradient scrim over video. */
+@utility cinema-scrim-bottom {
+  background-image: linear-gradient(
+    to top,
+    color-mix(in oklch, black 70%, transparent),
+    transparent
+  );
+}
+
+/** Inset app section — setup summaries, apply forms, browse empty states. */
+@utility soft-panel {
+  border-radius: calc(var(--radius) + 4px);
+  background-color: color-mix(in oklch, var(--muted) 40%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 8%, transparent);
 }
 
 /**

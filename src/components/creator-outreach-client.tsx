@@ -349,7 +349,7 @@ function FilterChip({
       className={cn(
         "micro rounded-full border px-3 py-1.5 transition-colors",
         active
-          ? "border-foreground bg-foreground text-background"
+          ? "border-primary bg-primary text-primary-foreground"
           : "border-border text-muted-foreground hover:text-foreground",
       )}
     >

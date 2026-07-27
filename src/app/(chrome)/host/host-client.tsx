@@ -51,6 +51,7 @@ import {
   VideoPlaceholder,
 } from "@/components/video-placeholder";
 import { ViewerCount } from "@/components/viewer-count";
+import { useShowStatusBroadcaster } from "@/lib/show-status-state";
 import { useStreamState } from "@/lib/stream-state";
 import { cn } from "@/lib/utils";
 
@@ -367,14 +368,56 @@ function BroadcastStudio({
   const room = useRoomContext();
   const participants = useParticipants();
   const { chatMessages } = useChat();
+  const broadcastEnded = useShowStatusBroadcaster();
   const peakViewers = useRef(0);
   const peakChat = useRef(0);
+  const snapshotRef = useRef(stream.snapshot);
   const [endDialogOpen, setEndDialogOpen] = useState(false);
   const [ending, setEnding] = useState(false);
   const [endingStep, setEndingStep] = useState(0);
   const [endError, setEndError] = useState<string | null>(null);
 
   const viewerPath = `/s/${session.slug}`;
+
+  useEffect(() => {
+    snapshotRef.current = stream.snapshot;
+  }, [stream.snapshot]);
+
+  const persistSnapshot = useCallback(
+    async (snapshot: typeof stream.snapshot) => {
+      try {
+        const res = await fetch(`/api/shows/${session.slug}/snapshot`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ snapshot }),
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error ?? "Failed to save snapshot");
+        }
+      } catch (err) {
+        onStudioError(
+          err instanceof Error ? err.message : "Failed to save snapshot",
+        );
+      }
+    },
+    [onStudioError, session.slug],
+  );
+
+  useEffect(() => {
+    const debounceMs = 2_000;
+    const timer = setTimeout(() => {
+      void persistSnapshot(snapshotRef.current);
+    }, debounceMs);
+    return () => clearTimeout(timer);
+  }, [stream.snapshot, persistSnapshot]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      void persistSnapshot(snapshotRef.current);
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [persistSnapshot]);
 
   useEffect(() => {
     const viewers = participants.filter(
@@ -388,29 +431,6 @@ function BroadcastStudio({
       peakChat.current = chatMessages.length;
     }
   }, [chatMessages.length]);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      void (async () => {
-        try {
-          const res = await fetch(`/api/shows/${session.slug}/snapshot`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ snapshot: stream.snapshot }),
-          });
-          if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.error ?? "Failed to save snapshot");
-          }
-        } catch (err) {
-          onStudioError(
-            err instanceof Error ? err.message : "Failed to save snapshot",
-          );
-        }
-      })();
-    }, 30_000);
-    return () => clearInterval(id);
-  }, [onStudioError, session.slug, stream.snapshot]);
 
   const confirmEndShow = useCallback(async () => {
     setEnding(true);
@@ -447,6 +467,7 @@ function BroadcastStudio({
       }
       setEndingStep(2);
 
+      broadcastEnded();
       room.disconnect();
       setEndingStep(3);
 
@@ -462,6 +483,7 @@ function BroadcastStudio({
   }, [
     onShowEnded,
     onStudioError,
+    broadcastEnded,
     room,
     session.slug,
     stream.snapshot,
@@ -696,7 +718,7 @@ function Preshow({
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-6 sm:gap-10 sm:px-6 sm:py-8">
       <header className="flex flex-col gap-4">
         {liveShowSlug ? (
-          <div className="flex flex-col gap-3 rounded-xl bg-muted/40 p-4 ring-1 ring-foreground/8">
+          <div className="soft-panel flex flex-col gap-3 p-4">
             <div className="flex flex-col gap-1">
               <span className="micro inline-flex items-center gap-2 text-live">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-live" />
@@ -721,8 +743,8 @@ function Preshow({
               {onResumeLiveShow ? (
                 <Button
                   type="button"
+                  variant="live"
                   disabled={resumeLoading}
-                  className="bg-live text-live-foreground hover:bg-live/90"
                   onClick={onResumeLiveShow}
                 >
                   {resumeLoading ? "Reconnecting…" : "Open studio"}
@@ -741,6 +763,7 @@ function Preshow({
             Prep your show
           </h1>
           <Button
+            variant="live"
             onClick={onGoLive}
             disabled={loading || Boolean(liveShowSlug)}
             title={
@@ -748,7 +771,7 @@ function Preshow({
                 ? "End your current live show before starting another"
                 : "Creates a shareable show and starts recording automatically"
             }
-            className="w-full shrink-0 bg-live text-live-foreground hover:bg-live/90 sm:w-fit"
+            className="w-full shrink-0 sm:w-fit"
           >
             {loading ? "Starting…" : "Go live"}
           </Button>

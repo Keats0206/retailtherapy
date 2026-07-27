@@ -1,8 +1,8 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import MuxPlayer from "@mux/mux-player-react";
 import { ArrowUpRight, Check, Link2, Play } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,15 @@ import {
 import type { EndedShowRecap } from "@/lib/show-recap";
 import type { Product, VoteTally } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full items-center justify-center text-white/50">
+      Loading player…
+    </div>
+  ),
+});
 
 /** How the shop rail is ordered. Default mirrors the show itself. */
 const SORTS = [
@@ -392,7 +401,7 @@ function ProductRow({
           </span>
         )}
         {index !== null && (
-          <span className="absolute left-1 top-1 rounded-full bg-black/65 px-1.5 py-0.5 text-[0.625rem] font-medium tabular-nums text-white backdrop-blur-sm">
+          <span className="cinema-glass absolute left-1 top-1 rounded-full border px-1.5 py-0.5 text-[0.625rem] font-medium tabular-nums">
             {String(index).padStart(2, "0")}
           </span>
         )}
