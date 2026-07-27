@@ -27,14 +27,21 @@ export function ShareShowLinkButton({
   compact = false,
 }: ShareShowLinkButtonProps) {
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
   const sharePath = `/s/${slug}`;
 
   async function shareLink() {
+    setCopyError(false);
     const url = `${window.location.origin}${sharePath}`;
-    await navigator.clipboard.writeText(url);
-    trackEvent(AnalyticsEvent.HOST_SHARE_LINK, { area: "host_studio" });
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(url);
+      trackEvent(AnalyticsEvent.HOST_SHARE_LINK, { area: "host_studio" });
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopyError(true);
+      window.setTimeout(() => setCopyError(false), 3000);
+    }
   }
 
   if (compact) {
@@ -51,6 +58,11 @@ export function ShareShowLinkButton({
           <>
             <Check className="size-3.5" />
             Copied!
+          </>
+        ) : copyError ? (
+          <>
+            <Share2 className="size-3.5" />
+            Copy failed
           </>
         ) : (
           <>
@@ -72,7 +84,9 @@ export function ShareShowLinkButton({
       onClick={() => void shareLink()}
     >
       {copied ? <Link2 /> : <Share2 />}
-      <span>{copied ? "Link copied!" : "Share show link"}</span>
+      <span>
+        {copied ? "Link copied!" : copyError ? "Copy failed" : "Share show link"}
+      </span>
       {showPath ? (
         <span className="hidden font-normal text-muted-foreground sm:inline">
           {sharePath}

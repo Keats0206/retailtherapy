@@ -83,7 +83,9 @@ export default function HostClient({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const liveStartedAt = useRef<number | null>(null);
-  const media = useMediaPreview();
+  // Hold the camera until we know we're staying — no permission prompt on a
+  // page we're about to bounce to /host/setup.
+  const media = useMediaPreview(setupReady);
   const stopMediaRef = useRef(media.stop);
   // Leave-to-end: track the live slug across nav/tab close without ending on
   // transient LiveKit disconnects (phase → disconnected while still on /host).
@@ -95,8 +97,13 @@ export default function HostClient({
 
   // New shows must come through /host/setup. Reconnecting an existing live
   // show (or resuming via ?slug=) skips setup.
+  // Runs once: `goLive` clears the draft, so a re-run would bounce a live host
+  // back to setup.
+  const setupCheckedRef = useRef(false);
   useEffect(() => {
     if (liveShowSlug || resumeSlug) return;
+    if (setupCheckedRef.current) return;
+    setupCheckedRef.current = true;
     const draft = readShowSetupDraft();
     if (!draft?.intent) {
       router.replace("/host/setup");
@@ -137,6 +144,16 @@ export default function HostClient({
       endIfHostLeft();
     };
   }, []);
+
+  useEffect(() => {
+    if (phase !== "live" || !session) return;
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [phase, session]);
 
   const markShowEnded = useCallback(() => {
     intentionallyEndedRef.current = true;
@@ -230,6 +247,9 @@ export default function HostClient({
     router.replace(`/host/${slug}`);
   }
 
+  // Undetermined for one frame while the setup draft is read: this resolves to
+  // either the preshow or a redirect to /host/setup, and the studio shell is
+  // wrong for both — it would glitch in and straight back out.
   if (!setupReady) {
     return <StudioShellSkeleton statusLabel="Loading studio…" />;
   }
@@ -263,14 +283,6 @@ export default function HostClient({
         loading={loading}
         error={error}
         onReconnect={() => void resumeShow(session.slug)}
-        onLeave={() => {
-          markShowEnded();
-          endShowOnLeave(session.slug);
-          setSession(null);
-          setPhase("preshow");
-          setError(null);
-          router.replace(`/host/${session.slug}`);
-        }}
         onShowEnded={() => {
           markShowEnded();
           setSession(null);
@@ -307,7 +319,6 @@ function DisconnectedPanel({
   loading,
   error,
   onReconnect,
-  onLeave,
   onShowEnded,
 }: {
   slug: string;
@@ -315,7 +326,6 @@ function DisconnectedPanel({
   loading: boolean;
   error: string | null;
   onReconnect: () => void;
-  onLeave: () => void;
   onShowEnded: () => void;
 }) {
   return (
@@ -341,9 +351,6 @@ function DisconnectedPanel({
         />
         <Button variant="outline" render={<Link href={`/s/${slug}`} target="_blank" />}>
           Open viewer page
-        </Button>
-        <Button variant="ghost" onClick={onLeave}>
-          Leave and end
         </Button>
       </div>
     </main>
@@ -587,7 +594,7 @@ function Preshow({
   );
 }
 
-function useMediaPreview(): MediaControls {
+function useMediaPreview(enabled: boolean): MediaControls {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraOn, setCameraOn] = useState(false);
   const [micOn, setMicOn] = useState(true);
@@ -595,6 +602,7 @@ function useMediaPreview(): MediaControls {
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     let alive = true;
 
     async function startPreview() {
@@ -633,7 +641,7 @@ function useMediaPreview(): MediaControls {
       setStream(null);
       setCameraOn(false);
     };
-  }, []);
+  }, [enabled]);
 
   function stop() {
     streamRef.current?.getTracks().forEach((track) => track.stop());

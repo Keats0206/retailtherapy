@@ -2,15 +2,16 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  LiveKitRoom,
-  RoomAudioRenderer,
-  VideoTrack,
-  useRoomContext,
-  useTracks,
-} from "@livekit/components-react";
 import { ConnectionState, Track } from "livekit-client";
 import "@livekit/components-styles";
+
+import {
+  LiveRoom,
+  RoomAudioRenderer,
+  VideoTrack,
+  useConnectionState,
+  useTracks,
+} from "@/lib/live";
 
 import { ChatPanel } from "@/components/chat-panel";
 import { ShowEndedViewer } from "@/components/show-ended-viewer";
@@ -28,17 +29,16 @@ import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import type { PublicShow } from "@/lib/show-public";
 import type { StreamSnapshot } from "@/lib/stream-state";
 import { useStreamState } from "@/lib/stream-state";
+import { getVoterDisplayName } from "@/lib/voter-identity";
 
 type Connection = { token: string; url: string };
 
-const POLL_MS = 5_000;
+const POLL_MS = 1_000;
 
 export default function ShowPageClient({
   initialShow,
-  liveConnection = null,
 }: {
   initialShow: PublicShow;
-  liveConnection?: Connection | null;
 }) {
   const [show, setShow] = useState(initialShow);
 
@@ -77,19 +77,14 @@ export default function ShowPageClient({
   }
 
   return (
-    <LiveViewer show={show} liveConnection={liveConnection} />
+    <LiveViewer show={show} />
   );
 }
 
-function LiveViewer({
-  show,
-  liveConnection,
-}: {
-  show: PublicShow;
-  liveConnection: Connection | null;
-}) {
-  const [conn, setConn] = useState<Connection | null>(liveConnection);
+function LiveViewer({ show }: { show: PublicShow }) {
+  const [conn, setConn] = useState<Connection | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [disconnected, setDisconnected] = useState(false);
 
   useEffect(() => {
     if (conn) return;
@@ -99,7 +94,11 @@ function LiveViewer({
         const res = await fetch("/api/livekit/token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ room: show.roomName, role: "viewer" }),
+          body: JSON.stringify({
+            room: show.roomName,
+            role: "viewer",
+            displayName: getVoterDisplayName(),
+          }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Failed to connect");
@@ -140,31 +139,54 @@ function LiveViewer({
   }
 
   return (
-    <LiveKitRoom
+    <LiveRoom
       token={conn.token}
       serverUrl={conn.url}
-      connect
       video={false}
       audio={false}
-      data-lk-theme="retail"
+      onConnected={() => setDisconnected(false)}
+      onDisconnected={() => setDisconnected(true)}
+      localRole="viewer"
+      localSlug={show.slug}
       className="flex min-h-0 flex-1 flex-col"
     >
       <WatchEnterTracker />
+      {disconnected ? <ViewerReconnectBanner /> : null}
       <Watch initialSnapshot={show.snapshot} />
       <RoomAudioRenderer />
-    </LiveKitRoom>
+    </LiveRoom>
+  );
+}
+
+function ViewerReconnectBanner() {
+  return (
+    <div
+      className="border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-center text-sm text-destructive"
+      role="alert"
+    >
+      Connection lost.{" "}
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        className="font-medium underline underline-offset-2"
+      >
+        Refresh to rejoin
+      </button>
+    </div>
   );
 }
 
 function WatchEnterTracker() {
-  const room = useRoomContext();
+  const connectionState = useConnectionState();
   const tracked = useRef(false);
 
   useEffect(() => {
-    if (tracked.current || room.state !== ConnectionState.Connected) return;
+    if (tracked.current || connectionState !== ConnectionState.Connected) {
+      return;
+    }
     tracked.current = true;
     trackEvent(AnalyticsEvent.WATCH_ENTER, { area: "watch" });
-  }, [room.state]);
+  }, [connectionState]);
 
   return null;
 }
@@ -192,6 +214,20 @@ function Stage() {
 
   const share = tracks.find((t) => t.source === Track.Source.ScreenShare);
   const camera = tracks.find((t) => t.source === Track.Source.Camera);
+
+  if (!share && !camera) {
+    return (
+      <VideoPlaceholder>
+        Waiting for the host to share their screen…
+      </VideoPlaceholder>
+    );
+  }
+
+  if (!share && camera) {
+    return (
+      <VideoTrack trackRef={camera} className="h-full w-full object-contain" />
+    );
+  }
 
   if (!share) {
     return (

@@ -1,8 +1,8 @@
 "use client";
 
-import { useTrackToggle } from "@livekit/components-react";
+import { useTrackToggle } from "@/lib/live";
 import { Track, type Room } from "livekit-client";
-import { LogOut, Mic, MicOff, MonitorUp, Video, VideoOff } from "lucide-react";
+import { Mic, MicOff, MonitorUp, Square, Video, VideoOff } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -81,7 +81,7 @@ export function HostControlBar({
                     : "ml-1 size-10 rounded-full border-live/50 bg-black/40 text-live hover:bg-live hover:text-live-foreground",
               )}
             >
-              <LogOut className={isOverlay ? "size-3.5" : isPip ? "size-4" : undefined} />
+              <Square className={isOverlay ? "size-3 fill-current" : isPip ? "size-4 fill-current" : "fill-current"} />
             </Button>
           }
         />
@@ -104,7 +104,7 @@ function ScreenShareControl({
   pipSupported?: boolean;
   variant?: "stage" | "pip" | "pip-overlay";
 }) {
-  const { buttonProps, startScreenShare } = useStartScreenShare({
+  const { buttonProps, startScreenShare, starting } = useStartScreenShare({
     room,
     sharing,
     onBeforeShare,
@@ -126,6 +126,8 @@ function ScreenShareControl({
             type="button"
             {...buttonProps}
             onClick={startScreenShare}
+            disabled={starting}
+            aria-busy={starting}
             aria-label={label}
             className={cn(
               buttonVariants({ variant: "outline", size: "icon" }),

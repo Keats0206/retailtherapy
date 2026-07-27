@@ -196,9 +196,8 @@ export function StudioControls({
 
         {!channel3Configured ? (
           <p className="rounded-lg border border-dashed border-border px-3 py-4 text-sm leading-relaxed text-muted-foreground">
-            Product lookup requires a Channel3 API key. Add{" "}
-            <code className="text-foreground">CHANNEL3_API_KEY</code> to{" "}
-            <code className="text-foreground">.env.local</code>.
+            Product lookup is temporarily unavailable. Try again later or paste
+            links manually.
           </p>
         ) : mode === "spotlight" ? (
           <form onSubmit={resolveSpotlight} className="flex flex-col gap-3">

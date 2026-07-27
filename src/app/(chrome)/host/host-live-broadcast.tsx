@@ -2,19 +2,21 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ConnectionState, Track } from "livekit-client";
+import "@livekit/components-styles";
+import { ExternalLink, Square } from "lucide-react";
+
 import {
-  LiveKitRoom,
-  RoomContext,
+  LiveBridgeProvider,
+  LiveRoom,
   VideoTrack,
   useChat,
   useConnectionState,
+  useLiveBridge,
   useParticipants,
   useRoomContext,
   useTracks,
-} from "@livekit/components-react";
-import { ConnectionState, Track } from "livekit-client";
-import "@livekit/components-styles";
-import { ExternalLink, LogOut } from "lucide-react";
+} from "@/lib/live";
 
 import { ChatPanel } from "@/components/chat-panel";
 import { EndShowDialog } from "@/components/end-show-dialog";
@@ -107,16 +109,16 @@ export default function LiveBroadcast({
           {studioError}
         </div>
       ) : null}
-      <LiveKitRoom
+      <LiveRoom
         token={session.token}
         serverUrl={session.url}
-        connect
         video
         audio
         onConnected={handleConnected}
         onDisconnected={onDisconnected}
+        localRole="host"
+        localSlug={session.slug}
         className="flex min-h-0 flex-1 flex-col bg-background"
-        data-lk-theme="retail"
       >
         <ConnectingGate>
           <BroadcastStudio
@@ -126,7 +128,7 @@ export default function LiveBroadcast({
             onStudioError={setStudioError}
           />
         </ConnectingGate>
-      </LiveKitRoom>
+      </LiveRoom>
     </div>
   );
 }
@@ -158,6 +160,7 @@ function BroadcastStudio({
     initialSnapshot: session.snapshot,
   });
   const room = useRoomContext();
+  const bridge = useLiveBridge();
   const participants = useParticipants();
   const { chatMessages } = useChat();
   const peakViewers = useRef(0);
@@ -247,85 +250,6 @@ function BroadcastStudio({
     setEndDialogOpen(true);
   }, []);
 
-  useEffect(() => {
-    if (wasSharingRef.current && !sharing && pipIsOpen) {
-      closePip();
-    }
-    wasSharingRef.current = sharing;
-  }, [sharing, pipIsOpen, closePip]);
-
-  useEffect(() => {
-    if (!pipIsOpen || !pipWindow) return;
-    return () => unmountPipApp(pipWindow);
-  }, [pipIsOpen, pipWindow]);
-
-  useEffect(() => {
-    if (!pipIsOpen || !pipWindow) return;
-
-    mountPipApp(
-      pipWindow,
-      <RoomContext.Provider value={room}>
-        <HostFloatingStudio
-          room={room}
-          stream={stream}
-          sharing={sharing}
-          chatCount={chatMessages.length}
-          channel3Configured={channel3Configured}
-          onEndShow={handleEndShow}
-          onBeforeShare={openFloatingStudio}
-          pipSupported={pipSupported}
-        />
-      </RoomContext.Provider>,
-    );
-  }, [
-    pipIsOpen,
-    pipWindow,
-    room,
-    stream,
-    sharing,
-    chatMessages.length,
-    channel3Configured,
-    handleEndShow,
-    openFloatingStudio,
-    pipSupported,
-  ]);
-
-  useEffect(() => {
-    const viewers = participants.filter(
-      (p) => !p.permissions?.canPublish,
-    ).length;
-    if (viewers > peakViewers.current) peakViewers.current = viewers;
-  }, [participants]);
-
-  useEffect(() => {
-    if (chatMessages.length > peakChat.current) {
-      peakChat.current = chatMessages.length;
-    }
-  }, [chatMessages.length]);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      void (async () => {
-        try {
-          const res = await fetch(`/api/shows/${session.slug}/snapshot`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ snapshot: stream.snapshot }),
-          });
-          if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.error ?? "Failed to save snapshot");
-          }
-        } catch (err) {
-          onStudioError(
-            err instanceof Error ? err.message : "Failed to save snapshot",
-          );
-        }
-      })();
-    }, 30_000);
-    return () => clearInterval(id);
-  }, [onStudioError, session.slug, stream.snapshot]);
-
   const confirmEndShow = useCallback(async () => {
     closePip();
     clearLiveShare();
@@ -384,10 +308,104 @@ function BroadcastStudio({
     stream.snapshot,
   ]);
 
+  useEffect(() => {
+    if (wasSharingRef.current && !sharing && pipIsOpen) {
+      closePip();
+    }
+    wasSharingRef.current = sharing;
+  }, [sharing, pipIsOpen, closePip]);
+
+  useEffect(() => {
+    if (!pipIsOpen || !pipWindow) return;
+    return () => unmountPipApp(pipWindow);
+  }, [pipIsOpen, pipWindow]);
+
+  useEffect(() => {
+    if (!pipIsOpen || !pipWindow) return;
+
+    mountPipApp(
+      pipWindow,
+      <LiveBridgeProvider bridge={bridge}>
+        <HostFloatingStudio
+          room={room}
+          stream={stream}
+          sharing={sharing}
+          chatCount={chatMessages.length}
+          channel3Configured={channel3Configured}
+          onEndShow={handleEndShow}
+          onBeforeShare={openFloatingStudio}
+          pipSupported={pipSupported}
+          endDialogOpen={endDialogOpen}
+          onEndDialogOpenChange={(open) => {
+            setEndDialogOpen(open);
+            if (!open) setEndError(null);
+          }}
+          onConfirmEndShow={confirmEndShow}
+          ending={ending}
+          endingStep={endingStep}
+          endError={endError}
+        />
+      </LiveBridgeProvider>,
+    );
+  }, [
+    pipIsOpen,
+    pipWindow,
+    bridge,
+    room,
+    stream,
+    sharing,
+    chatMessages.length,
+    channel3Configured,
+    handleEndShow,
+    openFloatingStudio,
+    pipSupported,
+    endDialogOpen,
+    confirmEndShow,
+    ending,
+    endingStep,
+    endError,
+  ]);
+
+  useEffect(() => {
+    const viewers = participants.filter(
+      (p) => !p.permissions?.canPublish,
+    ).length;
+    if (viewers > peakViewers.current) peakViewers.current = viewers;
+  }, [participants]);
+
+  useEffect(() => {
+    if (chatMessages.length > peakChat.current) {
+      peakChat.current = chatMessages.length;
+    }
+  }, [chatMessages.length]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      void (async () => {
+        try {
+          const res = await fetch(`/api/shows/${session.slug}/snapshot`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ snapshot: stream.snapshot }),
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error ?? "Failed to save snapshot");
+          }
+        } catch (err) {
+          onStudioError(
+            err instanceof Error ? err.message : "Failed to save snapshot",
+          );
+        }
+      })();
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [onStudioError, session.slug, stream.snapshot]);
+
   return (
     <>
       {sharing && pipIsOpen ? (
-        <ConnectionKeeper slug={session.slug} />
+        <ConnectionKeeper slug={session.slug} pipSupported={pipSupported} />
       ) : !sharing ? (
         <ShareScreenGate
           slug={session.slug}
@@ -416,22 +434,30 @@ function BroadcastStudio({
         />
       )}
 
-      <EndShowDialog
-        open={endDialogOpen}
-        onOpenChange={(open) => {
-          setEndDialogOpen(open);
-          if (!open) setEndError(null);
-        }}
-        onConfirm={confirmEndShow}
-        ending={ending}
-        endingStep={endingStep}
-        error={endError}
-      />
+      {!(sharing && pipIsOpen) ? (
+        <EndShowDialog
+          open={endDialogOpen}
+          onOpenChange={(open) => {
+            setEndDialogOpen(open);
+            if (!open) setEndError(null);
+          }}
+          onConfirm={confirmEndShow}
+          ending={ending}
+          endingStep={endingStep}
+          error={endError}
+        />
+      ) : null}
     </>
   );
 }
 
-function ConnectionKeeper({ slug }: { slug: string }) {
+function ConnectionKeeper({
+  slug,
+  pipSupported,
+}: {
+  slug: string;
+  pipSupported: boolean;
+}) {
   return (
     <main className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-6 py-12">
       <div className="flex w-full max-w-xl flex-col items-center gap-3 text-center">
@@ -443,8 +469,9 @@ function ConnectionKeeper({ slug }: { slug: string }) {
           You&apos;re live
         </h1>
         <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
-          Controls are in the floating window. Share a live shopping window
-          (chartreuse border) so you always know what viewers see.
+          {pipSupported
+            ? "Controls are in the floating window. Share a live shopping window (chartreuse border) so you always know what viewers see."
+            : "Controls stay on this page while you share. Use Chrome for a floating control window while sharing."}
         </p>
       </div>
 
@@ -452,8 +479,11 @@ function ConnectionKeeper({ slug }: { slug: string }) {
 
       <ShareShowLinkButton slug={slug} showPath className="max-w-xl" />
       <p className="micro max-w-xl text-center text-muted-foreground">
-        Keep this tab open to stay connected. Close the floating window to
-        return controls here.
+        Keep this tab open to stay connected — closing or leaving this page ends
+        the show for viewers.
+        {pipSupported
+          ? " Close the floating window to return controls here."
+          : null}
       </p>
     </main>
   );
@@ -540,7 +570,7 @@ function HostStage({
                   aria-label="End show"
                   className="size-9 rounded-full bg-black/50 text-white backdrop-blur-sm hover:bg-destructive hover:text-white"
                 >
-                  <LogOut className="size-4" />
+                  <Square className="size-4 fill-current" />
                 </Button>
               }
             />

@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     return rateLimitResponse(limit.retryAfterSec ?? 60);
   }
 
-  let body: { room?: string; role?: string };
+  let body: { room?: string; role?: string; displayName?: string };
   try {
     body = await request.json();
   } catch {
@@ -40,12 +40,14 @@ export async function POST(request: Request) {
   }
 
   const identity = `viewer-${crypto.randomUUID().slice(0, 8)}`;
+  const displayName =
+    body.displayName?.trim().slice(0, 32) || "Guest";
 
   try {
     const token = await createAccessToken({
       room,
       identity,
-      name: "Viewer",
+      name: displayName,
       canPublish: false,
     });
     const { url } = getLiveKitConfig();

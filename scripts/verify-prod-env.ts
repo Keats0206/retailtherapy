@@ -24,6 +24,13 @@ const REQUIRED = [
 const RECOMMENDED = ["HOST_ALLOWLIST", "SENTRY_DSN"] as const;
 
 function main() {
+  if (process.env.NEXT_PUBLIC_LOCAL_STREAM === "1") {
+    console.error(
+      "NEXT_PUBLIC_LOCAL_STREAM is enabled — design mode must not ship to production.",
+    );
+    process.exit(1);
+  }
+
   const missing = REQUIRED.filter((key) => !process.env[key]?.trim());
   const missingRecommended = RECOMMENDED.filter(
     (key) => !process.env[key]?.trim(),

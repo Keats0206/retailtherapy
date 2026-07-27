@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Track } from "livekit-client";
+import "@livekit/components-styles";
+
 import {
-  LiveKitRoom,
+  LiveRoom,
   RoomAudioRenderer,
   VideoTrack,
   useTracks,
-} from "@livekit/components-react";
-import { Track } from "livekit-client";
-import "@livekit/components-styles";
+} from "@/lib/live";
 
 import { ChatPanel } from "@/components/chat-panel";
 import { WatchShellSkeleton } from "@/components/show-shell-skeleton";
@@ -20,6 +21,7 @@ import {
 import { ViewerCount } from "@/components/viewer-count";
 import { WatchLayout } from "@/components/watch-layout";
 import { useStreamState } from "@/lib/stream-state";
+import { getVoterDisplayName } from "@/lib/voter-identity";
 
 type Connection = { token: string; url: string };
 
@@ -41,7 +43,11 @@ export default function Player({
         const res = await fetch("/api/livekit/token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ room, role: "viewer" }),
+          body: JSON.stringify({
+            room,
+            role: "viewer",
+            displayName: getVoterDisplayName(),
+          }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Failed to connect");
@@ -69,18 +75,18 @@ export default function Player({
   }
 
   return (
-    <LiveKitRoom
+    <LiveRoom
       token={conn.token}
       serverUrl={conn.url}
-      connect
       video={false}
       audio={false}
-      data-lk-theme="retail"
+      localRole="viewer"
+      localSlug={room}
       className="flex min-h-0 flex-1 flex-col"
     >
       <Watch />
       <RoomAudioRenderer />
-    </LiveKitRoom>
+    </LiveRoom>
   );
 }
 
@@ -105,6 +111,20 @@ function Stage() {
 
   const share = tracks.find((t) => t.source === Track.Source.ScreenShare);
   const camera = tracks.find((t) => t.source === Track.Source.Camera);
+
+  if (!share && !camera) {
+    return (
+      <VideoPlaceholder>
+        Waiting for the host to share their screen…
+      </VideoPlaceholder>
+    );
+  }
+
+  if (!share && camera) {
+    return (
+      <VideoTrack trackRef={camera} className="h-full w-full object-contain" />
+    );
+  }
 
   if (!share) {
     return (

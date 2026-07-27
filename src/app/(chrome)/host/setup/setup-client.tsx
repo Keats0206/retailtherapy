@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { HostOnboarding } from "@/components/host-onboarding";
+import { StudioShellSkeleton } from "@/components/show-shell-skeleton";
 import {
   readShowSetupDraft,
   type ShowSetupDraft,
@@ -16,6 +17,9 @@ export default function HostSetupClient() {
   const [initialDraft, setInitialDraft] = useState<ShowSetupDraft | null>(null);
   const [ready, setReady] = useState(false);
 
+  // sessionStorage is client-only, so the draft can't be read until after
+  // hydration. Deferred to a microtask to keep the state updates out of the
+  // effect body (react-hooks lint).
   useEffect(() => {
     queueMicrotask(() => {
       setInitialDraft(readShowSetupDraft());
@@ -30,11 +34,7 @@ export default function HostSetupClient() {
   }
 
   if (!ready) {
-    return (
-      <main className="mx-auto flex min-h-0 w-full max-w-md flex-1 items-center justify-center px-6 py-24">
-        <p className="text-sm text-muted-foreground">Loading setup…</p>
-      </main>
-    );
+    return <StudioShellSkeleton statusLabel="Loading setup…" />;
   }
 
   return (

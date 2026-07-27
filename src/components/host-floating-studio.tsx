@@ -1,9 +1,13 @@
 "use client";
 
-import { useTracks, VideoTrack } from "@livekit/components-react";
+import { useState } from "react";
+import { useTracks, VideoTrack } from "@/lib/live";
 import { Track, type Room } from "livekit-client";
 
+import { EndShowDialog } from "@/components/end-show-dialog";
 import { HostControlBar } from "@/components/host-control-bar";
+import { PollComposer } from "@/components/poll-composer";
+import { PollLaunchButton, PollOverlay } from "@/components/poll-overlay";
 import { StudioRail } from "@/components/studio-layout";
 import {
   PIP_CAMERA_BUBBLE,
@@ -12,6 +16,7 @@ import {
   VideoPlaceholder,
 } from "@/components/video-placeholder";
 import { ViewerCount } from "@/components/viewer-count";
+import { usePollState } from "@/lib/poll-state";
 import type { StreamState } from "@/lib/stream-store";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +29,12 @@ export function HostFloatingStudio({
   onEndShow,
   onBeforeShare,
   pipSupported,
+  endDialogOpen,
+  onEndDialogOpenChange,
+  onConfirmEndShow,
+  ending,
+  endingStep,
+  endError,
 }: {
   room: Room;
   stream: StreamState;
@@ -33,7 +44,15 @@ export function HostFloatingStudio({
   onEndShow: () => void;
   onBeforeShare?: () => void | Promise<void>;
   pipSupported: boolean;
+  endDialogOpen: boolean;
+  onEndDialogOpenChange: (open: boolean) => void;
+  onConfirmEndShow: () => void;
+  ending: boolean;
+  endingStep: number;
+  endError: string | null;
 }) {
+  const [pollComposerOpen, setPollComposerOpen] = useState(false);
+  const poll = usePollState({ isHost: true });
   const tracks = useTracks(
     [Track.Source.ScreenShare, Track.Source.Camera],
     { room, onlySubscribed: false },
@@ -75,7 +94,8 @@ export function HostFloatingStudio({
             <ViewerCount className="rounded-full bg-black/50 px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide text-white backdrop-blur-sm [&_span:first-child]:bg-live" />
           </div>
 
-          <div className="pointer-events-auto shrink-0">
+          <div className="pointer-events-auto shrink-0 flex items-center gap-1">
+            <PollLaunchButton onClick={() => setPollComposerOpen(true)} />
             <HostControlBar
               room={room}
               sharing={sharing}
@@ -86,6 +106,21 @@ export function HostFloatingStudio({
             />
           </div>
         </div>
+
+        {poll.poll && (
+          <div className="pointer-events-auto absolute inset-x-2 bottom-2 z-10">
+            <PollOverlay
+              poll={poll.poll}
+              myVote={poll.myVote}
+              role="creator"
+              onDismiss={poll.dismiss}
+              onNewVote={() => {
+                poll.dismiss();
+                setPollComposerOpen(true);
+              }}
+            />
+          </div>
+        )}
       </div>
 
       <StudioRail
@@ -94,6 +129,21 @@ export function HostFloatingStudio({
         chatCount={chatCount}
         variant="pip"
         className={cn("min-h-0 flex-1")}
+      />
+
+      <PollComposer
+        open={pollComposerOpen}
+        onOpenChange={setPollComposerOpen}
+        onLaunch={poll.start}
+      />
+
+      <EndShowDialog
+        open={endDialogOpen}
+        onOpenChange={onEndDialogOpenChange}
+        onConfirm={onConfirmEndShow}
+        ending={ending}
+        endingStep={endingStep}
+        error={endError}
       />
     </div>
   );

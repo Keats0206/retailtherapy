@@ -1,8 +1,8 @@
 "use client";
 
-import { useTrackToggle } from "@livekit/components-react";
+import { useTrackToggle } from "@/lib/live";
 import { Track, type Room } from "livekit-client";
-import { LogOut, Mic, MicOff, MonitorUp } from "lucide-react";
+import { Mic, MicOff, MonitorUp, Square } from "lucide-react";
 
 import { PipStoreSuggestions } from "@/components/pip-store-suggestions";
 import { ShareShowLinkButton } from "@/components/share-show-link-button";
@@ -31,12 +31,13 @@ export function ShareScreenGate({
   onBeforeShare?: () => void | Promise<void>;
   pipSupported?: boolean;
 }) {
-  const { startScreenShare } = useStartScreenShare({
-    room,
-    sharing,
-    onBeforeShare,
-    pipSupported,
-  });
+  const { startScreenShare, starting, shareError, clearShareError } =
+    useStartScreenShare({
+      room,
+      sharing,
+      onBeforeShare,
+      pipSupported,
+    });
 
   const pipHint =
     !pipSupported && !sharing
@@ -46,9 +47,8 @@ export function ShareScreenGate({
   return (
     <main className="flex min-h-0 flex-1 flex-col items-center justify-center gap-8 px-6 py-12">
       <div className="flex w-full max-w-lg flex-col items-center gap-3 text-center">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-live px-3 py-1 text-xs font-semibold uppercase tracking-wide text-live-foreground">
-          <span className="size-1.5 animate-pulse rounded-full bg-live-foreground/80" />
-          Live
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-semibold uppercase tracking-wide text-foreground">
+          Connected
         </span>
         <h1 className="text-xl font-medium tracking-tight text-foreground sm:text-2xl">
           Share your screen to go live for viewers
@@ -73,15 +73,20 @@ export function ShareScreenGate({
             2
           </span>
           <span>
-            Open a live shopping window (chartreuse border) and share that
-            window in the picker
+            {pipSupported
+              ? "Open a live shopping window (chartreuse border) and share that window in the picker"
+              : "Share a browser window so you can hop between store tabs while shopping"}
           </span>
         </li>
         <li className="flex gap-3">
           <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-foreground">
             3
           </span>
-          <span>Paste product links in the floating studio</span>
+          <span>
+            {pipSupported
+              ? "Paste product links in the floating studio"
+              : "Paste product links in the studio panel on this page"}
+          </span>
         </li>
       </ol>
 
@@ -89,11 +94,25 @@ export function ShareScreenGate({
         <Button
           type="button"
           onClick={startScreenShare}
+          disabled={starting}
+          aria-busy={starting}
           className="h-14 w-full rounded-full bg-live text-lg font-medium text-live-foreground hover:bg-live/90 sm:h-16"
         >
           <MonitorUp className="size-5" />
-          Share screen
+          {starting ? "Waiting for picker…" : "Share screen"}
         </Button>
+        {shareError ? (
+          <p className="text-center text-sm text-destructive" role="alert">
+            {shareError}{" "}
+            <button
+              type="button"
+              onClick={clearShareError}
+              className="underline underline-offset-2"
+            >
+              Dismiss
+            </button>
+          </p>
+        ) : null}
         {pipHint ? (
           <p className="micro text-center text-muted-foreground">{pipHint}</p>
         ) : null}
@@ -117,7 +136,7 @@ export function ShareScreenGate({
                   aria-label="End show"
                   className="size-10 rounded-full border-live/50 text-live hover:bg-live hover:text-live-foreground"
                 >
-                  <LogOut />
+                  <Square className="size-4 fill-current" />
                 </Button>
               }
             />

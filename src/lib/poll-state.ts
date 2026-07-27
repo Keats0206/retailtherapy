@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useConnectionState, useDataChannel } from "@livekit/components-react";
 import { ConnectionState } from "livekit-client";
+
+import { useConnectionState, useDataChannel } from "@/lib/live";
 
 import {
   applyPollClose,
@@ -39,8 +40,16 @@ export function usePollState({ isHost }: { isHost: boolean }): PollState & {
 } {
   const [poll, setPoll] = useState<Poll | null>(null);
   const [myVote, setMyVote] = useState<string | null>(null);
+  const [hideClosedPoll, setHideClosedPoll] = useState(false);
   const pollRef = useRef(poll);
+  const myVotePollIdRef = useRef<string | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** Close expired polls locally; viewers mirror the host timer. */
+  const normalizePoll = useCallback((next: Poll | null): Poll | null => {
+    if (!next || next.status !== "open" || next.endsAt > Date.now()) return next;
+    return applyPollClose(next, next.id);
+  }, []);
 
   useEffect(() => {
     pollRef.current = poll;
@@ -92,12 +101,19 @@ export function usePollState({ isHost }: { isHost: boolean }): PollState & {
       }
 
       if (event.t === "pollSnapshot") {
-        setPoll(event.poll);
-        setMyVote(null);
-      } else if (event.t === "pollStart") {
-        const next = createPoll(event.input, event.now);
+        const next = normalizePoll(event.poll);
         setPoll(next);
+        if (!next || next.id !== myVotePollIdRef.current) {
+          myVotePollIdRef.current = null;
+          setMyVote(null);
+        }
+        if (next?.status === "open") scheduleClose(next);
+      } else if (event.t === "pollStart") {
+        const next = normalizePoll(createPoll(event.input, event.now));
+        setPoll(next);
+        myVotePollIdRef.current = null;
         setMyVote(null);
+        if (next?.status === "open") scheduleClose(next);
       } else if (event.t === "pollVote") {
         setPoll((p) => applyPollVote(p, event.pollId, event.optionId));
       } else if (event.t === "pollClose") {
@@ -106,7 +122,7 @@ export function usePollState({ isHost }: { isHost: boolean }): PollState & {
         setPoll((p) => applyPollDismiss(p, event.pollId));
       }
     },
-    [isHost],
+    [isHost, normalizePoll, scheduleClose],
   );
 
   const { send } = useDataChannel(TOPIC, handleMessage);
@@ -146,12 +162,23 @@ export function usePollState({ isHost }: { isHost: boolean }): PollState & {
 
   useEffect(() => clearCloseTimer, [clearCloseTimer]);
 
+  // Viewers: tuck closed poll results away after a few seconds.
+  useEffect(() => {
+    if (isHost || !poll || poll.status !== "closed") {
+      setHideClosedPoll(false);
+      return;
+    }
+    const timer = setTimeout(() => setHideClosedPoll(true), 8_000);
+    return () => clearTimeout(timer);
+  }, [isHost, poll?.id, poll?.status]);
+
   const start = useCallback(
     (input: PollInput) => {
       clearCloseTimer();
       const now = Date.now();
       const next = createPoll(input, now);
       setPoll(next);
+      myVotePollIdRef.current = null;
       setMyVote(null);
       scheduleClose(next);
     },
@@ -163,6 +190,7 @@ export function usePollState({ isHost }: { isHost: boolean }): PollState & {
       if (myVote || !poll || poll.status !== "open") return;
       if (!isHost && !connected) return;
 
+      myVotePollIdRef.current = poll.id;
       setMyVote(optionId);
       setPoll((p) => applyPollVote(p, poll.id, optionId));
 
@@ -177,6 +205,7 @@ export function usePollState({ isHost }: { isHost: boolean }): PollState & {
     clearCloseTimer();
     if (!poll) return;
     setPoll((p) => (p ? applyPollDismiss(p, p.id) : p));
+    myVotePollIdRef.current = null;
     setMyVote(null);
     if (isHost) {
       sendRef.current?.({ t: "pollDismiss", pollId: poll.id });
@@ -197,7 +226,10 @@ export function usePollState({ isHost }: { isHost: boolean }): PollState & {
   }, [dismiss]);
 
   return {
-    poll: selectVisiblePoll(poll),
+    poll:
+      !isHost && hideClosedPoll && poll?.status === "closed"
+        ? null
+        : selectVisiblePoll(poll),
     myVote,
     start,
     vote,

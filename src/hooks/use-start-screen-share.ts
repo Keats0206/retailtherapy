@@ -1,10 +1,24 @@
 "use client";
 
-import { useTrackToggle } from "@livekit/components-react";
+import { useTrackToggle } from "@/lib/live";
+import { useMaybeLocalRoom } from "@/lib/live/local-room";
+import { LOCAL_STREAM } from "@/lib/live/mode";
 import { Track, type Room } from "livekit-client";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+
+function shareErrorMessage(err: unknown): string {
+  if (err instanceof DOMException) {
+    if (err.name === "NotAllowedError") {
+      return "Screen share permission was denied. Check browser settings and try again.";
+    }
+    if (err.name === "AbortError") {
+      return "Screen share was cancelled. Click Share screen to try again.";
+    }
+  }
+  return "Could not start screen share. Try again or pick a different window.";
+}
 
 export function useStartScreenShare({
   room,
@@ -21,26 +35,63 @@ export function useStartScreenShare({
     source: Track.Source.ScreenShare,
     room,
   });
+  const localRoom = useMaybeLocalRoom();
+  const [starting, setStarting] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (sharing) {
+      setStarting(false);
+      setShareError(null);
+    }
+  }, [sharing]);
+
+  const clearShareError = useCallback(() => setShareError(null), []);
 
   const startScreenShare = useCallback(
     async (e: React.MouseEvent<HTMLButtonElement>) => {
-      if (!sharing && pipSupported && onBeforeShare) {
+      if (sharing) {
+        buttonProps.onClick?.(e);
+        return;
+      }
+
+      setShareError(null);
+      setStarting(true);
+
+      if (pipSupported && onBeforeShare) {
         try {
           await onBeforeShare();
         } catch {
           // Fall back to in-page studio if PiP fails.
         }
       }
-      if (!sharing) {
-        trackEvent(AnalyticsEvent.HOST_SCREEN_SHARE, {
-          area: "host_studio",
-          action: "start",
-        });
+
+      trackEvent(AnalyticsEvent.HOST_SCREEN_SHARE, {
+        area: "host_studio",
+        action: "start",
+      });
+
+      try {
+        if (LOCAL_STREAM && localRoom) {
+          await localRoom.toggleSource(Track.Source.ScreenShare);
+        } else if (room?.localParticipant?.setScreenShareEnabled) {
+          await room.localParticipant.setScreenShareEnabled(true);
+        } else {
+          buttonProps.onClick?.(e);
+        }
+      } catch (err) {
+        setShareError(shareErrorMessage(err));
+        setStarting(false);
       }
-      buttonProps.onClick?.(e);
     },
-    [buttonProps, onBeforeShare, pipSupported, sharing],
+    [buttonProps, localRoom, onBeforeShare, pipSupported, room, sharing],
   );
 
-  return { buttonProps, startScreenShare };
+  return {
+    buttonProps,
+    startScreenShare,
+    starting,
+    shareError,
+    clearShareError,
+  };
 }
