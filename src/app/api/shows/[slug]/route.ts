@@ -58,5 +58,14 @@ export async function GET(
     show = await resolveRecording(show);
   }
 
-  return Response.json(toPublicShow(show));
+  const cacheControl =
+    show.status === "live"
+      ? "private, max-age=2"
+      : show.muxPlaybackId
+        ? "private, max-age=60"
+        : "private, max-age=5";
+
+  return Response.json(toPublicShow(show), {
+    headers: { "Cache-Control": cacheControl },
+  });
 }

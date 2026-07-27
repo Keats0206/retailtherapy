@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
 import { LandingPage } from "@/components/landing-page";
-import { PORTER_HERO_PRELOAD } from "@/lib/landing-porter-outfits";
+import { HERO_SCATTER_PRELOAD } from "@/lib/landing-hero-preload";
 
 export const metadata: Metadata = {
   title: "frontrow — watch people shop",
@@ -20,7 +20,7 @@ export default async function HomePage() {
 
   return (
     <>
-      {PORTER_HERO_PRELOAD.map((href) => (
+      {HERO_SCATTER_PRELOAD.map((href) => (
         <link key={href} rel="preload" as="image" href={href} />
       ))}
       <LandingPage />

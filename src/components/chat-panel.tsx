@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@livekit/components-react";
 import { SendHorizontal } from "lucide-react";
 
@@ -66,9 +66,19 @@ export function ChatPanelView({
   const [text, setText] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
+  const messageKey = useMemo(
+    () =>
+      messages
+        .map((message) => message.id ?? message.timestamp)
+        .join("\n"),
+    [messages],
+  );
+
+  const renderedMessages = messages;
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+  }, [messageKey]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -88,7 +98,7 @@ export function ChatPanelView({
         <PanelTitle>Live chat</PanelTitle>
         <PanelAction>
           <Badge variant="secondary" className="tabular-nums">
-            {messages.length}
+            {renderedMessages.length}
           </Badge>
         </PanelAction>
       </PanelHeader>
@@ -97,12 +107,12 @@ export function ChatPanelView({
         {/* Deliberately plain lines rather than bubbles or avatars — the
             product imagery should be the only thing drawing the eye. */}
         <div className="flex flex-col gap-2">
-          {messages.length === 0 && (
+          {renderedMessages.length === 0 && (
             <p className="text-sm text-muted-foreground">
               No messages yet — say hi or drop a product link.
             </p>
           )}
-          {messages.map((m) => (
+          {renderedMessages.map((m) => (
             <div key={m.id ?? m.timestamp} className="text-sm leading-snug">
               <span className="font-medium">
                 {m.from?.name || m.from?.identity || "Viewer"}
