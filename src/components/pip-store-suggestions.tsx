@@ -7,20 +7,7 @@ import { WOMENS_CLOTHING_STORES } from "@/lib/shopping-stores";
 import { cn } from "@/lib/utils";
 
 function openStoreWindow(url: string) {
-  const width = Math.min(1280, window.screen.availWidth - 80);
-  const height = Math.min(900, window.screen.availHeight - 80);
-  const left = Math.round((window.screen.availWidth - width) / 2);
-  const top = Math.round((window.screen.availHeight - height) / 2);
-  const features = [
-    `width=${width}`,
-    `height=${height}`,
-    `left=${left}`,
-    `top=${top}`,
-    "noopener",
-    "noreferrer",
-  ].join(",");
-
-  window.open(url, "_blank", features);
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 export function PipStoreSuggestions({ className }: { className?: string }) {
