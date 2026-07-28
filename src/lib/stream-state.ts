@@ -50,7 +50,9 @@ type StreamEvent =
       voterId: string;
       displayName: string;
     }
-  | { t: "verseVote"; verseId: string; choice: VerseChoice };
+  | { t: "votePatch"; productId: string; choice: VoteChoice }
+  | { t: "verseVote"; verseId: string; choice: VerseChoice }
+  | { t: "verseVotePatch"; verseId: string; choice: VerseChoice };
 
 export type { StreamSnapshot };
 

@@ -4,7 +4,7 @@ import { useTrackToggle } from "@/lib/live";
 import { useMaybeLocalRoom } from "@/lib/live/local-room";
 import { LOCAL_STREAM } from "@/lib/live/mode";
 import { Track, type Room } from "livekit-client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 
@@ -38,13 +38,6 @@ export function useStartScreenShare({
   const localRoom = useMaybeLocalRoom();
   const [starting, setStarting] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (sharing) {
-      setStarting(false);
-      setShareError(null);
-    }
-  }, [sharing]);
 
   const clearShareError = useCallback(() => setShareError(null), []);
 
@@ -90,8 +83,8 @@ export function useStartScreenShare({
   return {
     buttonProps,
     startScreenShare,
-    starting,
-    shareError,
+    starting: starting && !sharing,
+    shareError: sharing ? null : shareError,
     clearShareError,
   };
 }

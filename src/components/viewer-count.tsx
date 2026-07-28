@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 import { useParticipants } from "@/lib/live";
 
 import { formatCount } from "@/lib/format";

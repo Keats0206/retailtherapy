@@ -18,6 +18,8 @@ export default function HostSetupClient() {
   );
 
   useLayoutEffect(() => {
+    // Client-only draft read — avoids SSR/localStorage hydration mismatch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInitialDraft(readShowSetupDraft());
   }, []);
 

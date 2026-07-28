@@ -94,7 +94,6 @@ export default function HostClient({
   const setupCheckedRef = useRef(false);
   useLayoutEffect(() => {
     if (liveShowSlug || resumeSlug) {
-      setSetupReady(true);
       return;
     }
     if (setupCheckedRef.current) return;
@@ -104,6 +103,7 @@ export default function HostClient({
       router.replace("/host/setup");
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSetupDraft(draft);
     if (draft.showName.trim()) setTitle(draft.showName.trim());
     setSetupReady(true);

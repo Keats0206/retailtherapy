@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -31,6 +32,8 @@ import type { PublicShow } from "@/lib/show-public";
 import type { StreamSnapshot } from "@/lib/stream-state";
 import { useStreamState } from "@/lib/stream-state";
 import { getVoterDisplayName } from "@/lib/voter-identity";
+
+type Connection = { token: string; url: string };
 
 const ShowEndedViewer = dynamic(
   () =>

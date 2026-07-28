@@ -165,6 +165,7 @@ export function usePollState({ isHost }: { isHost: boolean }): PollState & {
   // Viewers: tuck closed poll results away after a few seconds.
   useEffect(() => {
     if (isHost || !poll || poll.status !== "closed") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHideClosedPoll(false);
       return;
     }

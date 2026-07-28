@@ -5,14 +5,27 @@ import Image from "next/image";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 type ScatterCard = {
   src: string;
+  /** Absolute-position + size classes for the slot. Hidden below md to keep mobile clean. */
   slot: string;
   rotate: number;
+  /** Idle float travel in px. */
   float: number;
+  /** Intrinsic pixel size of the source PNG, so the slot reserves the right box. */
+  width: number;
+  height: number;
 };
+
+/**
+ * Rendered width of a card, matching the `w-*` classes in each slot. Feeds
+ * `sizes` so the optimizer never ships more than ~2x the painted size — the
+ * sources are ~1000x1500 cutouts and the largest slot is 160px wide.
+ */
+const CARD_SIZES = "(min-width: 1024px) 160px, 128px";
 
 const BASE = "/landing/porter-products";
 
@@ -22,62 +35,85 @@ const CARDS: ScatterCard[] = [
     slot: "left-[4%] top-[5%] w-32 lg:w-40",
     rotate: -8,
     float: -12,
+    width: 1127,
+    height: 1395,
   },
   {
     src: `${BASE}/silver-oval-aviator-sunglasses.png`,
     slot: "left-[23%] top-[1%] w-24 lg:w-28",
     rotate: 6,
     float: -7,
+    width: 1923,
+    height: 817,
   },
   {
     src: `${BASE}/dark-brown-leather-jacket.png`,
     slot: "right-[4%] top-[4%] w-32 lg:w-40",
     rotate: 9,
     float: -13,
+    width: 1093,
+    height: 1439,
   },
   {
     src: `${BASE}/burgundy-polka-dot-halter-top.png`,
     slot: "right-[24%] top-[0%] w-24 lg:w-28",
     rotate: -6,
     float: -8,
+    width: 1006,
+    height: 1564,
   },
   {
     src: `${BASE}/cognac-pony-hair-shoulder-bag.png`,
     slot: "left-[0%] top-[42%] w-28 lg:w-36",
     rotate: -4,
     float: -10,
+    width: 1131,
+    height: 1391,
   },
   {
     src: `${BASE}/blue-wide-leg-jeans.png`,
     slot: "right-[1%] top-[38%] w-28 lg:w-36",
     rotate: 6,
     float: -12,
+    width: 894,
+    height: 1759,
   },
   {
     src: `${BASE}/caramel-suede-midi-skirt.png`,
     slot: "left-[6%] bottom-[3%] w-28 lg:w-36",
     rotate: 5,
     float: -10,
+    width: 1008,
+    height: 1560,
   },
   {
     src: `${BASE}/burgundy-ankle-strap-pump.png`,
     slot: "right-[4%] bottom-[6%] w-24 lg:w-32",
     rotate: -7,
     float: -8,
+    width: 1411,
+    height: 1115,
   },
   {
     src: `${BASE}/brown-suede-structured-tote.png`,
     slot: "left-[26%] bottom-[-1%] w-24 lg:w-32",
     rotate: -5,
     float: -9,
+    width: 1174,
+    height: 1339,
   },
   {
     src: `${BASE}/cream-lace-collar-blouse.png`,
     slot: "right-[25%] bottom-[0%] w-24 lg:w-32",
     rotate: 6,
     float: -11,
+    width: 1155,
+    height: 1362,
   },
 ];
+
+/** Cards in the top row land first, so they carry the LCP fetch priority. */
+const PRIORITY_CARDS = 2;
 
 const textContainer: Variants = {
   hidden: {},
@@ -98,6 +134,7 @@ const textItem: Variants = {
 const cardsContainer: Variants = {
   hidden: {},
   show: {
+    // Cards land only after the headline block has settled.
     transition: { staggerChildren: 0.09, delayChildren: 0.7 },
   },
 };
@@ -119,7 +156,13 @@ function ScatterCard({ card, index }: { card: ScatterCard; index: number }) {
     <motion.div
       variants={cardItem}
       style={{ rotate: card.rotate }}
-      className={cn("pointer-events-auto absolute", card.slot)}
+      // The drop-shadow lives here rather than on the floating child: a filter
+      // on an element that animates forever makes the compositor re-rasterize
+      // the shadow every frame. On this static parent it rasterizes once.
+      className={cn(
+        "pointer-events-auto absolute drop-shadow-[0_18px_35px_rgba(0,0,0,0.28)]",
+        card.slot,
+      )}
     >
       <motion.div
         animate={reducedMotion ? undefined : { y: [0, card.float, 0] }}
@@ -145,10 +188,11 @@ function ScatterCard({ card, index }: { card: ScatterCard; index: number }) {
         <Image
           src={card.src}
           alt=""
-          width={320}
-          height={320}
-          priority={index < 4}
-          className="h-auto w-full select-none object-contain drop-shadow-[0_18px_35px_rgba(0,0,0,0.28)]"
+          width={card.width}
+          height={card.height}
+          sizes={CARD_SIZES}
+          priority={index < PRIORITY_CARDS}
+          className="h-auto w-full select-none object-contain"
         />
       </motion.div>
     </motion.div>
@@ -204,6 +248,9 @@ export default function HeroScatterMotion() {
             size="lg"
             className="rounded-full bg-foreground px-8 text-background hover:bg-foreground/90"
             render={<Link href="/browse" />}
+            onClick={() =>
+              trackEvent(AnalyticsEvent.CTA_BROWSE, { area: "hero" })
+            }
           >
             Browse live shows
           </Button>
@@ -212,8 +259,11 @@ export default function HeroScatterMotion() {
             size="micro"
             className="text-muted-foreground"
             render={<Link href="/apply" />}
+            onClick={() =>
+              trackEvent(AnalyticsEvent.CTA_APPLY, { area: "hero" })
+            }
           >
-            Join the host waitlist &rarr;
+            Apply to host &rarr;
           </Button>
         </motion.div>
       </motion.div>

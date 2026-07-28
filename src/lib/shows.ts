@@ -149,7 +149,7 @@ export function toDiscoveryShow(
 const listLiveShowsCached = unstable_cache(
   async (limit: number) => {
     const rows = await listLiveShowRows(limit);
-    return rows.map(toDiscoveryShow);
+    return rows.map((show) => toDiscoveryShow(show));
   },
   ["list-live-shows"],
   { revalidate: 10 },
