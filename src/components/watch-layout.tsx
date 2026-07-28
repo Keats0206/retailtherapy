@@ -1,39 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { memo, useMemo } from "react";
-import { ArrowLeft, ShoppingBag } from "lucide-react";
+import { useMemo } from "react";
+import { ArrowLeft } from "lucide-react";
 
 import { CurrentProduct } from "@/components/current-product";
+import { PollOverlay } from "@/components/poll-overlay";
+import { ReactionBar, ReactionOverlay } from "@/components/reaction-bar";
 import { ShoppingTrail } from "@/components/shopping-trail";
 import { VerseProduct } from "@/components/verse-product";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { usePollState } from "@/lib/poll-state";
+import { useReactionState } from "@/lib/reaction-state";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import type { StreamState } from "@/lib/stream-store";
 import { cn } from "@/lib/utils";
 
 /**
- * The viewer's shopping experience, laid out as a theatre: the video takes the
- * whole frame and everything else either overlays it or sits in a narrow rail.
- *
- * The rail is the only scrolling region — the video pane is pinned to the
- * viewport so the stream never scrolls out of view. The shopping trail used to
- * sit under the video and cost a lot of vertical space for something you glance
- * at occasionally, so it lives in a bottom sheet now.
- *
- * Video, viewer count, and chat come in as slots — they're the LiveKit-bound
- * parts. `/watch/[playbackId]` and `/s/[slug]` pass the real ones.
+ * The viewer's shopping experience: video and trail on the left (trail sits
+ * below the video like YouTube comments), chat always on the right.
  */
 const OVERLAY_BUTTON = buttonVariants({ variant: "cinema", size: "icon-sm" });
 
@@ -59,150 +49,129 @@ export function WatchLayout({
     verse,
     trail,
     votesFor,
+    votersFor,
     myVotes,
     vote,
     myVerseVotes,
     verseVote,
   } = stream;
 
-  const productRail = useMemo(
-    () => (
-      <WatchProductRail
-        pinned={pinned}
-        verse={verse}
-        votesFor={votesFor}
-        myVotes={myVotes}
-        vote={vote}
-        myVerseVotes={myVerseVotes}
-        verseVote={verseVote}
-      />
-    ),
-    [
-      pinned,
-      verse,
-      votesFor,
-      myVotes,
-      vote,
-      myVerseVotes,
-      verseVote,
-    ],
+  const poll = usePollState({ isHost: false });
+  const { react } = useReactionState({ isHost: false });
+
+  const pinnedVotes = useMemo(
+    () => (pinned ? votesFor(pinned.id) : { buy: 0, skip: 0 }),
+    [pinned, votesFor],
   );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-      <div className="relative min-h-0 min-w-0 flex-1 bg-black max-lg:aspect-video max-lg:flex-none">
-        {stage}
+      {/* Main column: video + trail below */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="relative min-h-0 flex-1 bg-black max-lg:aspect-video max-lg:flex-none">
+          {stage}
 
-        {/* Chrome rides on top of the video rather than taking its own band of
-            page. `pointer-events-none` on the bar so it doesn't swallow clicks
-            aimed at player controls underneath; the controls opt back in. */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2.5">
-          <div className="pointer-events-auto flex items-center gap-2">
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Link
-                    href={exitHref}
-                    className={OVERLAY_BUTTON}
-                    aria-label="Leave show"
-                  >
-                    <ArrowLeft className="size-4" />
-                  </Link>
-                }
-              />
-              <TooltipContent>Leave show</TooltipContent>
-            </Tooltip>
-
-            <Sheet>
-              {/* Styled with `buttonVariants` rather than composed via
-                  `render={<Button/>}` — SheetTrigger already renders a <button>,
-                  so this is one less layer and no prop-merging to reason about. */}
-              <SheetTrigger
-                className={cn(OVERLAY_BUTTON, "relative")}
-                aria-label={`Shopping trail, ${trail.length} ${trail.length === 1 ? "item" : "items"}`}
-              >
-                <ShoppingBag className="size-4" />
-                {trail.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-white text-[10px] font-medium text-black tabular-nums">
-                    {trail.length}
-                  </span>
-                )}
-              </SheetTrigger>
-
-            <SheetContent
-              side="bottom"
-              className="max-h-[70vh] border-t border-border p-0"
-            >
-              <SheetHeader className="px-4 pt-4 pb-0">
-                <SheetTitle className="micro font-normal text-muted-foreground">
-                  Shopping trail
-                </SheetTitle>
-              </SheetHeader>
-              <div className="min-h-0 overflow-y-auto px-4 pb-4">
-                <ShoppingTrail
-                  products={trail}
-                  pinnedId={pinned?.id ?? null}
-                  className="border-t-0 pt-0"
+          <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2.5">
+            <div className="pointer-events-auto flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Link
+                      href={exitHref}
+                      className={OVERLAY_BUTTON}
+                      aria-label="Leave show"
+                      onClick={() =>
+                        trackEvent(AnalyticsEvent.WATCH_LEAVE, { area: "watch" })
+                      }
+                    >
+                      <ArrowLeft className="size-4" />
+                    </Link>
+                  }
                 />
+                <TooltipContent>Leave show</TooltipContent>
+              </Tooltip>
+            </div>
+
+            <div className="pointer-events-auto flex items-center gap-2">
+              <ReactionBar
+                onReact={(emoji) => {
+                  trackEvent(AnalyticsEvent.REACTION_SENT, {
+                    area: "watch",
+                    emoji,
+                  });
+                  react(emoji);
+                }}
+              />
+              <div className="text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.5)]">
+                {viewers}
               </div>
-            </SheetContent>
-            </Sheet>
+            </div>
           </div>
 
-          <div className="pointer-events-auto text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.5)]">
-            {viewers}
-          </div>
+          {poll.poll && (
+            <PollOverlay
+              poll={poll.poll}
+              myVote={poll.myVote}
+              role="viewer"
+              onVote={poll.vote}
+            />
+          )}
+
+          {overlay}
         </div>
 
-        {overlay}
+        {/* Pinned product hero — shown when host spotlights an item */}
+        {pinned && !verse && (
+          <div className="shrink-0 border-t border-border bg-background">
+            <CurrentProduct
+              product={pinned}
+              votes={pinnedVotes}
+              myVote={myVotes[pinned.id]}
+              onVote={(choice) => vote(pinned.id, choice)}
+            />
+          </div>
+        )}
+
+        {/* Verse voting banner — shown above trail when a verse is active */}
+        {verse && (
+          <div className="shrink-0 border-t border-border bg-background">
+            <VerseProduct
+              left={verse.left}
+              right={verse.right}
+              votes={verse.tallies}
+              myVote={myVerseVotes[verse.id]}
+              onVote={(choice) => verseVote(verse.id, choice)}
+              className="max-h-48 overflow-y-auto"
+            />
+          </div>
+        )}
+
+        {/* Shopping trail — scrollable feed below the video */}
+        <div className="flex min-h-0 max-h-80 shrink-0 flex-col border-t border-border bg-background lg:max-h-96">
+          <ShoppingTrail
+            products={trail}
+            pinnedId={pinned?.id ?? null}
+            votesFor={votesFor}
+            votersFor={votersFor}
+            myVotes={myVotes}
+            onVote={(productId, choice) => vote(productId, choice)}
+            variant="feed"
+            sortable
+            className="min-h-0 flex-1"
+          />
+        </div>
       </div>
 
-      <aside className="flex min-h-0 w-full flex-col border-border max-lg:flex-1 max-lg:border-t lg:w-90 lg:shrink-0 lg:border-l">
-        {productRail}
-        <div className="flex min-h-0 flex-1 flex-col p-3 pt-0">{chat}</div>
+      {/* Chat rail — always on the right */}
+      <aside className="flex min-h-0 w-full flex-col border-border max-lg:h-72 max-lg:shrink-0 max-lg:border-t lg:w-80 lg:shrink-0 lg:border-l xl:w-96">
+        <div className="flex min-h-0 flex-1 flex-col p-3">{chat}</div>
       </aside>
     </div>
   );
 }
 
-const WatchProductRail = memo(function WatchProductRail({
-  pinned,
-  verse,
-  votesFor,
-  myVotes,
-  vote,
-  myVerseVotes,
-  verseVote,
-}: Pick<
-  StreamState,
-  | "pinned"
-  | "verse"
-  | "votesFor"
-  | "myVotes"
-  | "vote"
-  | "myVerseVotes"
-  | "verseVote"
->) {
-  if (verse) {
-    return (
-      <VerseProduct
-        left={verse.left}
-        right={verse.right}
-        votes={verse.tallies}
-        myVote={myVerseVotes[verse.id]}
-        onVote={(choice) => verseVote(verse.id, choice)}
-        className="min-h-0 shrink-0 overflow-y-auto"
-      />
-    );
-  }
-
-  return (
-    <CurrentProduct
-      product={pinned}
-      votes={votesFor(pinned?.id ?? "")}
-      myVote={pinned ? myVotes[pinned.id] : undefined}
-      onVote={(choice) => pinned && vote(pinned.id, choice)}
-      className="min-h-0 shrink-0 overflow-y-auto"
-    />
-  );
-});
+/** Host stage overlays — reactions from the audience. */
+export function HostStageOverlays() {
+  const { bursts } = useReactionState({ isHost: true });
+  return <ReactionOverlay bursts={bursts} />;
+}

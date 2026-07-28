@@ -5,6 +5,7 @@ import {
   clientIp,
   rateLimitResponse,
 } from "@/lib/rate-limit";
+import { parseShowSetup } from "@/lib/show-setup";
 import { createShow, listLiveShows } from "@/lib/shows";
 
 // GET /api/shows?status=live — public list of live shows for discovery.
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
     return rateLimitResponse(limit.retryAfterSec ?? 60);
   }
 
-  let body: { title?: string };
+  let body: { title?: string; setup?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -58,6 +59,7 @@ export async function POST(request: Request) {
   }
 
   const title = body.title?.trim() || "Untitled show";
+  const setup = parseShowSetup(body.setup);
 
   try {
     const show = await createShow({
@@ -67,6 +69,7 @@ export async function POST(request: Request) {
         [host.firstName, host.lastName].filter(Boolean).join(" ") ??
         null,
       title,
+      setup,
     });
 
     const token = await createAccessToken({

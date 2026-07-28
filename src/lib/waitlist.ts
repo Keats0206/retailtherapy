@@ -9,11 +9,18 @@ import { db, waitlistSignups } from "@/lib/db";
 
 export const MAX_FIELD_LENGTH = 280;
 
+export type WaitlistSocials = {
+  instagram?: string;
+  tiktok?: string;
+  youtube?: string;
+};
+
 export type WaitlistInput = {
   email: string;
   name?: string | null;
   handle?: string | null;
   pitch?: string | null;
+  socials?: WaitlistSocials | null;
   userId?: string | null;
 };
 
@@ -31,6 +38,38 @@ function trim(value: string | null | undefined): string | null {
   return trimmed ? trimmed.slice(0, MAX_FIELD_LENGTH) : null;
 }
 
+function cleanHandle(value: string | null | undefined): string | null {
+  const trimmed = trim(value);
+  if (!trimmed) return null;
+  return trimmed.replace(/^@+/, "").slice(0, 64);
+}
+
+function normalizeSocials(
+  socials: WaitlistSocials | null | undefined,
+): WaitlistSocials | null {
+  if (!socials) return null;
+
+  const normalized = {
+    instagram: cleanHandle(socials.instagram) ?? undefined,
+    tiktok: cleanHandle(socials.tiktok) ?? undefined,
+    youtube: cleanHandle(socials.youtube) ?? undefined,
+  };
+
+  if (!normalized.instagram && !normalized.tiktok && !normalized.youtube) {
+    return null;
+  }
+
+  return normalized;
+}
+
+/** Flatten the first supplied handle for legacy `handle` column scanning. */
+function primaryHandle(socials: WaitlistSocials | null): string | null {
+  if (!socials) return null;
+  const first =
+    socials.instagram ?? socials.tiktok ?? socials.youtube ?? null;
+  return first ? `@${first}` : null;
+}
+
 /**
  * Idempotent by email: signing up twice updates the details instead of
  * failing, so someone who resubmits with a fuller pitch isn't punished for it.
@@ -40,10 +79,12 @@ function trim(value: string | null | undefined): string | null {
  */
 export async function joinWaitlist(input: WaitlistInput): Promise<void> {
   const email = input.email.trim().toLowerCase();
+  const socials = normalizeSocials(input.socials);
   const details = {
     name: trim(input.name),
-    handle: trim(input.handle),
+    handle: trim(input.handle) ?? primaryHandle(socials),
     pitch: trim(input.pitch),
+    socials,
     userId: input.userId ?? null,
   };
 

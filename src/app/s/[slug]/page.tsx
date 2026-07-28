@@ -1,19 +1,34 @@
 import { notFound } from "next/navigation";
 
-import { getShowBySlug, resolveRecording } from "@/lib/shows";
+import { buildEndedRecap } from "@/lib/show-recap";
 import { toPublicShow } from "@/lib/show-public";
+import { getShowBySlug, resolveRecording, snapshotOf } from "@/lib/shows";
 
 import ShowPageClient from "./show-page-client";
+import ViewerRecapClient from "./viewer-recap-client";
 
 export default async function ShowPage({
   params,
 }: PageProps<"/s/[slug]">) {
   const { slug } = await params;
-  let show = await getShowBySlug(slug);
+  const show = await getShowBySlug(slug);
   if (!show) notFound();
 
   if (show.status === "ended") {
-    show = await resolveRecording(show);
+    const resolved = await resolveRecording(show);
+    const snapshot = snapshotOf(resolved);
+    const recap = buildEndedRecap({
+      slug: resolved.slug,
+      title: resolved.title,
+      host: resolved.hostName ?? "Host",
+      snapshot,
+      startedAt: resolved.startedAt ? resolved.startedAt.getTime() : null,
+      endedAt: resolved.endedAt ? resolved.endedAt.getTime() : undefined,
+      peakViewers: snapshot.stats?.peakViewers ?? 0,
+      chatCount: snapshot.stats?.chatCount ?? 0,
+      muxPlaybackId: resolved.muxPlaybackId,
+    });
+    return <ViewerRecapClient initialRecap={recap} />;
   }
 
   return <ShowPageClient initialShow={toPublicShow(show)} />;

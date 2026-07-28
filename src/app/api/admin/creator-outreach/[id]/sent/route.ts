@@ -1,15 +1,21 @@
+import { getAdminUser } from "@/lib/auth";
 import { getProspect, markContacted } from "@/lib/creator-outreach";
 
-// POST /api/admin/creator-outreach/<id>/sent — record that the operator actually
-// emailed this creator. Ungated for now, same as the page it backs.
+// POST /api/admin/creator-outreach/<id>/sent — record that the admin actually
+// emailed this creator (admin only).
 //
-// Outreach goes out through the operator's own Gmail, so the app never observes
+// Outreach goes out through the admin's own Gmail, so the app never observes
 // the send. This is the human confirming it happened, which is why it's a
 // separate deliberate action rather than a side effect of opening the composer.
 export async function POST(
   _request: Request,
   { params }: RouteContext<"/api/admin/creator-outreach/[id]/sent">,
 ) {
+  const admin = await getAdminUser();
+  if (!admin) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { id } = await params;
   const prospect = await getProspect(id);
   if (!prospect) {

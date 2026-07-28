@@ -14,6 +14,7 @@ import {
 
 // Relative, not the `@/` alias: drizzle-kit loads this file outside Next and
 // does not resolve tsconfig paths.
+import type { ShowSetup } from "../show-setup";
 import type { StreamSnapshot } from "../stream-store";
 
 /**
@@ -97,6 +98,9 @@ export const streams = pgTable(
     // periodically during the show and definitively on end, so the recap
     // survives a host who closes the tab instead of pressing End show.
     snapshot: jsonb("snapshot").$type<StreamSnapshot>(),
+    // Onboarding answers: shopping intent, item focus, and social handles.
+    // Null for shows created before setup existed, or if the host skipped.
+    setup: jsonb("setup").$type<ShowSetup>(),
     scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
     startedAt: timestamp("started_at", { withTimezone: true }),
     endedAt: timestamp("ended_at", { withTimezone: true }),
@@ -162,6 +166,11 @@ export const waitlistSignups = pgTable(
     handle: text("handle"),
     // What they'd shop live, in their words.
     pitch: text("pitch"),
+    socials: jsonb("socials").$type<{
+      instagram?: string;
+      tiktok?: string;
+      youtube?: string;
+    }>(),
     // Clerk user id when they were signed in — lets us grant hosting later
     // without matching on email.
     userId: text("user_id"),

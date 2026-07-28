@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { VideoFrame, VideoPlaceholder } from "@/components/video-placeholder";
 import { formatCount, formatDuration } from "@/lib/format";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import type { EndedShowRecap } from "@/lib/show-recap";
 import { cn } from "@/lib/utils";
 
@@ -134,13 +135,30 @@ export function ShowEndedCreator({
           The recording may take a few minutes to appear on the recap page.
         </p>
         {onStartNew ? (
-          <Button size="micro" variant="outline" onClick={onStartNew}>
+          <Button
+            size="micro"
+            variant="outline"
+            onClick={() => {
+              trackEvent(AnalyticsEvent.HOST_PREP_ANOTHER, {
+                area: "host_studio",
+              });
+              onStartNew();
+            }}
+          >
             <RotateCcw />
             Prep another show
           </Button>
         ) : (
-          <Link href="/host">
-            <Button size="micro" variant="outline">
+          <Link href="/host/setup">
+            <Button
+              size="micro"
+              variant="outline"
+              onClick={() =>
+                trackEvent(AnalyticsEvent.HOST_PREP_ANOTHER, {
+                  area: "host_studio",
+                })
+              }
+            >
               <RotateCcw />
               Prep another show
             </Button>

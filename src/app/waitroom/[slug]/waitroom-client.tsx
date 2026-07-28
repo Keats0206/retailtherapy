@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useVisiblePoll } from "@/hooks/use-visible-poll";
+import { readResponseJson } from "@/lib/fetch-json";
 import type { PublicShow } from "@/lib/show-public";
 
 const POLL_MS = 5_000;
@@ -17,25 +19,32 @@ export default function WaitroomClient({
   const router = useRouter();
   const [show, setShow] = useState(initialShow);
 
-  // Poll the show's status. The instant the host goes live (or the show has
-  // already ended and only its replay remains), hand off to /s/<slug>.
+  // The show may already have started (or finished) by the time this renders.
   useEffect(() => {
-    if (show.status !== "scheduled") {
-      router.replace(`/s/${show.slug}`);
+    if (show.status !== "scheduled") router.replace(`/s/${show.slug}`);
+  }, [router, show.slug, show.status]);
+
+  // Poll the show's status. The instant the host goes live (or the show has
+  // already ended and only its replay remains), hand off to /s/<slug>. Pauses
+  // while the tab is hidden and catches up on return, so a waitroom left open
+  // in a background tab is free — and still hands off the moment it's refocused.
+  const checkStatus = useCallback(async () => {
+    const res = await fetch(`/api/shows/${show.slug}`);
+    if (!res.ok) return;
+    let next: PublicShow;
+    try {
+      next = await readResponseJson<PublicShow>(res);
+    } catch {
       return;
     }
-    const id = setInterval(async () => {
-      const res = await fetch(`/api/shows/${show.slug}`);
-      if (!res.ok) return;
-      const next = (await res.json()) as PublicShow;
-      if (next.status !== "scheduled") {
-        router.replace(`/s/${next.slug}`);
-      } else {
-        setShow(next);
-      }
-    }, POLL_MS);
-    return () => clearInterval(id);
-  }, [router, show.slug, show.status]);
+    if (next.status !== "scheduled") {
+      router.replace(`/s/${next.slug}`);
+    } else {
+      setShow(next);
+    }
+  }, [router, show.slug]);
+
+  useVisiblePoll(checkStatus, POLL_MS, show.status === "scheduled");
 
   const host = show.hostName?.trim() || "The host";
   const initial = host.charAt(0).toUpperCase();
@@ -96,13 +105,20 @@ function Countdown({
 }) {
   const [now, setNow] = useState(() => Date.now());
 
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1_000);
-    return () => clearInterval(id);
-  }, []);
-
   const remaining = target != null ? Math.max(0, target - now) : 0;
   const parts = useMemo(() => splitDuration(remaining), [remaining]);
+
+  // Only tick while a countdown is actually on screen. With no target — or once
+  // it has elapsed — this renders a pure-CSS pulse that ignores `now` entirely,
+  // so a per-second re-render bought nothing. Past a day out the seconds unit is
+  // hidden too, and a per-minute tick is enough to keep the display honest.
+  const tickMs = remaining <= 0 ? null : parts.days > 0 ? 60_000 : 1_000;
+
+  useEffect(() => {
+    if (tickMs == null) return;
+    const id = setInterval(() => setNow(Date.now()), tickMs);
+    return () => clearInterval(id);
+  }, [tickMs]);
 
   if (target == null || remaining <= 0) {
     return (

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { auth } from "@clerk/nextjs/server";
 
 import { BrowsePage } from "@/components/browse-page";
 import { isAdmin } from "@/lib/auth";
-import { listLiveShows } from "@/lib/shows";
+import { listEndedShows, listLiveShows, listShowsForHost } from "@/lib/shows";
 
 export const metadata: Metadata = {
   title: "Browse live shows — frontrow",
@@ -11,7 +12,26 @@ export const metadata: Metadata = {
 };
 
 export default async function BrowseRoute() {
-  const [liveShows, admin] = await Promise.all([listLiveShows(), isAdmin()]);
+  const { userId } = await auth();
+  const [liveShows, pastShows, admin, hostShows] = await Promise.all([
+    listLiveShows(),
+    listEndedShows(),
+    isAdmin(),
+    userId ? listShowsForHost(userId) : Promise.resolve([]),
+  ]);
 
-  return <BrowsePage liveShows={liveShows} isAdmin={admin} />;
+  return (
+    <BrowsePage
+      liveShows={liveShows}
+      pastShows={pastShows}
+      isAdmin={admin}
+      hostShows={hostShows.map((show) => ({
+        id: show.id,
+        slug: show.slug,
+        title: show.title,
+        status: show.status,
+        startedAt: show.startedAt?.toISOString() ?? null,
+      }))}
+    />
+  );
 }

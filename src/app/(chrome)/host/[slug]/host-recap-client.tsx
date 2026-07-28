@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { ShowEndedCreator } from "@/components/show-ended-creator";
+import { useVisiblePoll } from "@/hooks/use-visible-poll";
+import { readResponseJson } from "@/lib/fetch-json";
 import type { PublicShow } from "@/lib/show-public";
 import { buildEndedRecap, type EndedShowRecap } from "@/lib/show-recap";
 
@@ -18,7 +20,12 @@ export default function HostRecapClient({
   const refreshShow = useCallback(async () => {
     const res = await fetch(`/api/shows/${recap.slug}`);
     if (!res.ok) return;
-    const data = (await res.json()) as PublicShow;
+    let data: PublicShow;
+    try {
+      data = await readResponseJson<PublicShow>(res);
+    } catch {
+      return;
+    }
     if (data.status !== "ended") return;
 
     setRecap(
@@ -36,11 +43,9 @@ export default function HostRecapClient({
     );
   }, [recap.slug]);
 
-  useEffect(() => {
-    if (recap.muxPlaybackId) return;
-    const id = setInterval(() => void refreshShow(), POLL_MS);
-    return () => clearInterval(id);
-  }, [recap.muxPlaybackId, refreshShow]);
+  // Waiting on Mux to finish packaging the recording. Each poll reaches out to
+  // the Mux API server-side, so it stops entirely while the tab is hidden.
+  useVisiblePoll(refreshShow, POLL_MS, !recap.muxPlaybackId);
 
   return <ShowEndedCreator recap={recap} />;
 }

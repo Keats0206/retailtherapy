@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  LiveKitRoom,
-  RoomAudioRenderer,
-  VideoTrack,
-  useTracks,
-} from "@livekit/components-react";
 import { Track } from "livekit-client";
 import "@livekit/components-styles";
 
+import {
+  LiveRoom,
+  RoomAudioRenderer,
+  VideoTrack,
+  useTracks,
+} from "@/lib/live";
+
 import { ChatPanel } from "@/components/chat-panel";
+import { WatchShellSkeleton } from "@/components/show-shell-skeleton";
 import {
   CAMERA_BUBBLE,
   VideoFrame,
@@ -18,24 +20,41 @@ import {
 } from "@/components/video-placeholder";
 import { ViewerCount } from "@/components/viewer-count";
 import { WatchLayout } from "@/components/watch-layout";
+import { readResponseJson } from "@/lib/fetch-json";
 import { useStreamState } from "@/lib/stream-state";
+import { getVoterDisplayName } from "@/lib/voter-identity";
 
 type Connection = { token: string; url: string };
 
-export default function Player({ room }: { room: string }) {
-  const [conn, setConn] = useState<Connection | null>(null);
+export default function Player({
+  room,
+  liveConnection = null,
+}: {
+  room: string;
+  liveConnection?: Connection | null;
+}) {
+  const [conn, setConn] = useState<Connection | null>(liveConnection);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (conn) return;
     let cancelled = false;
     (async () => {
       try {
         const res = await fetch("/api/livekit/token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ room, role: "viewer" }),
+          body: JSON.stringify({
+            room,
+            role: "viewer",
+            displayName: getVoterDisplayName(),
+          }),
         });
-        const data = await res.json();
+        const data = await readResponseJson<{
+          error?: string;
+          token: string;
+          url: string;
+        }>(res);
         if (!res.ok) throw new Error(data.error ?? "Failed to connect");
         if (!cancelled) setConn({ token: data.token, url: data.url });
       } catch (err) {
@@ -46,10 +65,8 @@ export default function Player({ room }: { room: string }) {
     return () => {
       cancelled = true;
     };
-  }, [room]);
+  }, [conn, room]);
 
-  // These stand in for the whole theatre, so they fill it rather than sitting in
-  // an aspect-video box with dead white underneath.
   if (error) {
     return (
       <div className="micro flex flex-1 items-center justify-center bg-black text-white/40">
@@ -59,38 +76,25 @@ export default function Player({ room }: { room: string }) {
   }
 
   if (!conn) {
-    return (
-      <div className="micro flex flex-1 items-center justify-center bg-black text-white/40">
-        Connecting…
-      </div>
-    );
+    return <WatchShellSkeleton statusLabel="Joining room…" />;
   }
 
   return (
-    <LiveKitRoom
+    <LiveRoom
       token={conn.token}
       serverUrl={conn.url}
-      connect
-      // Viewers are subscribe-only: no camera/mic published. They can still
-      // publish *data*, which is what chat and voting use.
       video={false}
       audio={false}
-      data-lk-theme="retail"
-      // LiveKitRoom renders a plain div, which would otherwise break the
-      // flex chain the full-height theatre layout depends on.
+      localRole="viewer"
+      localSlug={room}
       className="flex min-h-0 flex-1 flex-col"
     >
       <Watch />
       <RoomAudioRenderer />
-    </LiveKitRoom>
+    </LiveRoom>
   );
 }
 
-/**
- * The watch experience, wired to the live room. The layout itself lives in
- * `components/watch-layout.tsx`. Must be inside <LiveKitRoom> so the hooks
- * find the room.
- */
 function Watch() {
   const stream = useStreamState({ isHost: false });
 
@@ -99,17 +103,11 @@ function Watch() {
       stream={stream}
       stage={<Stage />}
       viewers={<ViewerCount />}
-      chat={<ChatPanel className="min-h-0 flex-1" />}
+      chat={<ChatPanel variant="rail" className="min-h-0 flex-1" />}
     />
   );
 }
 
-/**
- * What the host is publishing. When they're sharing a screen, the share is the
- * stage and their camera rides along in a small corner bubble — side-by-side
- * halves the size of both, and the thing being shopped is what matters. With no
- * share, the camera takes the full frame.
- */
 function Stage() {
   const tracks = useTracks(
     [Track.Source.ScreenShare, Track.Source.Camera],
@@ -120,20 +118,30 @@ function Stage() {
   const camera = tracks.find((t) => t.source === Track.Source.Camera);
 
   if (!share && !camera) {
-    return <VideoPlaceholder>Waiting for the host to start…</VideoPlaceholder>;
+    return (
+      <VideoPlaceholder>
+        Waiting for the host to share their screen…
+      </VideoPlaceholder>
+    );
+  }
+
+  if (!share && camera) {
+    return (
+      <VideoTrack trackRef={camera} className="h-full w-full object-contain" />
+    );
   }
 
   if (!share) {
     return (
-      <VideoTrack trackRef={camera!} className="h-full w-full object-cover" />
+      <VideoPlaceholder>
+        Waiting for the host to share their screen…
+      </VideoPlaceholder>
     );
   }
 
   return (
     <div className="relative h-full w-full">
-      {/* `contain` so no part of what they're showing gets cropped away. */}
       <VideoTrack trackRef={share} className="h-full w-full object-contain" />
-
       {camera && (
         <VideoFrame className={CAMERA_BUBBLE}>
           <VideoTrack

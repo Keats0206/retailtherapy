@@ -3,7 +3,6 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
 import { LandingPage } from "@/components/landing-page";
-import { HERO_SCATTER_PRELOAD } from "@/lib/landing-hero-preload";
 
 export const metadata: Metadata = {
   title: "frontrow — watch people shop",
@@ -15,15 +14,13 @@ export default async function HomePage() {
   const { isAuthenticated } = await auth();
 
   if (isAuthenticated) {
-    redirect("/dashboard");
+    redirect("/home");
   }
 
-  return (
-    <>
-      {HERO_SCATTER_PRELOAD.map((href) => (
-        <link key={href} rel="preload" as="image" href={href} />
-      ))}
-      <LandingPage />
-    </>
-  );
+  // No manual <link rel="preload"> here: the hero's cards go through
+  // next/image, which emits a correctly-sized preload for the priority ones.
+  // The old PORTER_HERO_PRELOAD list belonged to a hero this page no longer
+  // renders, so it was fetching ~2.4 MB of never-painted images at high
+  // priority.
+  return <LandingPage />;
 }

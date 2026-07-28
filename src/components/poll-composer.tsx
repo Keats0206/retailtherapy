@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import {
   emojiFor,
   MAX_POLL_OPTIONS,
@@ -76,6 +77,7 @@ export function PollComposer({
     options.filter((o) => o.trim()).length >= MIN_POLL_OPTIONS;
 
   function launch(input: PollInput) {
+    trackEvent(AnalyticsEvent.HOST_POLL_LAUNCH, { area: "host_studio" });
     onLaunch(input);
     onOpenChange(false);
     setQuestion("");

@@ -23,6 +23,11 @@ export async function POST(request: Request) {
     name?: string;
     handle?: string;
     pitch?: string;
+    socials?: {
+      instagram?: string;
+      tiktok?: string;
+      youtube?: string;
+    };
   };
   try {
     body = await request.json();
@@ -47,6 +52,7 @@ export async function POST(request: Request) {
       name: body.name,
       handle: body.handle,
       pitch: body.pitch,
+      socials: body.socials,
       userId: user?.id ?? null,
     });
     return Response.json({ ok: true });

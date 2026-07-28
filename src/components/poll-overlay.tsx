@@ -9,6 +9,7 @@ import {
   selectPollShares,
   selectPollTotal,
 } from "@/lib/poll-store";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import type { Poll } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -105,7 +106,12 @@ export function PollOverlay({
               key={option.id}
               type="button"
               disabled={!canVote}
-              onClick={() => onVote?.(option.id)}
+              onClick={() => {
+                if (role === "viewer") {
+                  trackEvent(AnalyticsEvent.POLL_VOTE, { area: "watch" });
+                }
+                onVote?.(option.id);
+              }}
               // With `basis-0`, grow ratios are width shares — animating grow
               // animates width. The floor keeps a 2% option's emoji visible.
               style={{ flexGrow: showResults ? Math.max(shares[option.id], 6) : 1 }}

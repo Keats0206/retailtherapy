@@ -23,7 +23,7 @@ const badgeVariants = cva(
       },
       size: {
         default: "",
-        micro: "h-5 px-1.5 text-[0.65rem] [&>svg]:size-2.5!",
+        micro: "h-5 px-1.5 text-xs [&>svg]:size-2.5!",
       },
     },
     defaultVariants: {

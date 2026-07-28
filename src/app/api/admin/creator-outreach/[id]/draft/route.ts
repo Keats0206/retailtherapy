@@ -1,18 +1,21 @@
-import { getSignedInUser } from "@/lib/auth";
+import { getAdminUser } from "@/lib/auth";
 import { getProspect, updateProspect } from "@/lib/creator-outreach";
 import { draftOutreachEmail } from "@/lib/outreach-draft";
-import { checkRateLimit, clientIp, rateLimitResponse } from "@/lib/rate-limit";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 // POST /api/admin/creator-outreach/<id>/draft — write an outreach email for one
-// prospect. Ungated for now, same as the page it backs. Saves the draft but
-// never sends it; sending is a separate, explicit call.
+// prospect (admin only). Saves the draft but never sends it; sending is a
+// separate, explicit call.
 export async function POST(
   request: Request,
   { params }: RouteContext<"/api/admin/creator-outreach/[id]/draft">,
 ) {
-  // Drafting costs a model call, so cap it. No sign-in required now that this
-  // is open, so key on IP.
-  const limit = checkRateLimit(`creator-draft:${clientIp(request)}`, {
+  const admin = await getAdminUser();
+  if (!admin) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const limit = checkRateLimit(`creator-draft:${admin.id}`, {
     limit: 30,
     windowMs: 60_000,
   });
@@ -33,13 +36,10 @@ export async function POST(
     body = {};
   }
 
-  // Sign-in is optional here, but personalize the signature when we do have a
-  // user rather than falling straight back to the generic name.
-  const sender = await getSignedInUser();
   const senderName =
-    sender?.firstName ??
-    sender?.username ??
-    sender?.emailAddresses[0]?.emailAddress ??
+    admin.firstName ??
+    admin.username ??
+    admin.emailAddresses[0]?.emailAddress ??
     "the frontrow team";
 
   try {

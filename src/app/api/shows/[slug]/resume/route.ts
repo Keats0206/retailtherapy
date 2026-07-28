@@ -1,6 +1,6 @@
 import { getHostUser } from "@/lib/auth";
 import { createAccessToken, getLiveKitConfig } from "@/lib/livekit";
-import { getShowBySlug } from "@/lib/shows";
+import { getShowBySlug, snapshotOf } from "@/lib/shows";
 
 // POST /api/shows/<slug>/resume — reconnect a host to an in-progress live show.
 export async function POST(
@@ -36,6 +36,7 @@ export async function POST(
       room: show.roomName,
       token,
       url,
+      snapshot: snapshotOf(show),
     });
   } catch (err) {
     const message =

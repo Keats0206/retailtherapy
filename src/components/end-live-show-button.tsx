@@ -13,6 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import { readResponseJson } from "@/lib/fetch-json";
 
 export function EndLiveShowButton({
   slug,
@@ -51,11 +53,16 @@ export function EndLiveShowButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      const data = (await res.json()) as { error?: string; status?: string };
+      const data = await readResponseJson<{ error?: string; status?: string }>(
+        res,
+      );
       if (!res.ok || data.status !== "ended") {
         throw new Error(data.error ?? "Failed to end show");
       }
 
+      trackEvent(AnalyticsEvent.SHOW_END, {
+        area: variant === "admin" ? "admin" : "browse",
+      });
       setOpen(false);
       onEnded?.();
       router.refresh();

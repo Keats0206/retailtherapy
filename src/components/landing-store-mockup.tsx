@@ -40,9 +40,9 @@ function ProductCard({
 }) {
   return (
     <div className="group flex flex-col">
-      <div className="relative aspect-[3/4] overflow-hidden bg-[#fafafa]">
+      <div className="relative aspect-[3/4] overflow-hidden bg-muted">
         {badge ? (
-          <span className="micro absolute left-2 top-2 z-10 bg-white/90 px-1.5 py-0.5 text-[10px] text-foreground/70">
+          <span className="micro absolute left-2 top-2 z-10 bg-background/90 px-1.5 py-0.5 text-xs text-foreground/70">
             {badge}
           </span>
         ) : null}
@@ -62,13 +62,13 @@ function ProductCard({
         />
       </div>
       <div className="flex flex-col gap-0.5 pt-2.5">
-        <span className="text-[11px] font-medium uppercase tracking-wide">
+        <span className="text-xs font-medium uppercase tracking-wide">
           {brand}
         </span>
-        <span className="line-clamp-2 text-[11px] leading-snug text-foreground/70">
+        <span className="line-clamp-2 text-xs leading-snug text-foreground/70">
           {name}
         </span>
-        <span className="pt-0.5 text-[11px] font-medium tabular-nums">
+        <span className="pt-0.5 text-xs font-medium tabular-nums">
           {formatPrice(price, currency)}
         </span>
       </div>
@@ -95,18 +95,18 @@ export function LandingStoreMockup({
 
       <div
         className={cn(
-          "overflow-hidden rounded-2xl bg-white shadow-lg",
+          "overflow-hidden rounded-2xl bg-background shadow-lg",
           embedded && "shadow-xl ring-1 ring-foreground/10",
         )}
       >
         {/* Browser chrome */}
-        <div className="flex items-center gap-2.5 bg-[#f5f5f5] px-3 py-2">
+        <div className="flex items-center gap-2.5 bg-secondary px-3 py-2">
           <div className="flex shrink-0 gap-1.5" aria-hidden>
             <span className="size-2.5 rounded-full bg-[#FF5F57]" />
             <span className="size-2.5 rounded-full bg-[#FEBC2E]" />
             <span className="size-2.5 rounded-full bg-[#28C840]" />
           </div>
-          <div className="flex min-w-0 flex-1 items-center justify-center rounded-md bg-white px-3 py-1">
+          <div className="flex min-w-0 flex-1 items-center justify-center rounded-md bg-background px-3 py-1">
             <span className="micro truncate text-foreground/50">
               revolve.com/clothing/{activeTab.toLowerCase()}
             </span>
@@ -122,9 +122,9 @@ export function LandingStoreMockup({
                 <span
                   key={item}
                   className={cn(
-                    "text-[10px] uppercase tracking-wide",
+                    "text-xs uppercase tracking-wide",
                     item === "Sale"
-                      ? "text-red-600"
+                      ? "text-destructive"
                       : item === "Clothing"
                         ? "font-medium text-foreground"
                         : "text-foreground/50",
@@ -136,7 +136,7 @@ export function LandingStoreMockup({
             </nav>
             <div className="flex items-center gap-1.5 text-foreground/30">
               <Search className="size-3" strokeWidth={1.5} />
-              <span className="hidden text-[10px] sm:inline">
+              <span className="hidden text-xs sm:inline">
                 What are you looking for?
               </span>
             </div>
@@ -144,7 +144,7 @@ export function LandingStoreMockup({
 
           {/* Category tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto px-3 py-2">
-            <span className="micro flex shrink-0 items-center gap-1 rounded-sm bg-black/5 px-2 py-1 text-[10px] text-foreground/60">
+            <span className="micro flex shrink-0 items-center gap-1 rounded-sm bg-foreground/5 px-2 py-1 text-xs text-foreground/60">
               <SlidersHorizontal className="size-2.5" strokeWidth={1.75} />
               All Filters
             </span>
@@ -154,16 +154,16 @@ export function LandingStoreMockup({
                 type="button"
                 onClick={() => setActiveTab(tab)}
                 className={cn(
-                  "micro shrink-0 rounded-sm px-2 py-1 text-[10px] transition-colors",
+                  "micro shrink-0 rounded-sm px-2 py-1 text-xs transition-colors",
                   activeTab === tab
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-black/5 text-foreground/60 hover:bg-black/10",
+                    ? "bg-foreground text-background"
+                    : "bg-foreground/5 text-foreground/60 hover:bg-foreground/10",
                 )}
               >
                 {tab}
               </button>
             ))}
-            <span className="micro ml-auto hidden shrink-0 items-center gap-0.5 text-[10px] text-foreground/50 sm:flex">
+            <span className="micro ml-auto hidden shrink-0 items-center gap-0.5 text-xs text-foreground/50 sm:flex">
               Sort by
               <ChevronDown className="size-2.5" strokeWidth={1.75} />
             </span>
@@ -185,7 +185,7 @@ export function LandingStoreMockup({
                 alt=""
                 className="h-full w-full object-cover"
               />
-              <span className="absolute inset-x-0 bottom-0 bg-live py-0.5 text-center text-[8px] font-medium uppercase tracking-wider text-live-foreground">
+              <span className="micro absolute inset-x-0 bottom-0 bg-live py-0.5 text-center text-xs font-medium uppercase tracking-wider text-live-foreground">
                 Live
               </span>
             </div>

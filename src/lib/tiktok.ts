@@ -84,14 +84,23 @@ async function request<T>(path: string, params: Record<string, string>) {
     cache: "no-store",
   });
 
+  const text = await res.text().catch(() => "");
+
   if (!res.ok) {
-    const detail = await res.text().catch(() => "");
     throw new TikTokApiError(
-      `TikTok search failed (${res.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`,
+      `TikTok search failed (${res.status})${text ? `: ${text.slice(0, 200)}` : ""}`,
     );
   }
 
-  return (await res.json()) as T;
+  if (!text) {
+    throw new TikTokApiError("TikTok search returned an empty response");
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new TikTokApiError("TikTok search returned invalid JSON");
+  }
 }
 
 /** Shape of one entry in `/api/search/account`'s `user_list`. */

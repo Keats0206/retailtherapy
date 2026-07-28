@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { ApplyHostPage } from "@/components/apply-host-page";
 
 export const metadata: Metadata = {
-  title: "Host waitlist — frontrow",
+  title: "Apply to host — frontrow",
   description:
-    "Join the waitlist to host live shopping shows on Frontrow. See what creators might earn based on audience size and go live from your browser.",
+    "Apply to host live shopping shows on Frontrow. Share your socials and we'll reach out as creator spots open up.",
 };
 
 export default function ApplyRoute() {

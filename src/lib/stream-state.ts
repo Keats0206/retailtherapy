@@ -1,12 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useConnectionState, useDataChannel } from "@livekit/components-react";
+import { ConnectionState } from "livekit-client";
+
+import { useConnectionState, useDataChannel } from "@/lib/live";
 
 import {
   EMPTY,
   applyEndInteraction,
   applyPin,
+  applySetFeatured,
   applySetNote,
   applyStartVerse,
   applyUnpin,
@@ -15,12 +18,14 @@ import {
   selectPinned,
   selectVerse,
   selectVerseVotesFor,
+  selectVotersFor,
   selectVotesFor,
   type StreamSnapshot,
   type StreamState,
   type VerseChoice,
 } from "@/lib/stream-store";
 import type { Product, VoteChoice } from "@/lib/types";
+import { getVoterDisplayName, getVoterId } from "@/lib/voter-identity";
 
 /**
  * Shared shopping state for a live room, carried over the LiveKit data channel.
@@ -38,15 +43,28 @@ const decoder = new TextDecoder();
 type StreamEvent =
   | { t: "hello" }
   | { t: "snapshot"; state: StreamSnapshot }
-  | { t: "vote"; productId: string; choice: VoteChoice }
-  | { t: "votePatch"; productId: string; choice: VoteChoice }
-  | { t: "verseVote"; verseId: string; choice: VerseChoice }
-  | { t: "verseVotePatch"; verseId: string; choice: VerseChoice };
+  | {
+      t: "vote";
+      productId: string;
+      choice: VoteChoice;
+      voterId: string;
+      displayName: string;
+    }
+  | { t: "verseVote"; verseId: string; choice: VerseChoice };
 
 export type { StreamSnapshot };
 
-export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
-  const [state, setState] = useState<StreamSnapshot>(EMPTY);
+export function useStreamState({
+  isHost,
+  initialSnapshot,
+}: {
+  isHost: boolean;
+  initialSnapshot?: StreamSnapshot;
+}): StreamState {
+  const [state, setState] = useState<StreamSnapshot>(
+    () => initialSnapshot ?? EMPTY,
+  );
+  /** Choices this browser already made, so the UI can lock its buttons. */
   const [myVotes, setMyVotes] = useState<Record<string, VoteChoice>>({});
   const [myVerseVotes, setMyVerseVotes] = useState<
     Record<string, VerseChoice>
@@ -100,8 +118,12 @@ export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
         if (event.t === "hello") {
           sendRef.current?.({ t: "snapshot", state: stateRef.current });
         } else if (event.t === "vote") {
-          setState((prev) => applyVote(prev, event.productId, event.choice));
-          broadcastVotePatch(event.productId, event.choice);
+          setState((prev) =>
+            applyVote(prev, event.productId, event.choice, {
+              voterId: event.voterId,
+              displayName: event.displayName,
+            }),
+          );
         } else if (event.t === "verseVote") {
           setState((prev) =>
             applyVerseVote(prev, event.verseId, event.choice),
@@ -179,6 +201,10 @@ export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
     setState((prev) => applySetNote(prev, productId, note));
   }, []);
 
+  const setFeatured = useCallback((productId: string, featured: boolean) => {
+    setState((prev) => applySetFeatured(prev, productId, featured));
+  }, []);
+
   const startVerse = useCallback((left: Product, right: Product) => {
     setState((prev) => applyStartVerse(prev, left, right));
   }, []);
@@ -190,11 +216,21 @@ export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
 
       setMyVotes((prev) => ({ ...prev, [productId]: choice }));
 
+      const voter = {
+        voterId: getVoterId(),
+        displayName: getVoterDisplayName(),
+      };
+
       if (isHost) {
-        setState((prev) => applyVote(prev, productId, choice));
-        broadcastVotePatch(productId, choice);
+        setState((prev) => applyVote(prev, productId, choice, voter));
       } else {
-        sendRef.current?.({ t: "vote", productId, choice });
+        sendRef.current?.({
+          t: "vote",
+          productId,
+          choice,
+          voterId: voter.voterId,
+          displayName: voter.displayName,
+        });
       }
     },
     [isHost, connected, broadcastVotePatch],
@@ -225,19 +261,31 @@ export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
     [state.votes],
   );
 
+  const votersFor = useCallback(
+    (productId: string) => selectVotersFor(state, productId),
+    [state],
+  );
+
   const verseVotesFor = useCallback(
     (verseId: string) => selectVerseVotesFor(state, verseId),
     [state.verseVotes],
   );
 
+  // Memoized because consumers key effects off the whole object. The floating
+  // studio re-renders its detached React root whenever this identity changes,
+  // and a bare object literal would change it on every render of the host —
+  // including every chat message and participant join, which the studio's
+  // contents don't depend on. Each member below already changes only when the
+  // state it derives from does, so the memo busts exactly when it should.
   return useMemo(
-    (): StreamState => ({
+    () => ({
       active: state.active,
       pinned,
       verse,
       trail: state.trail,
       snapshot: state,
       votesFor,
+      votersFor,
       verseVotesFor,
       myVotes,
       myVerseVotes,
@@ -245,6 +293,7 @@ export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
       unpin,
       endInteraction,
       setNote,
+      setFeatured,
       vote,
       startVerse,
       verseVote,
@@ -254,6 +303,7 @@ export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
       pinned,
       verse,
       votesFor,
+      votersFor,
       verseVotesFor,
       myVotes,
       myVerseVotes,
@@ -261,6 +311,7 @@ export function useStreamState({ isHost }: { isHost: boolean }): StreamState {
       unpin,
       endInteraction,
       setNote,
+      setFeatured,
       vote,
       startVerse,
       verseVote,

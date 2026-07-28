@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { formatPrice, normalizeProductImageUrl } from "@/lib/format";
+import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import type { Product, VoteChoice, VoteTally } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -66,6 +67,7 @@ export function CurrentProduct({
         <img
           src={imageUrl}
           alt={product.name}
+          decoding="async"
           className="mt-2 aspect-square w-full bg-muted object-cover"
         />
       )}
@@ -96,9 +98,13 @@ export function CurrentProduct({
         size="micro"
         className="mt-3 w-full"
         disabled={!product.buyUrl}
-        onClick={() =>
-          window.open(product.buyUrl, "_blank", "noopener,noreferrer")
-        }
+        onClick={() => {
+          trackEvent(AnalyticsEvent.PRODUCT_SHOP_CLICK, {
+            area: "watch",
+            context: "pinned",
+          });
+          window.open(product.buyUrl, "_blank", "noopener,noreferrer");
+        }}
       >
         Shop at {product.retailer || "retailer"}
       </Button>
@@ -116,7 +122,14 @@ export function CurrentProduct({
             variant={myVote === "buy" ? "default" : "outline"}
             size="micro"
             disabled={!!myVote}
-            onClick={() => onVote("buy")}
+            onClick={() => {
+              trackEvent(AnalyticsEvent.PRODUCT_VOTE, {
+                area: "watch",
+                context: "pinned",
+                choice: "buy",
+              });
+              onVote("buy");
+            }}
           >
             Buy · {votes.buy}
           </Button>
@@ -124,7 +137,14 @@ export function CurrentProduct({
             variant={myVote === "skip" ? "default" : "outline"}
             size="micro"
             disabled={!!myVote}
-            onClick={() => onVote("skip")}
+            onClick={() => {
+              trackEvent(AnalyticsEvent.PRODUCT_VOTE, {
+                area: "watch",
+                context: "pinned",
+                choice: "skip",
+              });
+              onVote("skip");
+            }}
           >
             Not buy · {votes.skip}
           </Button>

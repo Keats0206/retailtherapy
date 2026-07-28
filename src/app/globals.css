@@ -6,12 +6,29 @@
 /**
  * Design Tokens — single source of truth for app styling.
  *
- * Brand: --live (chartreuse), --pop (hot pink), --primary (black CTAs).
- * App chrome: semantic tokens (bg-background, text-muted-foreground, …).
- * Video overlays: cinema utilities below (white/black for legibility over video).
- * Inset sections: soft-panel utility (muted wash, not Card).
+ * Retheme the app by editing :root / .dark below and the @theme inline block.
  *
- * Retheme by editing :root / .dark and the @theme inline block.
+ * Brand colors:
+ *   --live / --live-foreground   chartreuse — live badges, polls, go-live CTAs
+ *   --pop / --pop-foreground     hot pink — accent highlights
+ *   --primary / --primary-foreground   black CTAs (light mode)
+ *
+ * Semantic surfaces:
+ *   --background, --foreground, --muted, --secondary, --card, --border, etc.
+ *   Use Tailwind utilities: bg-background, text-muted-foreground, border-border
+ *
+ * Typography:
+ *   --text-xs … --text-9xl in @theme inline (~15% larger than Tailwind defaults)
+ *   font-heading / font-display — hero & section titles
+ *   @utility micro — eyebrow labels only (section headers, metadata, status)
+ *   Do NOT use micro on headings, product names, or buttons.
+ *
+ * Rule: app surfaces use semantic tokens; video overlays use cinema white/black.
+ *
+ * Cinema-mode exceptions (intentional hardcoded white/black for legibility over video):
+ *   poll-overlay, host-control-bar, host-client, video-placeholder, watch-layout,
+ *   waitroom-client, show-ended-viewer, landing-show-demo, player, show-page-client,
+ *   host-floating-studio, show-trail-preview, ui/dialog, ui/sheet
  */
 
 @custom-variant dark (&:is(.dark *));
@@ -454,5 +471,59 @@
   }
   to {
     transform: scaleX(0);
+  }
+}
+
+/** Host studio control rail — subtle surface separation from the video stage. */
+.studio-rail {
+  background: color-mix(in oklch, var(--muted) 35%, var(--background));
+  border-left: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+}
+
+@media (max-width: 1023px) {
+  .studio-rail {
+    border-left: none;
+    border-top: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+    max-height: min(55vh, 28rem);
+  }
+}
+
+/** Document PiP floating studio — compact host controls window. */
+.pip-studio {
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+}
+
+.pip-studio-tabs button {
+  min-height: 2.25rem;
+}
+
+/** Host live shopping window — chartreuse frame is part of the shared pixels. */
+.live-share-frame {
+  --live-share-ring: transparent;
+  box-shadow: inset 0 0 0 3px var(--live-share-ring);
+  transition: box-shadow 300ms ease;
+}
+
+.live-share-frame--live {
+  --live-share-ring: color-mix(in oklch, var(--live) 55%, transparent);
+}
+
+.live-share-frame--captured {
+  --live-share-ring: var(--live);
+  animation: live-share-ring-pulse 2.4s ease-in-out infinite;
+}
+
+.live-share-frame-bar {
+  border-bottom: 1px solid color-mix(in oklch, var(--live) 25%, var(--border));
+  background: color-mix(in oklch, var(--live) 8%, var(--background));
+}
+
+@keyframes live-share-ring-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 3px var(--live);
+  }
+  50% {
+    box-shadow: inset 0 0 0 5px color-mix(in oklch, var(--live) 70%, transparent);
   }
 }

@@ -11,9 +11,9 @@ export default function GlobalError({
 }) {
   return (
     <html lang="en">
-      <body className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 font-sans">
+      <body className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6 font-sans text-foreground">
         <h1 className="text-2xl">Something went wrong</h1>
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-muted-foreground">
           {error.message || "An unexpected error occurred."}
         </p>
         <Button onClick={reset}>Try again</Button>

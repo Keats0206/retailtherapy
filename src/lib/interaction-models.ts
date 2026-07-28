@@ -5,7 +5,7 @@
  * Verse: two products side-by-side + left/right poll.
  */
 
-import type { Product } from "@/lib/types";
+import type { Product, VoteRecord } from "@/lib/types";
 
 export type SpotlightInteraction = {
   kind: "spotlight";
@@ -33,6 +33,7 @@ export interface SnapshotLike {
   active: ActiveInteraction | null;
   trail: Product[];
   votes: Record<string, { buy: number; skip: number }>;
+  voters: Record<string, VoteRecord[]>;
   verseVotes: Record<string, VerseTally>;
   stats?: { peakViewers: number; chatCount: number };
 }
@@ -42,13 +43,15 @@ type LegacySnapshot = SnapshotLike & { pinnedId?: string | null };
 
 export function normalizeSnapshot(raw: unknown): SnapshotLike {
   if (!raw || typeof raw !== "object") {
-    return { active: null, trail: [], votes: {}, verseVotes: {} };
+    return { active: null, trail: [], votes: {}, voters: {}, verseVotes: {} };
   }
 
   const value = raw as LegacySnapshot;
   const trail = Array.isArray(value.trail) ? value.trail : [];
   const votes =
     value.votes && typeof value.votes === "object" ? value.votes : {};
+  const voters =
+    value.voters && typeof value.voters === "object" ? value.voters : {};
   const verseVotes =
     value.verseVotes && typeof value.verseVotes === "object"
       ? value.verseVotes
@@ -64,6 +67,7 @@ export function normalizeSnapshot(raw: unknown): SnapshotLike {
     active,
     trail,
     votes,
+    voters,
     verseVotes,
     stats: value.stats,
   };
