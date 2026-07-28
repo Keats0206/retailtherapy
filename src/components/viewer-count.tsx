@@ -1,6 +1,6 @@
 "use client";
 
-import { useParticipants } from "@livekit/components-react";
+import { useParticipants } from "@/lib/live";
 
 import { formatCount } from "@/lib/format";
 import { cn } from "@/lib/utils";

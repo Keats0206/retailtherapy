@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useConnectionState, useDataChannel } from "@livekit/components-react";
 import { ConnectionState } from "livekit-client";
+
+import { useConnectionState, useDataChannel } from "@/lib/live";
 
 import { getVoterDisplayName } from "@/lib/voter-identity";
 

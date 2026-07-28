@@ -36,6 +36,10 @@ import type { Product } from "@/lib/types";
  * ownership is enforced here rather than trusted from the route handler.
  */
 
+/** See `lib/live/mode.ts` — the client fakes the transport, so there is no
+ * room for an egress to compose and no reason to provision a Mux stream. */
+const DESIGN_MODE = process.env.NEXT_PUBLIC_LOCAL_STREAM === "1";
+
 const SLUG_ALPHABET = "abcdefghijkmnopqrstuvwxyz23456789";
 
 /**
@@ -244,9 +248,13 @@ export async function createShow(opts: {
   let liveStreamId: string | null = null;
 
   try {
-    const mux = await createMuxLiveStream();
-    liveStreamId = mux.liveStreamId;
-    const { streamKey } = mux;
+    // Design mode never sends a frame to Mux, so provisioning a live stream
+    // would only leave a dangling resource. A show with no stream key simply
+    // never records — `startRecording` and `endShow` both already treat that
+    // as a normal state.
+    const mux = DESIGN_MODE ? null : await createMuxLiveStream();
+    liveStreamId = mux?.liveStreamId ?? null;
+    const streamKey = mux?.streamKey ?? null;
 
     const [show] = await db
       .insert(streams)
@@ -289,6 +297,8 @@ export async function startRecording(
   if (!show || show.hostUserId !== hostUserId) return null;
   if (show.egressId) return show;
   if (!show.muxStreamKey) return show;
+  // No real room exists to compose in design mode.
+  if (DESIGN_MODE) return show;
 
   const egressId = await startRoomRecording({
     room: show.roomName,

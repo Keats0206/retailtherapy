@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useChat, useLocalParticipant } from "@livekit/components-react";
+import { useChat, useLocalParticipant } from "@/lib/live";
 import { MessageSquare, SendHorizontal } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";

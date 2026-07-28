@@ -16,6 +16,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Keep @sentry/node out of the dev bundler — it pulls OpenTelemetry deps that
+  // require Node built-ins like `diagnostics_channel` and stall the dev server.
+  serverExternalPackages: ["@sentry/node"],
   turbopack: {
     root: projectRoot,
   },

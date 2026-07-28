@@ -13,10 +13,25 @@ import {
  * LIVEKIT_API_SECRET (see .env.example).
  */
 
+/**
+ * Design mode (`npm run dev:design`) fakes the whole client transport, so the
+ * tokens minted below are handed out and never used. Placeholders let the show
+ * APIs work without a LiveKit account. See `lib/live/mode.ts`.
+ */
+const DESIGN_MODE = process.env.NEXT_PUBLIC_LOCAL_STREAM === "1";
+
 export function getLiveKitConfig() {
   const url = process.env.LIVEKIT_URL;
   const apiKey = process.env.LIVEKIT_API_KEY;
   const apiSecret = process.env.LIVEKIT_API_SECRET;
+
+  if (DESIGN_MODE && (!url || !apiKey || !apiSecret)) {
+    return {
+      url: "ws://design-mode.invalid",
+      apiKey: "design-mode",
+      apiSecret: "design-mode-secret-not-used-for-anything",
+    };
+  }
 
   if (!url || !apiKey || !apiSecret) {
     throw new Error(
