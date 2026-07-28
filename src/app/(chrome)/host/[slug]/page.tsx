@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
-import { getSignedInUser, isUserAllowlistedToHost } from "@/lib/auth";
+import { getSignedInUser } from "@/lib/auth";
 import { buildEndedRecap } from "@/lib/show-recap";
 import { getShowBySlug, resolveRecording, snapshotOf } from "@/lib/shows";
 
@@ -13,10 +13,6 @@ export default async function HostRecapPage({
 }) {
   const user = await getSignedInUser();
   if (!user) return null;
-
-  if (!isUserAllowlistedToHost(user)) {
-    redirect("/host");
-  }
 
   const { slug } = await params;
   let show = await getShowBySlug(slug);
