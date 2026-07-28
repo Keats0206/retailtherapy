@@ -7,15 +7,9 @@ import type { User } from "@clerk/nextjs/server";
  * Returns the current Clerk user when signed in, otherwise `null`. Use in
  * Server Components, Route Handlers, and Server Actions to gate host-only
  * functionality.
- *
- * When `HOST_ALLOWLIST` is set, only listed email addresses can host. An empty
- * or unset allowlist lets any signed-in user host.
  */
 export async function getHostUser(): Promise<User | null> {
-  const user = await currentUser();
-  if (!user) return null;
-  if (!isUserAllowlistedToHost(user)) return null;
-  return user;
+  return currentUser();
 }
 
 export async function isHost(): Promise<boolean> {
@@ -60,18 +54,6 @@ export function isSuperAdmin(user: User): boolean {
 /** Signed-in user, regardless of allowlist. */
 export async function getSignedInUser(): Promise<User | null> {
   return currentUser();
-}
-
-export function isUserAllowlistedToHost(user: User): boolean {
-  const allowlist = getHostAllowlist();
-  if (!allowlist) return true;
-
-  const email = primaryEmail(user);
-  return email !== null && allowlist.has(email);
-}
-
-function getHostAllowlist(): Set<string> | null {
-  return parseEmailAllowlist(process.env.HOST_ALLOWLIST);
 }
 
 function getAdminAllowlist(): Set<string> | null {

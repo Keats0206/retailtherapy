@@ -21,7 +21,7 @@ const REQUIRED = [
   "CRON_SECRET",
 ] as const;
 
-const RECOMMENDED = ["HOST_ALLOWLIST", "SENTRY_DSN"] as const;
+const RECOMMENDED = ["SENTRY_DSN"] as const;
 
 function main() {
   if (process.env.NEXT_PUBLIC_LOCAL_STREAM === "1") {
@@ -63,7 +63,6 @@ function main() {
   console.log("  2. Deploy to Vercel");
   console.log("  3. curl https://<domain>/api/health");
   console.log("  4. SMOKE_TEST_BASE_URL=https://<domain> npm run smoke");
-  console.log("  5. Add beta hosts to HOST_ALLOWLIST");
 }
 
 main();
