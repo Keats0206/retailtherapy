@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ConnectionState, Track } from "livekit-client";
+import { Track } from "livekit-client";
 import "@livekit/components-styles";
 import { ExternalLink, Square } from "lucide-react";
 
@@ -11,7 +11,6 @@ import {
   LiveRoom,
   VideoTrack,
   useChat,
-  useConnectionState,
   useLiveBridge,
   useParticipants,
   useRoomContext,
@@ -28,7 +27,6 @@ import { PollLaunchButton, PollOverlay } from "@/components/poll-overlay";
 import { ShareScreenGate } from "@/components/share-screen-gate";
 import { ShareShowLinkButton } from "@/components/share-show-link-button";
 import { StudioLayout } from "@/components/studio-layout";
-import { StudioShellSkeleton } from "@/components/show-shell-skeleton";
 import { HostStageOverlays } from "@/components/watch-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +35,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useDocumentPiP } from "@/hooks/use-document-pip";
+import { readResponseJson } from "@/lib/fetch-json";
 import {
   clearLiveShare,
   publishLiveShare,
@@ -88,7 +87,7 @@ export default function LiveBroadcast({
           method: "POST",
         });
         if (!res.ok) {
-          const data = await res.json();
+          const data = await readResponseJson<{ error?: string }>(res);
           throw new Error(data.error ?? "Failed to start recording");
         }
       } catch (err) {
@@ -120,28 +119,15 @@ export default function LiveBroadcast({
         localSlug={session.slug}
         className="flex min-h-0 flex-1 flex-col bg-background"
       >
-        <ConnectingGate>
-          <BroadcastStudio
-            session={session}
-            channel3Configured={channel3Configured}
-            onShowEnded={onShowEnded}
-            onStudioError={setStudioError}
-          />
-        </ConnectingGate>
+        <BroadcastStudio
+          session={session}
+          channel3Configured={channel3Configured}
+          onShowEnded={onShowEnded}
+          onStudioError={setStudioError}
+        />
       </LiveRoom>
     </div>
   );
-}
-
-function ConnectingGate({ children }: { children: React.ReactNode }) {
-  const connectionState = useConnectionState();
-  const connected = connectionState === ConnectionState.Connected;
-
-  if (!connected) {
-    return <StudioShellSkeleton statusLabel="Opening studio…" />;
-  }
-
-  return children;
 }
 
 function BroadcastStudio({
@@ -281,7 +267,9 @@ function BroadcastStudio({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ snapshot: snapshotWithStats }),
       });
-      const data = (await res.json()) as { error?: string; status?: string };
+      const data = await readResponseJson<{ error?: string; status?: string }>(
+        res,
+      );
       if (!res.ok || data.status !== "ended") {
         throw new Error(data.error ?? "Failed to end show");
       }
@@ -379,6 +367,18 @@ function BroadcastStudio({
     }
   }, [chatMessages.length]);
 
+  // Checkpoint the shopping state so a crashed tab still leaves a recap.
+  //
+  // The snapshot is read through a ref rather than listed as a dependency:
+  // every pin, note and vote produces a new snapshot object, and depending on
+  // it would tear down and recreate the interval each time — restarting the
+  // 30s clock so the autosave never fired during exactly the busy shows that
+  // most need it.
+  const snapshotRef = useRef(stream.snapshot);
+  useEffect(() => {
+    snapshotRef.current = stream.snapshot;
+  }, [stream.snapshot]);
+
   useEffect(() => {
     const id = setInterval(() => {
       void (async () => {
@@ -386,10 +386,10 @@ function BroadcastStudio({
           const res = await fetch(`/api/shows/${session.slug}/snapshot`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ snapshot: stream.snapshot }),
+            body: JSON.stringify({ snapshot: snapshotRef.current }),
           });
           if (!res.ok) {
-            const data = await res.json();
+            const data = await readResponseJson<{ error?: string }>(res);
             throw new Error(data.error ?? "Failed to save snapshot");
           }
         } catch (err) {
@@ -400,7 +400,7 @@ function BroadcastStudio({
       })();
     }, 30_000);
     return () => clearInterval(id);
-  }, [onStudioError, session.slug, stream.snapshot]);
+  }, [onStudioError, session.slug]);
 
   return (
     <>
@@ -470,7 +470,7 @@ function ConnectionKeeper({
         </h1>
         <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
           {pipSupported
-            ? "Controls are in the floating window. Share a live shopping window (chartreuse border) so you always know what viewers see."
+            ? "Controls are in the floating window. Share the store window so viewers follow along."
             : "Controls stay on this page while you share. Use Chrome for a floating control window while sharing."}
         </p>
       </div>

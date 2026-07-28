@@ -167,6 +167,8 @@ export function ShoppingTrail({
                     <img
                       src={imageUrl}
                       alt={p.name}
+                      loading="lazy"
+                      decoding="async"
                       className="size-12 shrink-0 rounded-lg bg-muted object-cover"
                     />
                   ) : (
@@ -250,6 +252,8 @@ export function ShoppingTrail({
                     <img
                       src={imageUrl}
                       alt={p.name}
+                      loading="lazy"
+                      decoding="async"
                       className={cn(
                         "mb-2 aspect-square w-full rounded-md bg-muted object-cover",
                         comfortable && "mb-3",
@@ -327,6 +331,8 @@ function TrailFeedItem({
           <img
             src={imageUrl}
             alt={product.name}
+            loading="lazy"
+            decoding="async"
             className="size-14 shrink-0 rounded-lg bg-muted object-cover"
           />
         ) : (

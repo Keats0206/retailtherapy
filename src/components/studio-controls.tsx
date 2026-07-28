@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatPrice, normalizeProductImageUrl } from "@/lib/format";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import { readResponseJson } from "@/lib/fetch-json";
 import type { Product, VoteRecord, VoteTally } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -20,9 +21,12 @@ async function lookupProduct(url: string): Promise<Product> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url }),
   });
-  const data = await res.json();
+  const data = await readResponseJson<{ error?: string; product?: Product }>(
+    res,
+  );
   if (!res.ok) throw new Error(data.error ?? "Lookup failed");
-  return data.product as Product;
+  if (!data.product) throw new Error("Lookup failed");
+  return data.product;
 }
 
 export function StudioControls({
@@ -309,6 +313,7 @@ function ActiveSpotlight({
           <img
             src={imageUrl}
             alt={product.name}
+            decoding="async"
             className="size-16 shrink-0 rounded-lg bg-muted object-cover"
           />
         )}
@@ -403,6 +408,8 @@ function ActiveVerse({
               <img
                 src={imageUrl}
                 alt={product.name}
+                loading="lazy"
+                decoding="async"
                 className="aspect-square w-full rounded-lg bg-muted object-cover"
               />
             )}

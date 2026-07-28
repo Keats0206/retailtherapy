@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionState, Track } from "livekit-client";
 import "@livekit/components-styles";
@@ -14,7 +15,6 @@ import {
 } from "@/lib/live";
 
 import { ChatPanel } from "@/components/chat-panel";
-import { ShowEndedViewer } from "@/components/show-ended-viewer";
 import { WatchShellSkeleton } from "@/components/show-shell-skeleton";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,8 +24,9 @@ import {
 } from "@/components/video-placeholder";
 import { ViewerCount } from "@/components/viewer-count";
 import { WatchLayout } from "@/components/watch-layout";
-import { buildEndedRecap } from "@/lib/show-recap";
+import { useVisiblePoll } from "@/hooks/use-visible-poll";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import { readResponseJson } from "@/lib/fetch-json";
 import type { PublicShow } from "@/lib/show-public";
 import type { StreamSnapshot } from "@/lib/stream-state";
 import { useStreamState } from "@/lib/stream-state";
@@ -33,52 +34,47 @@ import { getVoterDisplayName } from "@/lib/voter-identity";
 
 type Connection = { token: string; url: string };
 
-const POLL_MS = 1_000;
+/**
+ * Only used to notice the live → ended transition: the shopping state itself
+ * arrives over the LiveKit data channel, and a host ending the show disconnects
+ * the room immediately. Each poll costs a full row read plus the entire
+ * snapshot on the wire, so a second-by-second cadence bought nothing a viewer
+ * could perceive.
+ */
+const POLL_MS = 5_000;
 
 export default function ShowPageClient({
   initialShow,
 }: {
   initialShow: PublicShow;
 }) {
+  const router = useRouter();
   const [show, setShow] = useState(initialShow);
 
   const refreshShow = useCallback(async () => {
     const res = await fetch(`/api/shows/${show.slug}`);
     if (!res.ok) return;
-    const data = (await res.json()) as PublicShow;
-    setShow(data);
+    try {
+      const data = await readResponseJson<PublicShow>(res);
+      setShow(data);
+    } catch {
+      // Empty/invalid poll body — keep the last good snapshot.
+    }
   }, [show.slug]);
 
+  useVisiblePoll(refreshShow, POLL_MS, show.status === "live");
+
   useEffect(() => {
-    if (show.status !== "live") return;
-    const id = setInterval(() => void refreshShow(), POLL_MS);
-    return () => clearInterval(id);
-  }, [refreshShow, show.status]);
+    if (show.status === "ended") {
+      router.refresh();
+    }
+  }, [router, show.status]);
 
   if (show.status === "ended") {
-    const recap = buildEndedRecap({
-      slug: show.slug,
-      title: show.title,
-      host: show.hostName ?? "Host",
-      snapshot: show.snapshot,
-      startedAt: show.startedAt ? Date.parse(show.startedAt) : null,
-      endedAt: show.endedAt ? Date.parse(show.endedAt) : undefined,
-      peakViewers: show.snapshot.stats?.peakViewers ?? 0,
-      chatCount: show.snapshot.stats?.chatCount ?? 0,
-      muxPlaybackId: show.muxPlaybackId,
-    });
-    return (
-      <ShowEndedViewer
-        recap={recap}
-        onRecordingReady={refreshShow}
-        polling={!show.muxPlaybackId}
-      />
-    );
+    return null;
   }
 
-  return (
-    <LiveViewer show={show} />
-  );
+  return <LiveViewer show={show} />;
 }
 
 function LiveViewer({ show }: { show: PublicShow }) {
@@ -100,7 +96,11 @@ function LiveViewer({ show }: { show: PublicShow }) {
             displayName: getVoterDisplayName(),
           }),
         });
-        const data = await res.json();
+        const data = await readResponseJson<{
+          error?: string;
+          token: string;
+          url: string;
+        }>(res);
         if (!res.ok) throw new Error(data.error ?? "Failed to connect");
         if (!cancelled) setConn({ token: data.token, url: data.url });
       } catch (err) {

@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { HostOnboarding } from "@/components/host-onboarding";
-import { StudioShellSkeleton } from "@/components/show-shell-skeleton";
 import {
   readShowSetupDraft,
   type ShowSetupDraft,
@@ -14,17 +13,12 @@ import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 
 export default function HostSetupClient() {
   const router = useRouter();
-  const [initialDraft, setInitialDraft] = useState<ShowSetupDraft | null>(null);
-  const [ready, setReady] = useState(false);
+  const [initialDraft, setInitialDraft] = useState<ShowSetupDraft | null | undefined>(
+    undefined,
+  );
 
-  // sessionStorage is client-only, so the draft can't be read until after
-  // hydration. Deferred to a microtask to keep the state updates out of the
-  // effect body (react-hooks lint).
-  useEffect(() => {
-    queueMicrotask(() => {
-      setInitialDraft(readShowSetupDraft());
-      setReady(true);
-    });
+  useLayoutEffect(() => {
+    setInitialDraft(readShowSetupDraft());
   }, []);
 
   function handleComplete(draft: ShowSetupDraft) {
@@ -33,8 +27,8 @@ export default function HostSetupClient() {
     router.push("/host");
   }
 
-  if (!ready) {
-    return <StudioShellSkeleton statusLabel="Loading setup…" />;
+  if (initialDraft === undefined) {
+    return null;
   }
 
   return (

@@ -33,6 +33,7 @@ function VerseCard({
         <img
           src={imageUrl}
           alt={product.name}
+          decoding="async"
           className="aspect-square w-full bg-muted object-cover"
         />
       )}

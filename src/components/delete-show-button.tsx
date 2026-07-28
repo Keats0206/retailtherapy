@@ -19,6 +19,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import { readResponseJson } from "@/lib/fetch-json";
 
 export function DeleteShowButton({
   slug,
@@ -40,7 +41,7 @@ export function DeleteShowButton({
 
     try {
       const res = await fetch(`/api/shows/${slug}`, { method: "DELETE" });
-      const data = (await res.json()) as { error?: string };
+      const data = await readResponseJson<{ error?: string }>(res);
       if (!res.ok) {
         throw new Error(data.error ?? "Failed to delete show");
       }

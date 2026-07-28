@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 
-import { ShowEndedCreator } from "@/components/show-ended-creator";
+import { ShowEndedViewer } from "@/components/show-ended-viewer";
 import { useVisiblePoll } from "@/hooks/use-visible-poll";
 import { readResponseJson } from "@/lib/fetch-json";
 import type { PublicShow } from "@/lib/show-public";
@@ -10,7 +10,7 @@ import { buildEndedRecap, type EndedShowRecap } from "@/lib/show-recap";
 
 const POLL_MS = 10_000;
 
-export default function HostRecapClient({
+export default function ViewerRecapClient({
   initialRecap,
 }: {
   initialRecap: EndedShowRecap;
@@ -43,9 +43,13 @@ export default function HostRecapClient({
     );
   }, [recap.slug]);
 
-  // Waiting on Mux to finish packaging the recording. Each poll reaches out to
-  // the Mux API server-side, so it stops entirely while the tab is hidden.
   useVisiblePoll(refreshShow, POLL_MS, !recap.muxPlaybackId);
 
-  return <ShowEndedCreator recap={recap} />;
+  return (
+    <ShowEndedViewer
+      recap={recap}
+      onRecordingReady={refreshShow}
+      polling={!recap.muxPlaybackId}
+    />
+  );
 }

@@ -88,7 +88,14 @@ export function useReactionState({ isHost }: { isHost: boolean }) {
     if (bursts.length === 0) return;
     const id = setInterval(() => {
       const cutoff = Date.now() - TTL_MS;
-      setBursts((prev) => prev.filter((b) => b.at > cutoff));
+      setBursts((prev) => {
+        const next = prev.filter((b) => b.at > cutoff);
+        // `filter` always allocates, so returning it unconditionally would
+        // re-render the host's stage twice a second for the whole life of a
+        // burst. Hand back the same reference when nothing actually expired
+        // and React bails out.
+        return next.length === prev.length ? prev : next;
+      });
     }, 500);
     return () => clearInterval(id);
   }, [bursts.length]);

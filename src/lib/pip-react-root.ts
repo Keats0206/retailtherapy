@@ -5,6 +5,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 const roots = new WeakMap<Window, Root>();
 const styledWindows = new WeakSet<Window>();
+/** Bumped to cancel a deferred unmount when the same PiP window remounts. */
+const unmountTokens = new WeakMap<Window, number>();
+
+function bumpUnmountToken(pipWindow: Window): number {
+  const token = (unmountTokens.get(pipWindow) ?? 0) + 1;
+  unmountTokens.set(pipWindow, token);
+  return token;
+}
 
 /** Copy stylesheets from the opener so Tailwind classes work in the PiP window. */
 export function injectPipStyles(pipWindow: Window) {
@@ -29,6 +37,9 @@ export function injectPipStyles(pipWindow: Window) {
 export function mountPipApp(pipWindow: Window, element: ReactElement) {
   injectPipStyles(pipWindow);
 
+  // Cancel any deferred unmount so Strict Mode / effect remounts can reuse the root.
+  bumpUnmountToken(pipWindow);
+
   let root = roots.get(pipWindow);
   if (!root) {
     root = createRoot(pipWindow.document.body);
@@ -44,9 +55,18 @@ export function unmountPipApp(pipWindow: Window) {
   const root = roots.get(pipWindow);
   if (!root) return;
 
-  root.unmount();
-  roots.delete(pipWindow);
-  styledWindows.delete(pipWindow);
+  const token = bumpUnmountToken(pipWindow);
+
+  // Defer: synchronous root.unmount() during a parent React render/commit
+  // (e.g. effect cleanup) races and logs a console error.
+  setTimeout(() => {
+    if (unmountTokens.get(pipWindow) !== token) return;
+    if (roots.get(pipWindow) !== root) return;
+
+    root.unmount();
+    roots.delete(pipWindow);
+    styledWindows.delete(pipWindow);
+  }, 0);
 }
 
 export function closePipWindow(pipWindow: Window | null | undefined) {

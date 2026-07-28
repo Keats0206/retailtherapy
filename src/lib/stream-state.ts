@@ -260,24 +260,50 @@ export function useStreamState({
     [state],
   );
 
-  return {
-    active: state.active,
-    pinned,
-    verse,
-    trail: state.trail,
-    snapshot: state,
-    votesFor,
-    votersFor,
-    verseVotesFor,
-    myVotes,
-    myVerseVotes,
-    pin,
-    unpin,
-    endInteraction,
-    setNote,
-    setFeatured,
-    vote,
-    startVerse,
-    verseVote,
-  };
+  // Memoized because consumers key effects off the whole object. The floating
+  // studio re-renders its detached React root whenever this identity changes,
+  // and a bare object literal would change it on every render of the host —
+  // including every chat message and participant join, which the studio's
+  // contents don't depend on. Each member below already changes only when the
+  // state it derives from does, so the memo busts exactly when it should.
+  return useMemo(
+    () => ({
+      active: state.active,
+      pinned,
+      verse,
+      trail: state.trail,
+      snapshot: state,
+      votesFor,
+      votersFor,
+      verseVotesFor,
+      myVotes,
+      myVerseVotes,
+      pin,
+      unpin,
+      endInteraction,
+      setNote,
+      setFeatured,
+      vote,
+      startVerse,
+      verseVote,
+    }),
+    [
+      state,
+      pinned,
+      verse,
+      votesFor,
+      votersFor,
+      verseVotesFor,
+      myVotes,
+      myVerseVotes,
+      pin,
+      unpin,
+      endInteraction,
+      setNote,
+      setFeatured,
+      vote,
+      startVerse,
+      verseVote,
+    ],
+  );
 }

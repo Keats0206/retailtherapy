@@ -32,6 +32,8 @@ export function ShowTrailPreview({
         <img
           src={previews[0].imageUrl!}
           alt={previews[0].name}
+          loading="lazy"
+          decoding="async"
           className="h-full w-full object-cover"
         />
       </div>
@@ -54,6 +56,8 @@ export function ShowTrailPreview({
             <img
               src={item.imageUrl!}
               alt={item.name}
+              loading="lazy"
+              decoding="async"
               className="h-full w-full object-cover"
             />
             {isLast ? (

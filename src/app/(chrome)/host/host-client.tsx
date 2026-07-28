@@ -1,14 +1,12 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Mic, MicOff, MonitorUp, Video, VideoOff } from "lucide-react";
 
 import { EndLiveShowButton } from "@/components/end-live-show-button";
 import { ShareShowLinkButton } from "@/components/share-show-link-button";
-import { StudioShellSkeleton } from "@/components/show-shell-skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -27,16 +25,11 @@ import {
   type ShowSetupDraft,
 } from "@/lib/show-setup";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import { readResponseJson } from "@/lib/fetch-json";
 import { cn } from "@/lib/utils";
 
 import type { ShowSession } from "./host-live-broadcast";
-
-const LiveBroadcast = dynamic(() => import("./host-live-broadcast"), {
-  loading: () => (
-    <StudioShellSkeleton statusLabel="Opening studio…" />
-  ),
-  ssr: false,
-});
+import LiveBroadcast from "./host-live-broadcast";
 
 /** Best-effort end when the host leaves — keepalive survives tab close / nav. */
 function endShowOnLeave(slug: string) {
@@ -96,12 +89,14 @@ export default function HostClient({
   }, [media.stop]);
 
   // New shows must come through /host/setup. Reconnecting an existing live
-  // show (or resuming via ?slug=) skips setup.
-  // Runs once: `goLive` clears the draft, so a re-run would bounce a live host
-  // back to setup.
+  // show (or resuming via ?slug=) skips setup. Draft is cleared when the show
+  // ends so a remount after go-live doesn't bounce back to setup.
   const setupCheckedRef = useRef(false);
-  useEffect(() => {
-    if (liveShowSlug || resumeSlug) return;
+  useLayoutEffect(() => {
+    if (liveShowSlug || resumeSlug) {
+      setSetupReady(true);
+      return;
+    }
     if (setupCheckedRef.current) return;
     setupCheckedRef.current = true;
     const draft = readShowSetupDraft();
@@ -109,11 +104,9 @@ export default function HostClient({
       router.replace("/host/setup");
       return;
     }
-    queueMicrotask(() => {
-      setSetupDraft(draft);
-      if (draft.showName.trim()) setTitle(draft.showName.trim());
-      setSetupReady(true);
-    });
+    setSetupDraft(draft);
+    if (draft.showName.trim()) setTitle(draft.showName.trim());
+    setSetupReady(true);
   }, [liveShowSlug, resumeSlug, router]);
 
   useEffect(() => {
@@ -165,7 +158,15 @@ export default function HostClient({
     setError(null);
     try {
       const res = await fetch(`/api/shows/${slug}/resume`, { method: "POST" });
-      const data = await res.json();
+      const data = await readResponseJson<{
+        error?: string;
+        slug: string;
+        title: string;
+        room: string;
+        token: string;
+        url: string;
+        snapshot: ShowSession["snapshot"];
+      }>(res);
       if (!res.ok) throw new Error(data.error ?? "Failed to reconnect");
 
       stopMediaRef.current();
@@ -209,7 +210,15 @@ export default function HostClient({
           setup: setup ?? undefined,
         }),
       });
-      const data = await res.json();
+      const data = await readResponseJson<{
+        error?: string;
+        slug: string;
+        title: string;
+        room: string;
+        token: string;
+        url: string;
+        snapshot?: ShowSession["snapshot"];
+      }>(res);
       if (!res.ok) {
         if (res.status === 409 && liveShowSlug) {
           throw new Error(
@@ -220,7 +229,6 @@ export default function HostClient({
       }
 
       trackEvent(AnalyticsEvent.HOST_GO_LIVE, { area: "host_studio" });
-      clearShowSetupDraft();
       stopMediaRef.current();
       liveStartedAt.current = Date.now();
       intentionallyEndedRef.current = false;
@@ -242,26 +250,10 @@ export default function HostClient({
 
   function handleShowEnded(slug: string) {
     markShowEnded();
+    clearShowSetupDraft();
     setSession(null);
     setPhase("preshow");
     router.replace(`/host/${slug}`);
-  }
-
-  // Undetermined for one frame while the setup draft is read: this resolves to
-  // either the preshow or a redirect to /host/setup, and the studio shell is
-  // wrong for both — it would glitch in and straight back out.
-  if (!setupReady) {
-    return <StudioShellSkeleton statusLabel="Loading studio…" />;
-  }
-
-  if (loading && phase !== "live") {
-    return (
-      <StudioShellSkeleton
-        statusLabel={
-          liveShowSlug || resumeSlug ? "Opening studio…" : "Starting show…"
-        }
-      />
-    );
   }
 
   if (phase === "live" && session) {

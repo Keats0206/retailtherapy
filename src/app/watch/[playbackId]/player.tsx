@@ -20,6 +20,7 @@ import {
 } from "@/components/video-placeholder";
 import { ViewerCount } from "@/components/viewer-count";
 import { WatchLayout } from "@/components/watch-layout";
+import { readResponseJson } from "@/lib/fetch-json";
 import { useStreamState } from "@/lib/stream-state";
 import { getVoterDisplayName } from "@/lib/voter-identity";
 
@@ -49,7 +50,11 @@ export default function Player({
             displayName: getVoterDisplayName(),
           }),
         });
-        const data = await res.json();
+        const data = await readResponseJson<{
+          error?: string;
+          token: string;
+          url: string;
+        }>(res);
         if (!res.ok) throw new Error(data.error ?? "Failed to connect");
         if (!cancelled) setConn({ token: data.token, url: data.url });
       } catch (err) {

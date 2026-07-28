@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat, useLocalParticipant } from "@/lib/live";
 import { MessageSquare, SendHorizontal } from "lucide-react";
 
@@ -38,9 +38,13 @@ export function ChatPanel({
     isHost,
     messages: isHost ? chatMessages : [],
   });
-  const messages = isHost
-    ? chatMessages
-    : mergeChatMessages(history, chatMessages);
+  // Memoized: the merge dedupes through a Set and sorts up to 200 messages,
+  // and this panel sits inside WatchLayout, which re-renders on every stream
+  // change, reaction burst and poll countdown tick.
+  const messages = useMemo(
+    () => (isHost ? chatMessages : mergeChatMessages(history, chatMessages)),
+    [isHost, history, chatMessages],
+  );
 
   return (
     <ChatPanelView

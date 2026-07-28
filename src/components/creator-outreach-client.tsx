@@ -25,6 +25,7 @@ import {
   type OutreachStatus,
   type ProspectView as Prospect,
 } from "@/lib/outreach-status";
+import { readResponseJson } from "@/lib/fetch-json";
 import { cn } from "@/lib/utils";
 
 function formatFollowers(count: number): string {
@@ -107,11 +108,11 @@ export function CreatorOutreachClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ keyword: trimmed }),
       });
-      const data = (await res.json()) as {
+      const data = await readResponseJson<{
         error?: string;
         imported?: number;
         withEmail?: number;
-      };
+      }>(res);
       if (!res.ok) throw new Error(data.error ?? "Search failed");
 
       setMessage(
@@ -132,10 +133,14 @@ export function CreatorOutreachClient({
       cache: "no-store",
     });
     if (!res.ok) return;
-    const data = (await res.json()) as { prospects?: Prospect[] };
-    if (data.prospects) {
-      setProspects(data.prospects);
-      recount(data.prospects);
+    try {
+      const data = await readResponseJson<{ prospects?: Prospect[] }>(res);
+      if (data.prospects) {
+        setProspects(data.prospects);
+        recount(data.prospects);
+      }
+    } catch {
+      // Keep the list already on screen if the refresh body is empty.
     }
   }
 
@@ -148,10 +153,10 @@ export function CreatorOutreachClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = (await res.json()) as {
+      const data = await readResponseJson<{
         error?: string;
         prospect?: Prospect;
-      };
+      }>(res);
       if (!res.ok) throw new Error(data.error ?? "Update failed");
       if (data.prospect) replaceProspect(data.prospect);
     } catch (err) {
@@ -171,10 +176,10 @@ export function CreatorOutreachClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ angle: angle.trim() || undefined }),
       });
-      const data = (await res.json()) as {
+      const data = await readResponseJson<{
         error?: string;
         prospect?: Prospect;
-      };
+      }>(res);
       if (!res.ok) throw new Error(data.error ?? "Couldn't write the draft");
       if (data.prospect) replaceProspect(data.prospect);
       setExpanded(id);
@@ -193,10 +198,10 @@ export function CreatorOutreachClient({
       const res = await fetch(`/api/admin/creator-outreach/${id}/sent`, {
         method: "POST",
       });
-      const data = (await res.json()) as {
+      const data = await readResponseJson<{
         error?: string;
         prospect?: Prospect;
-      };
+      }>(res);
       if (!res.ok) throw new Error(data.error ?? "Couldn't record the send");
       if (data.prospect) replaceProspect(data.prospect);
     } catch (err) {

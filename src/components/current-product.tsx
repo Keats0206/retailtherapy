@@ -67,6 +67,7 @@ export function CurrentProduct({
         <img
           src={imageUrl}
           alt={product.name}
+          decoding="async"
           className="mt-2 aspect-square w-full bg-muted object-cover"
         />
       )}

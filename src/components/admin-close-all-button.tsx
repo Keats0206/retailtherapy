@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { readResponseJson } from "@/lib/fetch-json";
 
 export function AdminCloseAllButton({
   liveCount,
@@ -36,7 +37,9 @@ export function AdminCloseAllButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      const data = (await res.json()) as { error?: string; count?: number };
+      const data = await readResponseJson<{ error?: string; count?: number }>(
+        res,
+      );
       if (!res.ok) {
         throw new Error(data.error ?? "Failed to close live shows");
       }
