@@ -2,13 +2,14 @@
 
 import { ExternalLink } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import {
+  openShoppingWindow,
+  openStoreInShoppingWindow,
+} from "@/lib/open-shopping-window";
 import { WOMENS_CLOTHING_STORES } from "@/lib/shopping-stores";
 import { cn } from "@/lib/utils";
-
-function openStoreWindow(url: string) {
-  window.open(url, "_blank", "noopener,noreferrer");
-}
 
 export function PipStoreSuggestions({ className }: { className?: string }) {
   return (
@@ -22,8 +23,23 @@ export function PipStoreSuggestions({ className }: { className?: string }) {
         1. Pick a store
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Opens in a new window — share it when you go live.
+        Open stores as tabs in one window — share the whole window so you can
+        switch between them.
       </p>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="mt-3 w-full justify-center rounded-full"
+        onClick={() => {
+          trackEvent(AnalyticsEvent.HOST_PIP_STORE_CLICK, {
+            store: "shopping_window",
+          });
+          openShoppingWindow();
+        }}
+      >
+        Open shopping window
+      </Button>
 
       <ul className="mt-3 grid grid-cols-2 gap-1 sm:grid-cols-2">
         {WOMENS_CLOTHING_STORES.map((store) => (
@@ -34,7 +50,7 @@ export function PipStoreSuggestions({ className }: { className?: string }) {
                 trackEvent(AnalyticsEvent.HOST_PIP_STORE_CLICK, {
                   store: store.name,
                 });
-                openStoreWindow(store.url);
+                openStoreInShoppingWindow(store.url);
               }}
               className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-background/60"
             >

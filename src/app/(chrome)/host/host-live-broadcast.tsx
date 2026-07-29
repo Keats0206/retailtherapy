@@ -24,8 +24,9 @@ import { HostFloatingStudio } from "@/components/host-floating-studio";
 import { PipStoreSuggestions } from "@/components/pip-store-suggestions";
 import { PollComposer } from "@/components/poll-composer";
 import { PollLaunchButton, PollOverlay } from "@/components/poll-overlay";
-import { ShareScreenGate } from "@/components/share-screen-gate";
+import { HostLaunchScreen } from "@/components/host-launch-screen";
 import { ShareShowLinkButton } from "@/components/share-show-link-button";
+import { ShareSurfaceBanner } from "@/components/share-surface-banner";
 import { StudioLayout } from "@/components/studio-layout";
 import { HostStageOverlays } from "@/components/watch-layout";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,10 @@ import {
   publishLiveShare,
 } from "@/lib/live-share-channel";
 import { mountPipApp, unmountPipApp } from "@/lib/pip-react-root";
+import {
+  getShareDisplaySurface,
+  type ShareDisplaySurface,
+} from "@/lib/screen-share-surface";
 import { usePollState } from "@/lib/poll-state";
 import type { StreamSnapshot } from "@/lib/stream-store";
 import { useStreamState } from "@/lib/stream-state";
@@ -164,6 +169,9 @@ function BroadcastStudio({
     close: closePip,
   } = useDocumentPiP();
   const wasSharingRef = useRef(false);
+  const [shareSurface, setShareSurface] = useState<
+    ShareDisplaySurface | undefined
+  >();
   const shareTracks = useTracks([Track.Source.ScreenShare], {
     onlySubscribed: false,
   });
@@ -216,6 +224,23 @@ function BroadcastStudio({
       );
     };
   }, [localShareTrack, session.slug, sharing]);
+
+  useEffect(() => {
+    const mediaTrack =
+      localShareTrack?.publication?.track?.mediaStreamTrack ?? null;
+    if (!mediaTrack || !sharing) {
+      setShareSurface(undefined);
+      return;
+    }
+    setShareSurface(getShareDisplaySurface(mediaTrack));
+  }, [localShareTrack, sharing]);
+
+  const reshareWindow = useCallback(async () => {
+    await room.localParticipant.setScreenShareEnabled(false);
+    await room.localParticipant.setScreenShareEnabled(true, {
+      video: { displaySurface: "window" },
+    });
+  }, [room]);
 
   useEffect(() => {
     void navigator.mediaDevices?.setCaptureHandleConfig?.({
@@ -407,8 +432,10 @@ function BroadcastStudio({
       {sharing && pipIsOpen ? (
         <ConnectionKeeper slug={session.slug} pipSupported={pipSupported} />
       ) : !sharing ? (
-        <ShareScreenGate
+        <HostLaunchScreen
+          stage="awaiting-share"
           slug={session.slug}
+          title={session.title}
           room={room}
           sharing={sharing}
           onEndShow={handleEndShow}
@@ -416,7 +443,14 @@ function BroadcastStudio({
           pipSupported={pipSupported}
         />
       ) : (
-        <StudioLayout
+        <>
+          <ShareSurfaceBanner
+            surface={shareSurface}
+            onReshare={
+              shareSurface === "browser" ? () => void reshareWindow() : undefined
+            }
+          />
+          <StudioLayout
           stream={stream}
           channel3Configured={channel3Configured}
           chatCount={chatMessages.length}
@@ -432,6 +466,7 @@ function BroadcastStudio({
           }
           chat={<ChatPanel variant="rail" className="min-h-0 flex-1" />}
         />
+        </>
       )}
 
       {!(sharing && pipIsOpen) ? (
@@ -568,7 +603,7 @@ function HostStage({
                   size="icon"
                   onClick={onEndShow}
                   aria-label="End show"
-                  className="size-9 rounded-full bg-black/50 text-white backdrop-blur-sm hover:bg-destructive hover:text-white"
+                  className="size-9 rounded-full border border-destructive/50 bg-black/50 text-destructive backdrop-blur-sm hover:bg-destructive hover:text-destructive-foreground"
                 >
                   <Square className="size-4 fill-current" />
                 </Button>
