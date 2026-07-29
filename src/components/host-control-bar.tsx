@@ -75,10 +75,10 @@ export function HostControlBar({
               className={cn(
                 buttonVariants({ variant: "outline", size: "icon" }),
                 isOverlay
-                  ? "size-8 rounded-full border-live/50 bg-black/50 text-live backdrop-blur-sm hover:bg-live hover:text-live-foreground"
+                  ? "size-8 rounded-full border-destructive/50 bg-black/50 text-destructive backdrop-blur-sm hover:bg-destructive hover:text-destructive-foreground"
                   : isPip
-                    ? "ml-0.5 size-9 rounded-full border-live/50 bg-background text-live hover:bg-live hover:text-live-foreground"
-                    : "ml-1 size-10 rounded-full border-live/50 bg-black/40 text-live hover:bg-live hover:text-live-foreground",
+                    ? "ml-0.5 size-9 rounded-full border-destructive/50 bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    : "ml-1 size-10 rounded-full border-destructive/50 bg-black/40 text-destructive hover:bg-destructive hover:text-destructive-foreground",
               )}
             >
               <Square className={isOverlay ? "size-3 fill-current" : isPip ? "size-4 fill-current" : "fill-current"} />

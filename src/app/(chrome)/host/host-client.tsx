@@ -3,21 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Mic, MicOff, MonitorUp, Video, VideoOff } from "lucide-react";
 
 import { EndLiveShowButton } from "@/components/end-live-show-button";
-import { ShareShowLinkButton } from "@/components/share-show-link-button";
+import {
+  HostLaunchScreen,
+  type MediaControls,
+} from "@/components/host-launch-screen";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  VideoFrame,
-  VideoPlaceholder,
-} from "@/components/video-placeholder";
 import {
   clearShowSetupDraft,
   draftToSetup,
@@ -26,7 +18,6 @@ import {
 } from "@/lib/show-setup";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import { readResponseJson } from "@/lib/fetch-json";
-import { cn } from "@/lib/utils";
 
 import type { ShowSession } from "./host-live-broadcast";
 import LiveBroadcast from "./host-live-broadcast";
@@ -40,16 +31,6 @@ function endShowOnLeave(slug: string) {
     keepalive: true,
   });
 }
-
-type MediaControls = {
-  stream: MediaStream | null;
-  cameraOn: boolean;
-  micOn: boolean;
-  toggleCamera: () => void;
-  toggleMic: () => void;
-  cameraError: string | null;
-  stop: () => void;
-};
 
 export default function HostClient({
   channel3Configured,
@@ -287,7 +268,8 @@ export default function HostClient({
   }
 
   return (
-    <Preshow
+    <HostLaunchScreen
+      stage="preshow"
       title={title}
       onTitleChange={setTitle}
       onGoLive={goLive}
@@ -344,243 +326,6 @@ function DisconnectedPanel({
         <Button variant="outline" render={<Link href={`/s/${slug}`} target="_blank" />}>
           Open viewer page
         </Button>
-      </div>
-    </main>
-  );
-}
-
-
-function SetupSummary({
-  draft,
-  className,
-}: {
-  draft: ShowSetupDraft;
-  className?: string;
-}) {
-  const intentLabel =
-    draft.intent === "season"
-      ? "Season"
-      : draft.intent === "event"
-        ? "Event"
-        : draft.intent === "browsing"
-          ? "Browsing"
-          : null;
-  const focus = [draft.detail, ...draft.items].filter(Boolean).join(" · ");
-
-  return (
-    <div
-      className={cn(
-        "flex w-full flex-col gap-2 rounded-xl bg-muted/40 p-4 text-left ring-1 ring-foreground/8",
-        className,
-      )}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <span className="micro text-muted-foreground">Show setup</span>
-        <Link
-          href="/host/setup"
-          className="micro text-foreground underline-offset-4 hover:underline"
-        >
-          Edit
-        </Link>
-      </div>
-      {intentLabel ? (
-        <p className="text-sm text-foreground">
-          {intentLabel}
-          {focus ? (
-            <span className="text-muted-foreground"> · {focus}</span>
-          ) : null}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function Preshow({
-  title,
-  onTitleChange,
-  onGoLive,
-  loading,
-  error,
-  media,
-  setupDraft,
-  liveShowSlug,
-  liveShowTitle,
-  onResumeLiveShow,
-  resumeLoading,
-}: {
-  title: string;
-  onTitleChange: (value: string) => void;
-  onGoLive: () => void;
-  loading: boolean;
-  error: string | null;
-  media: MediaControls;
-  setupDraft?: ShowSetupDraft | null;
-  liveShowSlug?: string | null;
-  liveShowTitle?: string | null;
-  onResumeLiveShow?: () => void;
-  resumeLoading?: boolean;
-}) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const { cameraOn, micOn, toggleCamera, toggleMic, cameraError } = media;
-
-  return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-6 px-4 py-8 sm:gap-8 sm:px-6 sm:py-12">
-      {liveShowSlug ? (
-        <div className="flex w-full flex-col gap-3 rounded-xl bg-muted/40 p-4 ring-1 ring-foreground/8">
-          <div className="flex flex-col gap-1">
-            <span className="micro inline-flex items-center gap-2 text-live">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-live" />
-              Show still live
-            </span>
-            <p className="text-sm text-muted-foreground">
-              {liveShowTitle ? (
-                <>
-                  <span className="text-foreground">{liveShowTitle}</span> is
-                  still live at /s/{liveShowSlug}. Reconnect to keep hosting,
-                  or end it before starting a new one.
-                </>
-              ) : (
-                <>
-                  You still have a live show at /s/{liveShowSlug}. Reconnect
-                  to keep hosting, or end it before starting a new one.
-                </>
-              )}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {onResumeLiveShow ? (
-              <Button
-                type="button"
-                disabled={resumeLoading}
-                className="bg-live text-live-foreground hover:bg-live/90"
-                onClick={onResumeLiveShow}
-              >
-                {resumeLoading ? "Reconnecting…" : "Open studio"}
-              </Button>
-            ) : null}
-            <EndLiveShowButton
-              slug={liveShowSlug}
-              title={liveShowTitle ?? "Live show"}
-            />
-          </div>
-        </div>
-      ) : null}
-
-      <div className="flex w-full max-w-lg flex-col items-center gap-4 text-center">
-        <Input
-          value={title}
-          onChange={(e) => onTitleChange(e.target.value)}
-          placeholder="Untitled show"
-          aria-label="Show title"
-          className="h-auto border-0 bg-transparent px-2 py-1 text-center text-2xl font-medium tracking-tight shadow-none placeholder:text-muted-foreground/50 focus-visible:border-transparent focus-visible:ring-0 sm:text-3xl"
-        />
-
-        {setupDraft && !liveShowSlug ? (
-          <SetupSummary draft={setupDraft} className="max-w-md" />
-        ) : null}
-
-        {liveShowSlug ? (
-          <ShareShowLinkButton
-            slug={liveShowSlug}
-            className="h-11 w-full max-w-md text-base"
-            showPath
-          />
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Your share link unlocks as soon as you go live.
-          </p>
-        )}
-      </div>
-
-      <div className="relative w-full max-w-xl">
-        <VideoFrame className="aspect-video w-full overflow-hidden rounded-2xl">
-          <CameraPreview media={media} videoRef={videoRef} />
-        </VideoFrame>
-
-        <div className="absolute inset-x-0 bottom-4 flex justify-center">
-          <div className="flex items-center gap-2 rounded-full border border-white/20 bg-black/60 px-2 py-1.5 backdrop-blur-sm">
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant={micOn ? "secondary" : "outline"}
-                    size="icon"
-                    onClick={toggleMic}
-                    disabled={!media.stream}
-                    aria-label={micOn ? "Mute microphone" : "Unmute microphone"}
-                    className={cn(
-                      "size-10 rounded-full",
-                      !micOn && "border-white/30 bg-black/40 text-white hover:bg-black/60",
-                    )}
-                  >
-                    {micOn ? <Mic /> : <MicOff />}
-                  </Button>
-                }
-              />
-              <TooltipContent>{micOn ? "Mic on" : "Mic off"}</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant={cameraOn ? "secondary" : "outline"}
-                    size="icon"
-                    onClick={toggleCamera}
-                    disabled={!media.stream}
-                    aria-label={cameraOn ? "Turn camera off" : "Turn camera on"}
-                    className={cn(
-                      "size-10 rounded-full",
-                      !cameraOn && "border-white/30 bg-black/40 text-white hover:bg-black/60",
-                    )}
-                  >
-                    {cameraOn ? <Video /> : <VideoOff />}
-                  </Button>
-                }
-              />
-              <TooltipContent>{cameraOn ? "Camera on" : "Camera off"}</TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
-      </div>
-
-      {cameraError ? (
-        <p className="max-w-md border-l-2 border-destructive py-1 pl-3 text-left text-sm text-destructive">
-          {cameraError}
-        </p>
-      ) : null}
-
-      <p className="micro inline-flex items-center gap-1.5 text-muted-foreground">
-        <MonitorUp className="size-3.5 shrink-0" />
-        After go live, you&apos;ll share a browser window or your screen — that&apos;s
-        what viewers see.
-      </p>
-
-      {error ? (
-        <p className="max-w-md border-l-2 border-destructive py-1 pl-3 text-left text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
-
-      <div className="flex w-full max-w-md flex-col items-center gap-3">
-        <Button
-          onClick={onGoLive}
-          disabled={loading || Boolean(liveShowSlug)}
-          title={
-            liveShowSlug
-              ? "End your current live show before starting another"
-              : "Creates a shareable show and starts recording automatically"
-          }
-          className="h-14 w-full rounded-full bg-live text-lg font-medium text-live-foreground hover:bg-live/90 sm:h-16 sm:text-xl"
-        >
-          {loading ? "Starting…" : "Go live"}
-        </Button>
-        {liveShowSlug ? (
-          <p className="text-sm text-muted-foreground">
-            Share the link above so viewers can join before you reconnect.
-          </p>
-        ) : null}
       </div>
     </main>
   );
@@ -659,38 +404,4 @@ function useMediaPreview(enabled: boolean): MediaControls {
   }
 
   return { stream, cameraOn, micOn, toggleCamera, toggleMic, cameraError, stop };
-}
-
-function CameraPreview({
-  media,
-  videoRef,
-}: {
-  media: MediaControls;
-  videoRef: React.RefObject<HTMLVideoElement | null>;
-}) {
-  const { stream, cameraOn, cameraError } = media;
-
-  useEffect(() => {
-    const el = videoRef.current;
-    if (!el) return;
-    el.srcObject = cameraOn && stream ? stream : null;
-  }, [cameraOn, stream, videoRef]);
-
-  if (cameraOn && stream) {
-    return (
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        playsInline
-        className="h-full w-full object-cover"
-      />
-    );
-  }
-
-  return (
-    <VideoPlaceholder>
-      {cameraError ? "Camera unavailable" : "Starting camera…"}
-    </VideoPlaceholder>
-  );
 }

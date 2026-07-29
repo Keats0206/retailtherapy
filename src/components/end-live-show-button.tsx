@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import { readResponseJson } from "@/lib/fetch-json";
+import { cn } from "@/lib/utils";
 
 export function EndLiveShowButton({
   slug,
@@ -77,9 +78,12 @@ export function EndLiveShowButton({
     <>
       <Button
         type="button"
-        variant="outline"
+        variant="destructive"
         size={size}
-        className={className}
+        className={cn(
+          "border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground",
+          className,
+        )}
         onClick={() => setOpen(true)}
       >
         {buttonLabel}

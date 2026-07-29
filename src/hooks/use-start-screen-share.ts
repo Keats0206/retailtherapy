@@ -4,9 +4,13 @@ import { useTrackToggle } from "@/lib/live";
 import { useMaybeLocalRoom } from "@/lib/live/local-room";
 import { LOCAL_STREAM } from "@/lib/live/mode";
 import { Track, type Room } from "livekit-client";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+
+const WINDOW_SHARE_OPTIONS = {
+  video: { displaySurface: "window" as const },
+};
 
 function shareErrorMessage(err: unknown): string {
   if (err instanceof DOMException) {
@@ -17,7 +21,7 @@ function shareErrorMessage(err: unknown): string {
       return "Screen share was cancelled. Click Share screen to try again.";
     }
   }
-  return "Could not start screen share. Try again or pick a different window.";
+  return "Could not start screen share. Try again and pick Window in Chrome.";
 }
 
 export function useStartScreenShare({
@@ -38,6 +42,10 @@ export function useStartScreenShare({
   const localRoom = useMaybeLocalRoom();
   const [starting, setStarting] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (sharing) setStarting(false);
+  }, [sharing]);
 
   const clearShareError = useCallback(() => setShareError(null), []);
 
@@ -68,7 +76,10 @@ export function useStartScreenShare({
         if (LOCAL_STREAM && localRoom) {
           await localRoom.toggleSource(Track.Source.ScreenShare);
         } else if (room?.localParticipant?.setScreenShareEnabled) {
-          await room.localParticipant.setScreenShareEnabled(true);
+          await room.localParticipant.setScreenShareEnabled(
+            true,
+            WINDOW_SHARE_OPTIONS,
+          );
         } else {
           buttonProps.onClick?.(e);
         }

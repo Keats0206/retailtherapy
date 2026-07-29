@@ -136,7 +136,7 @@ export function EndShowDialog({
                   });
                   onConfirm();
                 }}
-                className="bg-live text-live-foreground hover:bg-live/90"
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 End show
               </Button>
