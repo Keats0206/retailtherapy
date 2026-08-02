@@ -67,6 +67,66 @@ export const products = pgTable(
   ],
 );
 
+/**
+ * A brand-sponsored shopping event a host goes live to attempt: "15 minutes to
+ * spend $500 at Net-a-Porter". Three things define one — a brand, a budget,
+ * and a clock — and together they are the front door of discovery. A viewer
+ * arriving to an empty schedule still has something to react to, and a host
+ * staring at a blank Go live screen has a format to start from.
+ *
+ * Curated rather than user-generated: rows are seeded by hand
+ * (`scripts/seed-challenges.ts`), so there is no author column. Sponsorship
+ * terms (fees, deliverables) live with the deal, not here — this table only
+ * carries what a viewer sees.
+ */
+export const challenges = pgTable(
+  "challenges",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    // Public handle, used at /c/<slug> and as the ?challenge= hand-off into
+    // host setup. Hand-written, unlike a show's random slug.
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    // The brief, in one or two sentences — what the host is actually asked to do.
+    prompt: text("prompt").notNull(),
+    // The sponsor. `brandDomain` matches `products.retailer` ("net-a-porter.com")
+    // so a show's trail can be checked against the store it was meant to shop.
+    brandName: text("brand_name").notNull(),
+    brandDomain: text("brand_domain"),
+    brandLogoUrl: text("brand_logo_url"),
+    // Where the host shops. Null falls back to the brand domain.
+    storeUrl: text("store_url"),
+    // Single emoji standing in for artwork on the card.
+    emoji: text("emoji"),
+    // The spend cap, in minor units — the "$500" half of the format.
+    budgetCents: integer("budget_cents").notNull(),
+    currency: text("currency").notNull().default("usd"),
+    // The clock, in seconds — the "15 minutes" half. Null for an untimed event.
+    durationSeconds: integer("duration_seconds"),
+    // A challenge is a launch event, so it has a slot on the calendar. Hosts
+    // can go live for it any time between `startsAt` and `endsAt`; before that
+    // it renders as upcoming with a countdown, after it as a wrap-up.
+    // Null `startsAt` means always-open — a standing event with no drop date.
+    startsAt: timestamp("starts_at", { withTimezone: true }),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    // Breaks ties between events sharing a slot; the schedule sorts by date first.
+    sortOrder: integer("sort_order").notNull().default(0),
+    // Retired events stay for the shows that reference them, but drop off
+    // discovery.
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("challenges_slug_idx").on(table.slug),
+    index("challenges_schedule_idx").on(table.isActive, table.startsAt),
+  ],
+);
+
 export const streams = pgTable(
   "streams",
   {
@@ -78,6 +138,12 @@ export const streams = pgTable(
     // Clerk user id of the host. Scopes "my shows" without a users table.
     hostUserId: text("host_user_id").notNull(),
     hostName: text("host_name"),
+    // The challenge this show is an attempt at, if the host started from one.
+    // `set null` rather than cascade: retiring a challenge must not delete the
+    // shows people recorded for it.
+    challengeId: uuid("challenge_id").references(() => challenges.id, {
+      onDelete: "set null",
+    }),
     status: streamStatus("status").notNull().default("scheduled"),
     // LiveKit room carrying the live WebRTC feed, chat and votes. Unique per
     // show (not per host) so each show gets its own room and its own recording.
@@ -115,6 +181,7 @@ export const streams = pgTable(
     uniqueIndex("streams_slug_idx").on(table.slug),
     uniqueIndex("streams_room_name_idx").on(table.roomName),
     index("streams_host_user_idx").on(table.hostUserId),
+    index("streams_challenge_idx").on(table.challengeId, table.status),
   ],
 );
 
@@ -147,6 +214,64 @@ export const streamProducts = pgTable(
       table.productId,
     ),
     index("stream_products_stream_idx").on(table.streamId),
+  ],
+);
+
+/**
+ * A viewer's personal board: items they want to come back to.
+ *
+ * Keyed by Clerk user id as plain text, the same convention as
+ * `streams.host_user_id` — there is still no users table.
+ *
+ * Note the ordering constraint this creates: a product must exist in
+ * `products` before it can be saved, but `persistTrail` only writes the trail
+ * there when a show ends. Saving from a live show therefore upserts the
+ * product first — see `upsertProduct` in lib/shows.ts.
+ */
+export const savedItems = pgTable(
+  "saved_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").notNull(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    // The show it was saved from, for the "from <host>'s show" line on the
+    // board. `set null` rather than cascade: a host deleting their show must
+    // not silently empty someone else's board.
+    sourceStreamId: uuid("source_stream_id").references(() => streams.id, {
+      onDelete: "set null",
+    }),
+    // The host's aside, frozen at save time. It belongs to that show rather
+    // than to the product, so it cannot be read back off the `products` row.
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    // One row per user per product — saving twice is a no-op, not a duplicate.
+    uniqueIndex("saved_items_user_product_idx").on(table.userId, table.productId),
+    index("saved_items_user_idx").on(table.userId, table.createdAt),
+  ],
+);
+
+/** The same board, for whole shows: save the trail rather than one item. */
+export const savedShows = pgTable(
+  "saved_shows",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").notNull(),
+    streamId: uuid("stream_id")
+      .notNull()
+      .references(() => streams.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("saved_shows_user_stream_idx").on(table.userId, table.streamId),
+    index("saved_shows_user_idx").on(table.userId, table.createdAt),
   ],
 );
 
@@ -247,12 +372,40 @@ export const creatorProspects = pgTable(
   ],
 );
 
-export const streamsRelations = relations(streams, ({ many }) => ({
+export const streamsRelations = relations(streams, ({ many, one }) => ({
   streamProducts: many(streamProducts),
+  savedShows: many(savedShows),
+  challenge: one(challenges, {
+    fields: [streams.challengeId],
+    references: [challenges.id],
+  }),
+}));
+
+export const challengesRelations = relations(challenges, ({ many }) => ({
+  streams: many(streams),
 }));
 
 export const productsRelations = relations(products, ({ many }) => ({
   streamProducts: many(streamProducts),
+  savedItems: many(savedItems),
+}));
+
+export const savedItemsRelations = relations(savedItems, ({ one }) => ({
+  product: one(products, {
+    fields: [savedItems.productId],
+    references: [products.id],
+  }),
+  sourceStream: one(streams, {
+    fields: [savedItems.sourceStreamId],
+    references: [streams.id],
+  }),
+}));
+
+export const savedShowsRelations = relations(savedShows, ({ one }) => ({
+  stream: one(streams, {
+    fields: [savedShows.streamId],
+    references: [streams.id],
+  }),
 }));
 
 export const streamProductsRelations = relations(streamProducts, ({ one }) => ({
@@ -273,8 +426,14 @@ export type Stream = typeof streams.$inferSelect;
 export type NewStream = typeof streams.$inferInsert;
 export type StreamProduct = typeof streamProducts.$inferSelect;
 export type NewStreamProduct = typeof streamProducts.$inferInsert;
+export type SavedItem = typeof savedItems.$inferSelect;
+export type NewSavedItem = typeof savedItems.$inferInsert;
+export type SavedShow = typeof savedShows.$inferSelect;
+export type NewSavedShow = typeof savedShows.$inferInsert;
 export type WaitlistSignup = typeof waitlistSignups.$inferSelect;
 export type NewWaitlistSignup = typeof waitlistSignups.$inferInsert;
+export type Challenge = typeof challenges.$inferSelect;
+export type NewChallenge = typeof challenges.$inferInsert;
 export type CreatorProspect = typeof creatorProspects.$inferSelect;
 export type NewCreatorProspect = typeof creatorProspects.$inferInsert;
 export type OutreachStatus = (typeof outreachStatus.enumValues)[number];

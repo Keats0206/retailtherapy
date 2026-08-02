@@ -128,7 +128,7 @@ function LiveViewer({ show }: { show: PublicShow }) {
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-center gap-6 px-6 py-16 text-center">
         <h1 className="text-xl font-normal tracking-tight">{show.title}</h1>
         <p className="text-sm text-destructive">{error}</p>
-        <Link href="/home">
+        <Link href="/">
           <Button variant="outline" size="micro">
             Back to home
           </Button>

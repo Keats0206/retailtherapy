@@ -271,7 +271,9 @@ export function LandingShowDemo({ className }: { className?: string }) {
               src={LANDING_HOST_IMAGE}
               alt=""
               className={cn(
-                "h-full w-full object-cover transition-opacity duration-500",
+                // Portrait source in a 16:9 stage: a centred crop cuts the top
+                // of the head off, so bias the crop upward to keep the face.
+                "h-full w-full object-cover object-[50%_30%] transition-opacity duration-500",
                 transitioning ? "opacity-70" : "opacity-100",
               )}
             />

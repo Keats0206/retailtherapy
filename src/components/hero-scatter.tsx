@@ -18,7 +18,7 @@ function HeroScatterStatic() {
   return (
     <div className="relative mx-auto flex min-h-[620px] w-full max-w-6xl flex-col items-center justify-center overflow-hidden px-6 py-16 sm:min-h-[680px] lg:min-h-[760px]">
       <div className="relative z-10 mx-auto flex max-w-2xl flex-col items-center gap-6 text-center">
-        <span className="text-sm font-bold uppercase tracking-[0.3em] text-muted-foreground">
+        <span className="font-brand text-base uppercase tracking-[0.3em] text-muted-foreground">
           frontrow
         </span>
         <h1 className="text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">

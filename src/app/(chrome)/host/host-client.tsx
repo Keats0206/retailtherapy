@@ -189,6 +189,10 @@ export default function HostClient({
         body: JSON.stringify({
           title: title.trim() || setupDraft?.showName.trim() || "Untitled show",
           setup: setup ?? undefined,
+          // The event the host took on, if they came from a challenge card.
+          // The server re-checks it — an unknown or closed slug just yields an
+          // ordinary show rather than failing the go-live.
+          challengeSlug: setupDraft?.challengeSlug ?? undefined,
         }),
       });
       const data = await readResponseJson<{
@@ -269,7 +273,7 @@ export default function HostClient({
 
   return (
     <HostLaunchScreen
-      stage="preshow"
+      live={false}
       title={title}
       onTitleChange={setTitle}
       onGoLive={goLive}

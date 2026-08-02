@@ -12,10 +12,10 @@ import { Track } from "livekit-client";
 import "@livekit/components-styles";
 
 import { ChatPanel } from "@/components/chat-panel";
+import { FaceBubble } from "@/components/face-bubble";
 import { Button } from "@/components/ui/button";
 import {
   CAMERA_BUBBLE,
-  VideoFrame,
   VideoPlaceholder,
 } from "@/components/video-placeholder";
 import { ViewerCount } from "@/components/viewer-count";
@@ -154,14 +154,7 @@ function Stage() {
   return (
     <div className="relative h-full w-full">
       <VideoTrack trackRef={share} className="h-full w-full object-contain" />
-      {camera && (
-        <VideoFrame className={CAMERA_BUBBLE}>
-          <VideoTrack
-            trackRef={camera}
-            className="h-full w-full object-cover"
-          />
-        </VideoFrame>
-      )}
+      {camera && <FaceBubble trackRef={camera} className={CAMERA_BUBBLE} />}
     </div>
   );
 }

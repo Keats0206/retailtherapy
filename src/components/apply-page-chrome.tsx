@@ -9,7 +9,7 @@ export function ApplyPageChrome({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <header className="sticky top-0 z-10 bg-background/90 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-base font-bold uppercase tracking-widest">
+          <Link href="/" className="font-brand text-xl uppercase tracking-[0.12em]">
             frontrow
           </Link>
           <nav className="flex items-center gap-2 sm:gap-3">

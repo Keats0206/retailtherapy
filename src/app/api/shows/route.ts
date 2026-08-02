@@ -1,4 +1,5 @@
 import { getHostUser } from "@/lib/auth";
+import { resolveChallengeId } from "@/lib/challenges";
 import { createAccessToken, getLiveKitConfig } from "@/lib/livekit";
 import {
   checkRateLimit,
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
     return rateLimitResponse(limit.retryAfterSec ?? 60);
   }
 
-  let body: { title?: string; setup?: unknown };
+  let body: { title?: string; setup?: unknown; challengeSlug?: string };
   try {
     body = await request.json();
   } catch {
@@ -60,6 +61,10 @@ export async function POST(request: Request) {
 
   const title = body.title?.trim() || "Untitled show";
   const setup = parseShowSetup(body.setup);
+  // Resolved rather than trusted: the client sends a slug, and an unknown or
+  // already-closed event yields null, so the show is created unattached
+  // instead of the go-live failing.
+  const challengeId = await resolveChallengeId(body.challengeSlug);
 
   try {
     const show = await createShow({
@@ -70,6 +75,7 @@ export async function POST(request: Request) {
         null,
       title,
       setup,
+      challengeId,
     });
 
     const token = await createAccessToken({

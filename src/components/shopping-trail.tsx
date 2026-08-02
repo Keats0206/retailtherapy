@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ExternalLink, ShoppingBag } from "lucide-react";
 
 import { AudienceVotes } from "@/components/audience-votes";
+import { SaveButton } from "@/components/save-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -396,6 +397,7 @@ function TrailFeedItem({
                 Shop
               </Button>
             )}
+            <SaveButton product={product} area="watch" />
             {onSelect && !active && (
               <Button
                 variant="ghost"

@@ -255,7 +255,7 @@ export function StudioClient() {
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center justify-between gap-3 px-6 py-3.5">
           <div className="flex items-baseline gap-2">
-            <Link href="/" className="text-base font-bold uppercase tracking-widest">
+            <Link href="/" className="font-brand text-xl uppercase tracking-[0.12em]">
               frontrow
             </Link>
             <Badge variant="secondary" size="micro">

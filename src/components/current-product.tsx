@@ -1,5 +1,6 @@
 "use client";
 
+import { SaveButton } from "@/components/save-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -94,20 +95,23 @@ export function CurrentProduct({
         </p>
       )}
 
-      <Button
-        size="micro"
-        className="mt-3 w-full"
-        disabled={!product.buyUrl}
-        onClick={() => {
-          trackEvent(AnalyticsEvent.PRODUCT_SHOP_CLICK, {
-            area: "watch",
-            context: "pinned",
-          });
-          window.open(product.buyUrl, "_blank", "noopener,noreferrer");
-        }}
-      >
-        Shop at {product.retailer || "retailer"}
-      </Button>
+      <div className="mt-3 flex items-center gap-1.5">
+        <Button
+          size="micro"
+          className="flex-1"
+          disabled={!product.buyUrl}
+          onClick={() => {
+            trackEvent(AnalyticsEvent.PRODUCT_SHOP_CLICK, {
+              area: "watch",
+              context: "pinned",
+            });
+            window.open(product.buyUrl, "_blank", "noopener,noreferrer");
+          }}
+        >
+          Shop at {product.retailer || "retailer"}
+        </Button>
+        <SaveButton product={product} area="watch" className="h-8" />
+      </div>
 
       <div className="mt-4">
         <div className="mb-1.5 flex items-center justify-between">

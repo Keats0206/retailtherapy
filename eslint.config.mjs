@@ -57,6 +57,12 @@ const cinemaModeFiles = [
   "src/components/ui/dialog.tsx",
   "src/components/ui/sheet.tsx",
   "src/components/share-show-link-button.tsx",
+  // Stream-flow prototype: a mock third-party storefront and an over-video
+  // control bar — both are deliberately outside the app palette.
+  "src/app/stream-flow/pieces.tsx",
+  "src/app/stream-flow/share-picker.tsx",
+  "src/app/stream-flow/host-popout.tsx",
+  "src/app/stream-flow/live-studio.tsx",
 ];
 
 const eslintConfig = defineConfig([

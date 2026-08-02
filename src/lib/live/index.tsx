@@ -231,27 +231,45 @@ export const useTracks: UseTracks = LOCAL_STREAM
 export function VideoTrack({
   trackRef,
   className,
+  style,
+  videoRef,
 }: {
   trackRef: StageTrack;
   className?: string;
+  style?: React.CSSProperties;
+  /** Callback ref for the rendered `<video>`, for callers that read frames off it. */
+  videoRef?: (el: HTMLVideoElement | null) => void;
 }) {
   if (isDesignTrack(trackRef)) {
     return (
       <DesignVideo
         track={trackRef.publication.track.mediaStreamTrack}
         className={className}
+        style={style}
+        videoRef={videoRef}
       />
     );
   }
-  return <LkVideoTrack trackRef={trackRef} className={className} />;
+  return (
+    <LkVideoTrack
+      ref={videoRef}
+      trackRef={trackRef}
+      className={className}
+      style={style}
+    />
+  );
 }
 
 function DesignVideo({
   track,
   className,
+  style,
+  videoRef,
 }: {
   track: MediaStreamTrack;
   className?: string;
+  style?: React.CSSProperties;
+  videoRef?: (el: HTMLVideoElement | null) => void;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
 
@@ -264,7 +282,27 @@ function DesignVideo({
     };
   }, [track]);
 
-  return <video ref={ref} autoPlay muted playsInline className={className} />;
+  // Feed the element to both our own ref and the caller's. Memoized because a
+  // fresh callback ref each render would detach and reattach the element every
+  // time, which anything watching it would read as the video going away.
+  const setVideoRef = useCallback(
+    (el: HTMLVideoElement | null) => {
+      ref.current = el;
+      videoRef?.(el);
+    },
+    [videoRef],
+  );
+
+  return (
+    <video
+      ref={setVideoRef}
+      autoPlay
+      muted
+      playsInline
+      className={className}
+      style={style}
+    />
+  );
 }
 
 // --- controls --------------------------------------------------------------

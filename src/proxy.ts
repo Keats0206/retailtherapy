@@ -1,11 +1,12 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Public surface: viewers at /s/* and /watch/* stay open. Hosting and home
-// require an account.
+// Public surface: the home page, viewers at /s/* and /watch/* stay open —
+// browsing never asks for an account. Hosting does.
 const isProtectedRoute = createRouteMatcher([
   "/host(.*)",
-  "/home",
   "/admin(.*)",
+  // A personal board only means anything with an account behind it.
+  "/saved",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

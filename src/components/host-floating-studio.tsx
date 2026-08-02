@@ -5,6 +5,7 @@ import { useTracks, VideoTrack } from "@/lib/live";
 import { Track, type Room } from "livekit-client";
 
 import { EndShowDialog } from "@/components/end-show-dialog";
+import { FaceBubble } from "@/components/face-bubble";
 import { HostControlBar } from "@/components/host-control-bar";
 import { PollComposer } from "@/components/poll-composer";
 import { PollLaunchButton, PollOverlay } from "@/components/poll-overlay";
@@ -74,12 +75,13 @@ export function HostFloatingStudio({
                 className="h-full w-full object-contain"
               />
               {camera && (
-                <VideoFrame className={PIP_CAMERA_BUBBLE}>
-                  <VideoTrack
-                    trackRef={camera}
-                    className="h-full w-full object-cover"
-                  />
-                </VideoFrame>
+                <FaceBubble
+                  trackRef={camera}
+                  className={PIP_CAMERA_BUBBLE}
+                  // The PiP bubble is tiny; a softer punch-in keeps the head
+                  // readable instead of filling it with forehead.
+                  zoom={1.2}
+                />
               )}
             </div>
           )}

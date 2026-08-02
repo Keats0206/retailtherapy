@@ -1,23 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-import {
-  createNativeFaceDetector,
-  faceFrameStyle,
-  HEURISTIC_FACE_BOX,
-  smoothFaceBox,
-  type FaceBox,
-  type FaceDetectorFn,
-  type FaceFrameStyle,
-} from "@/lib/cinema/face-frame";
+import { useFaceFrame, type FaceTrackingMode } from "@/hooks/use-face-frame";
+import type { FaceDetectorFn } from "@/lib/cinema/face-frame";
 
-export type FaceTrackingMode = "detected" | "heuristic";
-
-/** How often to run detection. Faces move slowly; ~6/sec is plenty and cheap. */
-const DETECT_INTERVAL_MS = 160;
-/** Seconds-scale smoothing for the face box — slow enough to never look twitchy. */
-const FACE_TAU = 0.35;
+export type { FaceTrackingMode };
 
 /**
  * Webcam capture plus head framing.
@@ -28,6 +16,9 @@ const FACE_TAU = 0.35;
  * preview), and a single ref object can only ever point at one element — the
  * second mount would silently steal it and the first would go black. Handing back
  * the `MediaStream` lets any number of `<video>` elements render the same feed.
+ *
+ * The framing itself lives in `useFaceFrame`, which the live stream reuses
+ * against the `<video>` it is already rendering.
  */
 export function useWebcamFace({
   enabled,
@@ -40,82 +31,24 @@ export function useWebcamFace({
   /** Override the detector (e.g. drop in MediaPipe). Defaults to native-or-none. */
   detector?: FaceDetectorFn | null;
 }) {
-  const faceRef = useRef<FaceBox>(HEURISTIC_FACE_BOX);
-  const detectorRef = useRef<FaceDetectorFn | null>(null);
-  const detectInFlight = useRef(false);
+  const { attach, style, mode } = useFaceFrame({ enabled, zoom, detector });
 
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<FaceTrackingMode>("heuristic");
-  const [style, setStyle] = useState<FaceFrameStyle>(() =>
-    faceFrameStyle(HEURISTIC_FACE_BOX, 16 / 9, zoom),
-  );
 
-  // Resolve the detector once. `undefined` means "decide for me"; an explicit
-  // `null` means the caller wants the heuristic only.
-  useEffect(() => {
-    detectorRef.current =
-      detector === undefined ? createNativeFaceDetector() : detector;
-  }, [detector]);
-
-  // Capture + detection loop. Teardown lives entirely in the cleanup function,
-  // so flipping `enabled` off tears down without touching state mid-render.
+  // Capture loop. Teardown lives entirely in the cleanup function, so flipping
+  // `enabled` off tears down without touching state mid-render.
   useEffect(() => {
     if (!enabled) return;
 
     let cancelled = false;
-    let raf: number | null = null;
     let live: MediaStream | null = null;
-    let lastDetectAt = 0;
-    let lastFrameAt: number | null = null;
 
     // Detached on purpose: never mounted, never rendered, just decodes frames
     // for the detector to read.
     const probe = document.createElement("video");
     probe.muted = true;
     probe.playsInline = true;
-
-    function frame(now: number) {
-      raf = requestAnimationFrame(frame);
-      if (!probe.videoWidth) return;
-
-      const dt =
-        lastFrameAt == null ? 0 : Math.min((now - lastFrameAt) / 1000, 0.1);
-      lastFrameAt = now;
-
-      const detect = detectorRef.current;
-      if (
-        detect &&
-        !detectInFlight.current &&
-        now - lastDetectAt > DETECT_INTERVAL_MS
-      ) {
-        lastDetectAt = now;
-        detectInFlight.current = true;
-        void Promise.resolve(detect(probe))
-          .then((box) => {
-            if (cancelled || !box) return;
-            faceRef.current = smoothFaceBox(faceRef.current, box, FACE_TAU, 0.2);
-            setMode("detected");
-          })
-          .catch(() => {
-            // A failed detection is not fatal — hold the last known box.
-          })
-          .finally(() => {
-            detectInFlight.current = false;
-          });
-      }
-
-      if (!detect) {
-        faceRef.current = smoothFaceBox(
-          faceRef.current,
-          HEURISTIC_FACE_BOX,
-          FACE_TAU,
-          dt,
-        );
-      }
-
-      setStyle(faceFrameStyle(faceRef.current, probe.videoWidth / probe.videoHeight, zoom));
-    }
 
     async function start() {
       setError(null);
@@ -139,7 +72,7 @@ export function useWebcamFace({
           // track is live, so detection is unaffected.
         });
         setStream(next);
-        raf = requestAnimationFrame(frame);
+        attach(probe);
       } catch (err) {
         if (!cancelled) setError(cameraErrorMessage(err));
       }
@@ -149,12 +82,12 @@ export function useWebcamFace({
 
     return () => {
       cancelled = true;
-      if (raf != null) cancelAnimationFrame(raf);
+      attach(null);
       probe.srcObject = null;
       live?.getTracks().forEach((track) => track.stop());
       setStream(null);
     };
-  }, [enabled, zoom]);
+  }, [attach, enabled]);
 
   return { stream, style, ready: stream != null, error, mode };
 }

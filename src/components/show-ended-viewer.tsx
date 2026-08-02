@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, Check, Link2, Play } from "lucide-react";
 
+import { SaveButton } from "@/components/save-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -126,7 +127,7 @@ export function ShowEndedViewer({
       <header className="sticky top-0 z-30 flex shrink-0 items-center justify-between gap-4 border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur-xl sm:px-6">
         <Link
           href="/"
-          className="text-base font-bold uppercase tracking-widest"
+          className="font-brand text-xl uppercase tracking-[0.12em]"
         >
           frontrow
         </Link>
@@ -161,7 +162,7 @@ export function ShowEndedViewer({
               </div>
             )}
 
-            <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black ring-1 ring-foreground/10 shadow-xl sm:rounded-3xl">
+            <div className="relative aspect-video w-full overflow-hidden bg-black ring-1 ring-border">
               {recap.muxPlaybackId ? (
                 <MuxPlayer
                   playbackId={recap.muxPlaybackId}
@@ -181,7 +182,7 @@ export function ShowEndedViewer({
               <Badge
                 variant="outline"
                 size="micro"
-                className="gap-1.5 border-border/70 text-muted-foreground"
+                className="gap-1.5 rounded-none border-border text-muted-foreground"
               >
                 <span className="size-1.5 rounded-full bg-muted-foreground/60" />
                 Replay
@@ -196,7 +197,7 @@ export function ShowEndedViewer({
               {recap.title}
             </h1>
 
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border/60 pb-5">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border pb-5">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
                 {recap.host.trim().charAt(0).toUpperCase() || "?"}
               </span>
@@ -220,29 +221,31 @@ export function ShowEndedViewer({
         {/* self-start keeps the rail from stretching to the row height, which
             is what lets it actually stick while the theatre column scrolls. */}
         <aside className="flex min-w-0 flex-col lg:sticky lg:top-20 lg:max-h-[calc(100dvh-7rem)] lg:self-start">
-          <div className="relative flex flex-col gap-3 rounded-2xl bg-card p-3 ring-1 ring-foreground/10 lg:min-h-0 lg:flex-1 lg:overflow-hidden">
+          <div className="relative flex flex-col gap-3 bg-card p-3 ring-1 ring-border lg:min-h-0 lg:flex-1 lg:overflow-hidden">
             <div className="flex items-center justify-between gap-2 px-1 pt-1">
               <h2 className="font-heading text-base font-medium">
                 Shop the show
               </h2>
-              <Badge variant="secondary" className="tabular-nums">
+              <Badge variant="secondary" className="rounded-none tabular-nums">
                 {trail.length}
               </Badge>
             </div>
 
+            {/* Square segmented control: one gray box, hairline dividers
+                between the segments, ink fill on the active one. */}
             {trail.length > 1 && (
-              <div className="flex gap-0.5 rounded-full bg-muted p-0.5">
+              <div className="flex divide-x divide-border border border-border">
                 {SORTS.map((s) => (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => setSort(s.id)}
                     className={cn(
-                      "flex-1 rounded-full px-2 py-1.5 text-xs font-medium transition-colors",
+                      "flex-1 px-2 py-1.5 text-xs font-medium transition-colors",
                       "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
                       sort === s.id
-                        ? "bg-background text-foreground shadow-xs"
-                        : "text-muted-foreground hover:text-foreground",
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
                   >
                     {s.label}
@@ -274,7 +277,7 @@ export function ShowEndedViewer({
             {trail.length > 4 && (
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-x-px bottom-px hidden h-12 rounded-b-2xl bg-gradient-to-t from-card to-transparent lg:block"
+                className="pointer-events-none absolute inset-x-px bottom-px hidden h-12 bg-gradient-to-t from-card to-transparent lg:block"
               />
             )}
           </div>
@@ -313,14 +316,24 @@ function TopPick({ product, votes }: { product: Product; votes: VoteTally }) {
   const name = cleanProductTitle(product.name, product.retailer);
 
   return (
+    // The card is one big buy link, so the save button rides on top of it as a
+    // sibling rather than nesting inside — a button inside an <a> is invalid
+    // and the anchor would take the click.
+    <div className="relative">
+      <SaveButton
+        product={product}
+        area="replay"
+        variant="overlay"
+        className="absolute right-2 top-2 z-10"
+      />
     <a
       href={product.buyUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex items-center gap-4 rounded-2xl bg-card p-3 ring-1 ring-foreground/10 transition-all hover:ring-foreground/25 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:gap-5 sm:p-4"
+      className="group flex items-center gap-4 bg-card p-3 ring-1 ring-border transition-all hover:ring-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:gap-5 sm:p-4"
     >
       {imageUrl && (
-        <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-muted sm:size-24">
+        <div className="size-20 shrink-0 overflow-hidden bg-muted sm:size-24">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageUrl}
@@ -342,12 +355,13 @@ function TopPick({ product, votes }: { product: Product; votes: VoteTally }) {
           {pct !== null ? ` · ${pct}% said buy` : ""}
         </p>
       </div>
-      <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors group-hover:bg-primary/85 sm:inline-flex">
+      <span className="hidden shrink-0 items-center gap-1.5 bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors group-hover:bg-primary/85 sm:inline-flex">
         Shop
         <ArrowUpRight className="size-4" />
       </span>
       <ArrowUpRight className="size-5 shrink-0 text-muted-foreground sm:hidden" />
     </a>
+    </div>
   );
 }
 
@@ -370,13 +384,22 @@ function ProductRow({
   const soldOut = product.availability === "OutOfStock";
 
   return (
+    // Same shape as TopPick: the row is the buy link, so the save button sits
+    // over it rather than inside it.
+    <div className="relative">
+      <SaveButton
+        product={product}
+        area="replay"
+        variant="overlay"
+        className="absolute left-3 bottom-3 z-10"
+      />
     <a
       href={product.buyUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="group relative flex gap-3 rounded-xl p-2 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+      className="group relative flex gap-3 p-2 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
     >
-      <div className="relative size-24 shrink-0 overflow-hidden rounded-lg bg-muted">
+      <div className="relative size-24 shrink-0 overflow-hidden bg-muted">
         {imageUrl ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
@@ -394,7 +417,7 @@ function ProductRow({
           </span>
         )}
         {index !== null && (
-          <span className="cinema-glass absolute left-1 top-1 rounded-full border px-1.5 py-0.5 text-[0.625rem] font-medium tabular-nums">
+          <span className="cinema-glass absolute left-1 top-1 border px-1.5 py-0.5 text-[0.625rem] font-medium tabular-nums">
             {String(index).padStart(2, "0")}
           </span>
         )}
@@ -413,7 +436,11 @@ function ProductRow({
             {formatPrice(product.price, product.currency)}
           </span>
           {product.featured && (
-            <Badge variant="secondary" size="micro" className="shrink-0">
+            <Badge
+              variant="secondary"
+              size="micro"
+              className="shrink-0 rounded-none"
+            >
               Featured
             </Badge>
           )}
@@ -426,7 +453,7 @@ function ProductRow({
             <Badge
               variant="outline"
               size="micro"
-              className="shrink-0 text-muted-foreground"
+              className="shrink-0 rounded-none text-muted-foreground"
             >
               Sold out
             </Badge>
@@ -436,9 +463,9 @@ function ProductRow({
         {pct !== null && (
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              <span className="h-1 w-14 shrink-0 overflow-hidden rounded-full bg-muted-foreground/20">
+              <span className="h-1 w-14 shrink-0 overflow-hidden bg-muted-foreground/20">
                 <span
-                  className="block h-full rounded-full bg-live"
+                  className="block h-full bg-live"
                   style={{ width: `${pct}%` }}
                 />
               </span>
@@ -463,5 +490,6 @@ function ProductRow({
 
       <ArrowUpRight className="absolute right-2 top-2 size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
     </a>
+    </div>
   );
 }

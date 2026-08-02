@@ -19,7 +19,8 @@
  *
  * Typography:
  *   --text-xs … --text-9xl in @theme inline (~15% larger than Tailwind defaults)
- *   font-heading / font-display — hero & section titles
+ *   font-heading / font-display — hero & section titles (sans)
+ *   font-brand — Stardom display serif; wordmark and hero display type only
  *   @utility micro — eyebrow labels only (section headers, metadata, status)
  *   Do NOT use micro on headings, product names, or buttons.
  *
@@ -43,7 +44,8 @@
   --live-foreground: oklch(0.18 0.04 123);
   --pop: oklch(0.656 0.235 13.3);
   --pop-foreground: oklch(1 0 0);
-  --primary: oklch(0.141 0.005 285.823);
+  /* Pure black, not the near-black foreground — CTAs read as ink blocks. */
+  --primary: oklch(0 0 0);
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
@@ -197,8 +199,13 @@
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono, var(--font-mono));
   --font-serif: var(--font-serif);
-  --font-display: var(--font-display);
-  --font-heading: var(--font-display);
+  /* Everything that isn't the wordmark is Nunito, so display and heading both
+     resolve to the sans rather than to the old SF Pro Display stack. */
+  --font-display: var(--font-sans);
+  --font-heading: var(--font-sans);
+  /* font-brand — Stardom, the wordmark/hero serif. Deliberately NOT wired to
+     font-heading: card, dialog and section titles stay on the sans. */
+  --font-brand: var(--font-stardom, ui-serif, Georgia, "Times New Roman", serif);
 
   /* Type scale, bumped ~15% larger than Tailwind's defaults. Every text-*
      utility reads these, so the whole app scales up in one place. */

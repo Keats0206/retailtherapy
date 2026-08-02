@@ -55,6 +55,12 @@ export default async function AdminPage() {
             Browse live shows
           </Link>
           <Link
+            href="/admin/metrics"
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+          >
+            Metrics
+          </Link>
+          <Link
             href="/admin/creator-outreach"
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >

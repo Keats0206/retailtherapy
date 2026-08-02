@@ -19,6 +19,7 @@ import {
 
 import { ChatPanel } from "@/components/chat-panel";
 import { EndShowDialog } from "@/components/end-show-dialog";
+import { FaceBubble } from "@/components/face-bubble";
 import { HostControlBar } from "@/components/host-control-bar";
 import { HostFloatingStudio } from "@/components/host-floating-studio";
 import { PipStoreSuggestions } from "@/components/pip-store-suggestions";
@@ -54,7 +55,6 @@ import {
   HOST_CONTROL_BAR,
   HOST_CONTROL_BAR_INNER,
   HOST_STAGE,
-  VideoFrame,
   VideoPlaceholder,
 } from "@/components/video-placeholder";
 import { ViewerCount } from "@/components/viewer-count";
@@ -433,7 +433,7 @@ function BroadcastStudio({
         <ConnectionKeeper slug={session.slug} pipSupported={pipSupported} />
       ) : !sharing ? (
         <HostLaunchScreen
-          stage="awaiting-share"
+          live
           slug={session.slug}
           title={session.title}
           room={room}
@@ -560,14 +560,7 @@ function HostStage({
             trackRef={share}
             className="h-full w-full object-contain"
           />
-          {camera && (
-            <VideoFrame className={HOST_CAMERA_BUBBLE}>
-              <VideoTrack
-                trackRef={camera}
-                className="h-full w-full object-cover"
-              />
-            </VideoFrame>
-          )}
+          {camera && <FaceBubble trackRef={camera} className={HOST_CAMERA_BUBBLE} />}
         </div>
       )}
 

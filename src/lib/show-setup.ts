@@ -28,6 +28,13 @@ export type ShowSetupDraft = {
   /** Typing by hand stops the auto-suggestion from clobbering the field. */
   nameTouched: boolean;
   socials: ShowSocials;
+  /**
+   * The challenge event this show is an attempt at, carried from
+   * `/host/setup?challenge=<slug>` through to the create-show call. The server
+   * resolves it to an id and rejects unknown or closed events, so a stale slug
+   * here just means an ordinary show.
+   */
+  challengeSlug: string | null;
 };
 
 export const EMPTY_DRAFT: ShowSetupDraft = {
@@ -37,7 +44,15 @@ export const EMPTY_DRAFT: ShowSetupDraft = {
   showName: "",
   nameTouched: false,
   socials: { instagram: "", tiktok: "", youtube: "" },
+  challengeSlug: null,
 };
+
+/** Slugs are hand-written; keep the round trip to the same shape we issue. */
+function cleanSlug(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const slug = value.trim().toLowerCase().slice(0, 64);
+  return /^[a-z0-9-]+$/.test(slug) ? slug : null;
+}
 
 const STORAGE_KEY = "frontrow:show-setup-draft";
 
@@ -130,6 +145,7 @@ export function readShowSetupDraft(): ShowSetupDraft | null {
         tiktok: cleanHandle(parsed.socials?.tiktok),
         youtube: cleanHandle(parsed.socials?.youtube),
       },
+      challengeSlug: cleanSlug(parsed.challengeSlug),
     };
   } catch {
     return null;

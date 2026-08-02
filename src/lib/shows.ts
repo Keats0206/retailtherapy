@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 import { unstable_cache } from "next/cache";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, lt, sql } from "drizzle-orm";
 
 import { db, products, streamProducts, streams } from "@/lib/db";
 import type { Stream } from "@/lib/db";
@@ -57,8 +57,14 @@ function generateSlug(): string {
 
 export type Show = Stream;
 
+/**
+ * Anything carrying a snapshot column: a full row, or the trimmed projection
+ * the discovery cards select (see `showCardColumns`).
+ */
+type WithSnapshot = { snapshot: unknown };
+
 /** A show, plus the shopping state it recorded. */
-export function snapshotOf(show: Show): StreamSnapshot {
+export function snapshotOf(show: WithSnapshot): StreamSnapshot {
   if (!show.snapshot) return EMPTY;
   const normalized = normalizeSnapshot(show.snapshot);
   return {
@@ -74,7 +80,10 @@ export type TrailPreviewItem = {
 };
 
 /** First few pinned products for show list cards. */
-export function trailPreview(show: Show, limit = 4): TrailPreviewItem[] {
+export function trailPreview(
+  show: WithSnapshot,
+  limit = 4,
+): TrailPreviewItem[] {
   return snapshotOf(show)
     .trail.slice(0, limit)
     .map((product) => ({
@@ -110,6 +119,8 @@ export type DiscoveryShow = {
   thumbnailUrl: string;
   trailPreview: TrailPreviewItem[];
   trailExtraCount: number;
+  /** Every product shown during the show, not just the previewed ones. */
+  trailTotal: number;
   endedAt?: string | null;
 };
 
@@ -120,8 +131,39 @@ function discoveryThumbnail(label: string, tone = 18): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
+/** The columns a discovery card reads — a `Show` row satisfies this too. */
+type ShowCard = {
+  slug: string;
+  title: string;
+  hostName: string | null;
+  endedAt: Date | null;
+  snapshot: unknown;
+};
+
+/**
+ * A card renders only `active` and `trail`, but `voters` grows with audience
+ * size times votes cast — unbounded, and the bulk of a busy show's snapshot.
+ * Rebuilding the two fields we read in the query keeps a browse page from
+ * dragging every vote record of every listed show across the wire.
+ *
+ * `normalizeSnapshot` defaults the omitted maps to empty, so the value this
+ * produces is indistinguishable from the full row downstream.
+ */
+const showCardColumns = {
+  slug: streams.slug,
+  title: streams.title,
+  hostName: streams.hostName,
+  endedAt: streams.endedAt,
+  snapshot: sql<Pick<StreamSnapshot, "active" | "trail"> | null>`
+    case when ${streams.snapshot} is null then null else jsonb_build_object(
+      'active', ${streams.snapshot} -> 'active',
+      'trail', coalesce(${streams.snapshot} -> 'trail', '[]'::jsonb)
+    ) end
+  `,
+};
+
 export function toDiscoveryShow(
-  show: Show,
+  show: ShowCard,
   opts?: { placeholderLabel?: string; includeEndedAt?: boolean },
 ): DiscoveryShow {
   const snapshot = snapshotOf(show);
@@ -140,15 +182,26 @@ export function toDiscoveryShow(
     thumbnailUrl: pinned?.imageUrl ?? discoveryThumbnail(placeholder),
     trailPreview: previews,
     trailExtraCount,
+    trailTotal: snapshot.trail.length,
     ...(opts?.includeEndedAt
       ? { endedAt: show.endedAt?.toISOString() ?? null }
       : {}),
   };
 }
 
+/**
+ * Every browse and home render asks for the same live shows, so this is served
+ * from the cache for `revalidate` seconds rather than from the database.
+ *
+ * `DiscoveryShow` is plain JSON by construction (note `endedAt` is stringified
+ * in `toDiscoveryShow`), which is what makes it safe to hand to the cache.
+ *
+ * Next 16 supersedes `unstable_cache` with the `use cache` directive, but that
+ * needs the `cacheComponents` flag this app has not opted into yet.
+ */
 const listLiveShowsCached = unstable_cache(
   async (limit: number) => {
-    const rows = await listLiveShowRows(limit);
+    const rows = await listLiveShowCards(limit);
     return rows.map((show) => toDiscoveryShow(show));
   },
   ["list-live-shows"],
@@ -156,8 +209,7 @@ const listLiveShowsCached = unstable_cache(
 );
 
 export async function listLiveShows(limit = 12): Promise<DiscoveryShow[]> {
-  const rows = await listLiveShowRows(limit);
-  return rows.map((show) => toDiscoveryShow(show));
+  return listLiveShowsCached(limit);
 }
 
 /** All live shows, for admin moderation. */
@@ -189,9 +241,18 @@ async function listLiveShowRows(limit: number): Promise<Show[]> {
     .limit(limit);
 }
 
-async function listEndedShowRows(limit: number): Promise<Show[]> {
+function listLiveShowCards(limit: number) {
   return db
-    .select()
+    .select(showCardColumns)
+    .from(streams)
+    .where(eq(streams.status, "live"))
+    .orderBy(desc(streams.startedAt))
+    .limit(limit);
+}
+
+function listEndedShowCards(limit: number) {
+  return db
+    .select(showCardColumns)
     .from(streams)
     .where(eq(streams.status, "ended"))
     .orderBy(desc(streams.endedAt))
@@ -199,7 +260,7 @@ async function listEndedShowRows(limit: number): Promise<Show[]> {
 }
 
 export async function listEndedShows(limit = 24): Promise<DiscoveryShow[]> {
-  const rows = await listEndedShowRows(limit);
+  const rows = await listEndedShowCards(limit);
   return rows.map((show) =>
     toDiscoveryShow(show, { placeholderLabel: "RECAP", includeEndedAt: true }),
   );
@@ -246,6 +307,8 @@ export async function createShow(opts: {
   hostName: string | null;
   title: string;
   setup?: ShowSetup | null;
+  /** The challenge event this show attempts, already resolved and validated. */
+  challengeId?: string | null;
 }): Promise<Show> {
   const existing = await getLiveShowForHost(opts.hostUserId);
   if (existing) {
@@ -279,6 +342,7 @@ export async function createShow(opts: {
         muxStreamKey: streamKey,
         snapshot: EMPTY,
         setup: opts.setup ?? null,
+        challengeId: opts.challengeId ?? null,
         startedAt: new Date(),
       })
       .returning();
@@ -443,50 +507,106 @@ async function persistTrail(streamId: string, snapshot: StreamSnapshot) {
 
   const spotlightId = spotlightProductId(snapshot);
 
+  // `addToTrail` already dedupes by id, but the snapshot is client-supplied
+  // jsonb. A repeated id would make one statement hit the same row twice, which
+  // Postgres rejects outright ("cannot affect row a second time") and would
+  // abort the whole batch — so collapse duplicates before building it.
+  const items = new Map<string, { item: Product; position: number }>();
   for (const [position, item] of snapshot.trail.entries()) {
+    if (item.id) items.set(item.id, { item, position });
+  }
+  if (items.size === 0) return;
+
+  // One statement per table rather than two per product: a 30-item trail was 60
+  // serial round-trips, each one holding the end-of-show request open.
+  const productRows = await db
+    .insert(products)
+    .values([...items.values()].map(({ item }) => toProductRow(item)))
+    .onConflictDoUpdate({
+      target: products.externalId,
+      set: {
+        title: sql`excluded.title`,
+        imageUrl: sql`excluded.image_url`,
+        priceCents: sql`excluded.price_cents`,
+        currency: sql`excluded.currency`,
+        retailer: sql`excluded.retailer`,
+        buyUrl: sql`excluded.buy_url`,
+        updatedAt: new Date(),
+      },
+    })
+    .returning({ id: products.id, externalId: products.externalId });
+
+  const idByExternalId = new Map(
+    productRows.flatMap((row) =>
+      row.externalId ? [[row.externalId, row.id] as const] : [],
+    ),
+  );
+
+  const joinRows = [...items.values()].flatMap(({ item, position }) => {
+    const productId = idByExternalId.get(item.id);
+    if (!productId) return [];
     const tally = snapshot.votes[item.id] ?? { buy: 0, skip: 0 };
-
-    const [row] = await db
-      .insert(products)
-      .values(toProductRow(item))
-      .onConflictDoUpdate({
-        target: products.externalId,
-        set: {
-          title: item.name,
-          imageUrl: item.imageUrl,
-          priceCents: Math.round(item.price * 100),
-          currency: item.currency,
-          retailer: item.retailer,
-          buyUrl: item.buyUrl,
-          updatedAt: new Date(),
-        },
-      })
-      .returning({ id: products.id });
-
-    if (!row) continue;
-
-    await db
-      .insert(streamProducts)
-      .values({
+    return [
+      {
         streamId,
-        productId: row.id,
+        productId,
         position,
         isSpotlighted: spotlightId === item.id,
         note: item.note || null,
         buyVotes: tally.buy,
         skipVotes: tally.skip,
-      })
-      .onConflictDoUpdate({
-        target: [streamProducts.streamId, streamProducts.productId],
-        set: {
-          position,
-          isSpotlighted: spotlightId === item.id,
-          note: item.note || null,
-          buyVotes: tally.buy,
-          skipVotes: tally.skip,
-        },
-      });
-  }
+      },
+    ];
+  });
+  if (joinRows.length === 0) return;
+
+  await db
+    .insert(streamProducts)
+    .values(joinRows)
+    .onConflictDoUpdate({
+      target: [streamProducts.streamId, streamProducts.productId],
+      set: {
+        position: sql`excluded.position`,
+        isSpotlighted: sql`excluded.is_spotlighted`,
+        note: sql`excluded.note`,
+        buyVotes: sql`excluded.buy_votes`,
+        skipVotes: sql`excluded.skip_votes`,
+      },
+    });
+}
+
+/**
+ * Writes one app-facing product into the `products` table, returning its row
+ * id. The single definition of "this item exists in the catalog" — used both
+ * when a show ends (`persistTrail`) and when a viewer saves an item mid-show
+ * (`lib/saved.ts`), which is the only way a live product reaches the table
+ * before the show is over.
+ *
+ * Returns null for an item with no external id: the column is nullable but
+ * carries a unique index, so `onConflictDoUpdate` on it has nothing to match
+ * and every such insert would stack a duplicate row.
+ */
+export async function upsertProduct(item: Product): Promise<string | null> {
+  if (!item.id) return null;
+
+  const [row] = await db
+    .insert(products)
+    .values(toProductRow(item))
+    .onConflictDoUpdate({
+      target: products.externalId,
+      set: {
+        title: item.name,
+        imageUrl: item.imageUrl,
+        priceCents: Math.round(item.price * 100),
+        currency: item.currency,
+        retailer: item.retailer,
+        buyUrl: item.buyUrl,
+        updatedAt: new Date(),
+      },
+    })
+    .returning({ id: products.id });
+
+  return row?.id ?? null;
 }
 
 function toProductRow(item: Product) {
@@ -499,6 +619,35 @@ function toProductRow(item: Product) {
     currency: item.currency,
     retailer: item.retailer,
     buyUrl: item.buyUrl,
+  };
+}
+
+/**
+ * The read direction of `toProductRow`: a persisted row back into the
+ * app-facing `Product` the UI renders.
+ *
+ * The row cannot carry everything — commission and availability come from
+ * Channel3 at lookup time and are not stored — so those fall back to neutral
+ * values. `note` and `addedAt` belong to the context the product was seen in
+ * (a show, a save), so the caller supplies them.
+ */
+export function toProduct(
+  row: typeof products.$inferSelect,
+  extras?: { note?: string | null; addedAt?: number },
+): Product {
+  return {
+    id: row.externalId ?? row.id,
+    name: row.title,
+    imageUrl: row.imageUrl,
+    // The column is cents; app-facing prices are dollars.
+    price: row.priceCents / 100,
+    currency: row.currency,
+    retailer: row.retailer ?? "",
+    buyUrl: row.buyUrl ?? "",
+    commissionRate: 0,
+    availability: null,
+    note: extras?.note ?? "",
+    addedAt: extras?.addedAt ?? row.createdAt.getTime(),
   };
 }
 
@@ -544,16 +693,23 @@ export async function endStaleShows(
   staleAfterHours = STALE_SHOW_HOURS,
 ): Promise<number> {
   const cutoff = new Date(Date.now() - staleAfterHours * 60 * 60 * 1000);
+  // The cutoff belongs in the query: this runs on a timer, and every live show
+  // that is still healthy is a row we would otherwise fetch only to discard.
   const stale = await db
     .select()
     .from(streams)
-    .where(eq(streams.status, "live"));
+    .where(
+      and(
+        eq(streams.status, "live"),
+        lt(
+          sql`coalesce(${streams.updatedAt}, ${streams.startedAt}, ${streams.createdAt})`,
+          cutoff,
+        ),
+      ),
+    );
 
   let ended = 0;
   for (const show of stale) {
-    const lastActivity = show.updatedAt ?? show.startedAt ?? show.createdAt;
-    if (lastActivity >= cutoff) continue;
-
     const result = await endShow(show.slug, show.hostUserId, snapshotOf(show));
     if (result?.status === "ended") ended += 1;
   }

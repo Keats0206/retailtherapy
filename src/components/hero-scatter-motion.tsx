@@ -222,7 +222,7 @@ export default function HeroScatterMotion() {
       >
         <motion.span
           variants={textItem}
-          className="text-sm font-bold uppercase tracking-[0.3em] text-muted-foreground"
+          className="font-brand text-base uppercase tracking-[0.3em] text-muted-foreground"
         >
           frontrow
         </motion.span>

@@ -22,7 +22,7 @@ export default function ChromeLayout({
   return (
     <>
       <header className="flex shrink-0 items-center justify-between px-6 py-4">
-        <Link href="/" className="text-base font-bold uppercase tracking-widest">
+        <Link href="/" className="font-brand text-xl uppercase tracking-[0.12em]">
           frontrow
         </Link>
         <div className="flex items-center gap-4">
@@ -34,6 +34,12 @@ export default function ChromeLayout({
             </SignInButton>
           </Show>
           <Show when="signed-in">
+            <Button
+              variant="ghost"
+              size="micro"
+              render={<Link href="/saved">Saved</Link>}
+            />
+            <Button size="micro" render={<Link href="/host/setup">Go live</Link>} />
             <UserMenu />
           </Show>
         </div>

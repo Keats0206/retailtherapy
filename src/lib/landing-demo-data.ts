@@ -1,6 +1,6 @@
 import type { Product } from "@/lib/types";
 
-export const LANDING_HOST_IMAGE = "/landing/demo-host.svg";
+export const LANDING_HOST_IMAGE = "/landing/demo-host.png";
 
 export type DemoPhase =
   | "pinning"
