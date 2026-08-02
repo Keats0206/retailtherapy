@@ -3,6 +3,10 @@
  * Persisted on the `streams.setup` jsonb column when the host goes live.
  */
 
+// Relative, not the `@/` alias: db/schema.ts imports this file, and drizzle-kit
+// loads that outside Next, where tsconfig paths do not resolve.
+import { isValidHttpsUrl } from "./validate-url";
+
 export type ShowIntent = "season" | "event" | "browsing";
 
 export type ShowSocials = {
@@ -35,6 +39,17 @@ export type ShowSetupDraft = {
    * here just means an ordinary show.
    */
   challengeSlug: string | null;
+  /**
+   * The store the challenge asks the host to shop, resolved server-side on the
+   * setup route. Carried through so the go-live screen can offer *that* store
+   * as the first step instead of the generic recommendations — taking on an
+   * event and then hunting for its shop in a list is the wrong shape.
+   *
+   * Display-only, and never trusted: the server re-resolves the challenge from
+   * `challengeSlug` when the show is created.
+   */
+  challengeStoreUrl: string | null;
+  challengeBrandName: string | null;
 };
 
 export const EMPTY_DRAFT: ShowSetupDraft = {
@@ -45,6 +60,8 @@ export const EMPTY_DRAFT: ShowSetupDraft = {
   nameTouched: false,
   socials: { instagram: "", tiktok: "", youtube: "" },
   challengeSlug: null,
+  challengeStoreUrl: null,
+  challengeBrandName: null,
 };
 
 /** Slugs are hand-written; keep the round trip to the same shape we issue. */
@@ -52,6 +69,17 @@ function cleanSlug(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const slug = value.trim().toLowerCase().slice(0, 64);
   return /^[a-z0-9-]+$/.test(slug) ? slug : null;
+}
+
+/**
+ * The draft round-trips through sessionStorage, so a store link read back out
+ * is untrusted input by the time we hand it to `window.open`. Only https
+ * survives — `javascript:` in a store button would be a self-XSS.
+ */
+function cleanStoreUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return isValidHttpsUrl(trimmed) ? trimmed : null;
 }
 
 const STORAGE_KEY = "frontrow:show-setup-draft";
@@ -146,6 +174,11 @@ export function readShowSetupDraft(): ShowSetupDraft | null {
         youtube: cleanHandle(parsed.socials?.youtube),
       },
       challengeSlug: cleanSlug(parsed.challengeSlug),
+      challengeStoreUrl: cleanStoreUrl(parsed.challengeStoreUrl),
+      challengeBrandName:
+        typeof parsed.challengeBrandName === "string"
+          ? parsed.challengeBrandName.slice(0, 64)
+          : null,
     };
   } catch {
     return null;

@@ -276,6 +276,39 @@ export const savedShows = pgTable(
 );
 
 /**
+ * How the show felt from behind the camera, asked once on the recap page while
+ * the host is still sitting there.
+ *
+ * Its own table rather than a column on `streams`: this is written by a
+ * different actor at a different time than the show record, it is optional, and
+ * "rated 3" has to stay distinguishable from "never answered". One row per
+ * show — answering again edits the answer.
+ */
+export const hostFeedback = pgTable(
+  "host_feedback",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    streamId: uuid("stream_id")
+      .notNull()
+      .references(() => streams.id, { onDelete: "cascade" }),
+    // Clerk user id, same convention as `streams.host_user_id`.
+    hostUserId: text("host_user_id").notNull(),
+    // 1–5. Range is enforced at the route, not the column, so a future scale
+    // change doesn't need a migration.
+    rating: integer("rating").notNull(),
+    // What went wrong, in their words. The rating says how much; this says why.
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [uniqueIndex("host_feedback_stream_idx").on(table.streamId)],
+);
+
+/**
  * Hosting is invite-only, so /apply collects interest instead of granting
  * access. One row per email — a repeat signup refreshes the details rather
  * than stacking duplicates.
@@ -434,6 +467,8 @@ export type WaitlistSignup = typeof waitlistSignups.$inferSelect;
 export type NewWaitlistSignup = typeof waitlistSignups.$inferInsert;
 export type Challenge = typeof challenges.$inferSelect;
 export type NewChallenge = typeof challenges.$inferInsert;
+export type HostFeedback = typeof hostFeedback.$inferSelect;
+export type NewHostFeedback = typeof hostFeedback.$inferInsert;
 export type CreatorProspect = typeof creatorProspects.$inferSelect;
 export type NewCreatorProspect = typeof creatorProspects.$inferInsert;
 export type OutreachStatus = (typeof outreachStatus.enumValues)[number];

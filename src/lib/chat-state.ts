@@ -18,6 +18,12 @@ export interface ChatLine {
   timestamp: number;
   message: string;
   from?: { name?: string; identity?: string };
+  /**
+   * Room events ("someone joined") rendered inline with chat rather than in a
+   * separate ticker — an empty room filling up should read as one feed. Never
+   * sent over the wire; the host's rail synthesizes these locally.
+   */
+  kind?: "system";
 }
 
 const TOPIC = "chat";

@@ -5,6 +5,7 @@ import { Show, SignInButton, SignUpButton } from "@clerk/nextjs";
 import { ChevronRight, Clapperboard, Radio } from "lucide-react";
 
 import { ChallengeEventCard } from "@/components/challenge-card";
+import { ChallengeSteps } from "@/components/challenge-steps";
 import { LivePreviewMock } from "@/components/live-preview-mock";
 import { DeleteShowButton } from "@/components/delete-show-button";
 import { EndLiveShowButton } from "@/components/end-live-show-button";
@@ -80,6 +81,9 @@ export function BrowsePage({
           </div>
         </Section>
       ) : null}
+
+      {/* The terms of taking one on, read before the grid of them. */}
+      <ChallengeSteps />
 
       <Section
         title="Challenges"

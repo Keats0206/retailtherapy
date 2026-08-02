@@ -28,7 +28,6 @@ export function HostFloatingStudio({
   chatCount,
   channel3Configured,
   onEndShow,
-  onBeforeShare,
   pipSupported,
   endDialogOpen,
   onEndDialogOpenChange,
@@ -43,7 +42,6 @@ export function HostFloatingStudio({
   chatCount: number;
   channel3Configured: boolean;
   onEndShow: () => void;
-  onBeforeShare?: () => void | Promise<void>;
   pipSupported: boolean;
   endDialogOpen: boolean;
   onEndDialogOpenChange: (open: boolean) => void;
@@ -102,7 +100,6 @@ export function HostFloatingStudio({
               room={room}
               sharing={sharing}
               onEndShow={onEndShow}
-              onBeforeShare={onBeforeShare}
               pipSupported={pipSupported}
               variant="pip-overlay"
             />

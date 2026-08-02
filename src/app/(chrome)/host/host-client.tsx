@@ -10,6 +10,7 @@ import {
   type MediaControls,
 } from "@/components/host-launch-screen";
 import { Button } from "@/components/ui/button";
+import { useGoLiveProgress } from "@/hooks/use-go-live-progress";
 import {
   clearShowSetupDraft,
   draftToSetup,
@@ -60,6 +61,7 @@ export default function HostClient({
   // Hold the camera until we know we're staying — no permission prompt on a
   // page we're about to bounce to /host/setup.
   const media = useMediaPreview(setupReady);
+  const { reset: resetGoLiveProgress } = useGoLiveProgress();
   const stopMediaRef = useRef(media.stop);
   // Leave-to-end: track the live slug across nav/tab close without ending on
   // transient LiveKit disconnects (phase → disconnected while still on /host).
@@ -236,6 +238,8 @@ export default function HostClient({
   function handleShowEnded(slug: string) {
     markShowEnded();
     clearShowSetupDraft();
+    // The checklist belongs to one show; the next one starts from step 1.
+    resetGoLiveProgress();
     setSession(null);
     setPhase("preshow");
     router.replace(`/host/${slug}`);
@@ -246,6 +250,14 @@ export default function HostClient({
       <LiveBroadcast
         session={session}
         channel3Configured={channel3Configured}
+        challengeStore={
+          setupDraft?.challengeStoreUrl
+            ? {
+                url: setupDraft.challengeStoreUrl,
+                brandName: setupDraft.challengeBrandName ?? "the store",
+              }
+            : null
+        }
         onShowEnded={handleShowEnded}
         onDisconnected={() => setPhase("disconnected")}
       />
@@ -340,6 +352,10 @@ function useMediaPreview(enabled: boolean): MediaControls {
   const [cameraOn, setCameraOn] = useState(false);
   const [micOn, setMicOn] = useState(true);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [requesting, setRequesting] = useState(false);
+  // Bumping this re-runs the effect, which is how "Allow camera and mic"
+  // re-opens a prompt the host dismissed the first time.
+  const [attempt, setAttempt] = useState(0);
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
@@ -348,6 +364,7 @@ function useMediaPreview(enabled: boolean): MediaControls {
 
     async function startPreview() {
       setCameraError(null);
+      setRequesting(true);
       try {
         const media = await navigator.mediaDevices.getUserMedia({
           video: true,
@@ -367,6 +384,8 @@ function useMediaPreview(enabled: boolean): MediaControls {
             "Couldn\u2019t access camera or microphone. Check browser permissions, then try again.",
           );
         }
+      } finally {
+        if (alive) setRequesting(false);
       }
     }
 
@@ -382,7 +401,7 @@ function useMediaPreview(enabled: boolean): MediaControls {
       setStream(null);
       setCameraOn(false);
     };
-  }, [enabled]);
+  }, [enabled, attempt]);
 
   function stop() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -407,5 +426,19 @@ function useMediaPreview(enabled: boolean): MediaControls {
     setMicOn(track.enabled);
   }
 
-  return { stream, cameraOn, micOn, toggleCamera, toggleMic, cameraError, stop };
+  function retry() {
+    setAttempt((n) => n + 1);
+  }
+
+  return {
+    stream,
+    cameraOn,
+    micOn,
+    toggleCamera,
+    toggleMic,
+    cameraError,
+    requesting,
+    retry,
+    stop,
+  };
 }

@@ -29,7 +29,7 @@
  * Cinema-mode exceptions (intentional hardcoded white/black for legibility over video):
  *   poll-overlay, host-control-bar, host-client, video-placeholder, watch-layout,
  *   waitroom-client, show-ended-viewer, landing-show-demo, player, show-page-client,
- *   host-floating-studio, show-trail-preview, ui/dialog, ui/sheet
+ *   host-floating-studio, ui/dialog, ui/sheet
  */
 
 @custom-variant dark (&:is(.dark *));
@@ -504,87 +504,8 @@
   min-height: 2.25rem;
 }
 
-/** Host live shopping window — chartreuse frame is part of the shared pixels. */
-.live-share-frame {
-  --live-share-ring: transparent;
-  box-shadow: inset 0 0 0 3px var(--live-share-ring);
-  transition: box-shadow 300ms ease;
-}
-
-.live-share-frame--live {
-  --live-share-ring: color-mix(in oklch, var(--live) 55%, transparent);
-}
-
-.live-share-frame--captured {
-  --live-share-ring: var(--live);
-  animation: live-share-ring-pulse 2.4s ease-in-out infinite;
-}
-
-.live-share-frame-bar {
-  border-bottom: 1px solid color-mix(in oklch, var(--live) 25%, var(--border));
-  background: color-mix(in oklch, var(--live) 8%, var(--background));
-}
-
-@keyframes live-share-ring-pulse {
-  0%,
-  100% {
-    box-shadow: inset 0 0 0 3px var(--live);
-  }
-  50% {
-    box-shadow: inset 0 0 0 5px color-mix(in oklch, var(--live) 70%, transparent);
-  }
-}
-
-/**
- * Cinema stage — click ripples on the auto-zoom viewer stage.
- *
- * Rendered inside the scaled stage so a ripple stays glued to the pixel that was
- * clicked while the frame zooms and pans around it.
- */
-@keyframes cinema-click-ripple {
-  0% {
-    transform: translate(-50%, -50%) scale(0.2);
-    opacity: 0.85;
-  }
-  70% {
-    opacity: 0.25;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0;
-  }
-}
-
-.cinema-click-ripple {
-  animation: cinema-click-ripple 720ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/**
- * Slow drift for the stage backdrop. Applied to an oversized, blurred copy of the
- * gradient sitting behind the video, so the colour moves without the video ever
- * moving with it.
- */
-@keyframes cinema-backdrop-drift {
-  0% {
-    transform: scale(1.35) translate3d(-4%, -3%, 0) rotate(0deg);
-  }
-  33% {
-    transform: scale(1.5) translate3d(5%, 3%, 0) rotate(6deg);
-  }
-  66% {
-    transform: scale(1.4) translate3d(3%, -5%, 0) rotate(-5deg);
-  }
-  100% {
-    transform: scale(1.35) translate3d(-4%, -3%, 0) rotate(0deg);
-  }
-}
-
-.cinema-backdrop-drift {
-  animation: cinema-backdrop-drift 24s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cinema-backdrop-drift {
-    animation: none;
-  }
+/* Full-bleed studio: the live broadcast is a phase of /host, not its own
+   route, so it opts out of the site header/footer from inside the tree. */
+body:has([data-hide-site-chrome]) [data-site-chrome] {
+  display: none;
 }

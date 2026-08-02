@@ -15,7 +15,7 @@ function Panel({
     <div
       data-slot="panel"
       className={cn(
-        "flex flex-col gap-3 overflow-hidden rounded-xl bg-card py-4 text-sm text-card-foreground ring-1 ring-foreground/10",
+        "flex flex-col gap-3 overflow-hidden rounded-none bg-card py-4 text-sm text-card-foreground ring-1 ring-foreground/10",
         accent && "border border-primary/30 bg-primary/5 ring-0",
         className,
       )}

@@ -12,8 +12,10 @@ const POLL_MS = 10_000;
 
 export default function HostRecapClient({
   initialRecap,
+  initialRating = null,
 }: {
   initialRecap: EndedShowRecap;
+  initialRating?: number | null;
 }) {
   const [recap, setRecap] = useState(initialRecap);
 
@@ -47,5 +49,5 @@ export default function HostRecapClient({
   // the Mux API server-side, so it stops entirely while the tab is hidden.
   useVisiblePoll(refreshShow, POLL_MS, !recap.muxPlaybackId);
 
-  return <ShowEndedCreator recap={recap} />;
+  return <ShowEndedCreator recap={recap} initialRating={initialRating} />;
 }

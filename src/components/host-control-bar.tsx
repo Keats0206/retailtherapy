@@ -18,15 +18,12 @@ export function HostControlBar({
   room,
   sharing,
   onEndShow,
-  onBeforeShare,
   pipSupported = false,
   variant = "stage",
 }: {
   room?: Room;
   sharing: boolean;
   onEndShow: () => void;
-  /** Called in the same user gesture before screen share starts (for PiP). */
-  onBeforeShare?: () => void | Promise<void>;
   pipSupported?: boolean;
   variant?: "stage" | "pip" | "pip-overlay";
 }) {
@@ -60,7 +57,6 @@ export function HostControlBar({
       <ScreenShareControl
         room={room}
         sharing={sharing}
-        onBeforeShare={onBeforeShare}
         pipSupported={pipSupported}
         variant={variant}
       />
@@ -94,21 +90,17 @@ export function HostControlBar({
 function ScreenShareControl({
   room,
   sharing,
-  onBeforeShare,
   pipSupported,
   variant,
 }: {
   room?: Room;
   sharing: boolean;
-  onBeforeShare?: () => void | Promise<void>;
   pipSupported?: boolean;
   variant?: "stage" | "pip" | "pip-overlay";
 }) {
   const { buttonProps, startScreenShare, starting } = useStartScreenShare({
     room,
     sharing,
-    onBeforeShare,
-    pipSupported,
   });
   const isOverlay = variant === "pip-overlay";
   const isPip = variant === "pip";

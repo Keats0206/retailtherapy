@@ -131,7 +131,7 @@ export function SavedClient({
 
 function EmptyBoard() {
   return (
-    <div className="flex flex-col items-center gap-4 rounded-3xl bg-card px-6 py-16 text-center ring-1 ring-foreground/5">
+    <div className="flex flex-col items-center gap-4 rounded-none bg-card px-6 py-16 text-center ring-1 ring-foreground/5">
       <Bookmark className="size-8 text-muted-foreground/60" />
       <div>
         <p className="font-medium">Nothing saved yet</p>
@@ -149,7 +149,7 @@ function SavedShowCard({ show }: { show: DiscoveryShow }) {
     <div className="group relative">
       <Link
         href={`/s/${show.slug}`}
-        className="flex w-full flex-col gap-3 rounded-3xl bg-card p-2 text-left outline-none ring-1 ring-transparent transition-shadow hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex w-full flex-col gap-3 rounded-none bg-card p-2 text-left outline-none ring-1 ring-transparent transition-shadow hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring"
       >
         <ShowMosaic
           items={show.trailPreview}
@@ -185,13 +185,13 @@ function SavedItemCard({ entry }: { entry: SavedProduct }) {
   const name = cleanProductTitle(product.name, product.retailer);
 
   return (
-    <div className="flex flex-col gap-3 rounded-3xl bg-card p-2 ring-1 ring-foreground/5">
+    <div className="flex flex-col gap-3 rounded-none bg-card p-2 ring-1 ring-foreground/5">
       <div className="relative">
         <a
           href={product.buyUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="group block overflow-hidden rounded-2xl bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="group block overflow-hidden rounded-none bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           onClick={() =>
             trackEvent(AnalyticsEvent.SAVED_SHOP_CLICK, { area: "saved" })
           }
@@ -283,7 +283,7 @@ function FilterChip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+        "rounded-none px-3 py-1 text-xs font-medium transition-colors",
         active
           ? "bg-foreground text-background"
           : "bg-muted text-muted-foreground hover:text-foreground",

@@ -1,3 +1,4 @@
+import { LANDING_HOST_IMAGE } from "@/lib/landing-demo-data";
 import { outfitProducts, PORTER_OUTFITS } from "@/lib/landing-porter-outfits";
 import { cn } from "@/lib/utils";
 
@@ -107,11 +108,13 @@ export function LivePreviewMock({ className }: { className?: string }) {
           <HostPortrait />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/landing/host-maya.jpg"
+            src={LANDING_HOST_IMAGE}
             alt=""
             loading="lazy"
             decoding="async"
-            className="absolute inset-0 h-full w-full object-cover"
+            // Same portrait source as the stage: bias the crop upward so the
+            // face lands inside the square bubble instead of being cut off.
+            className="absolute inset-0 h-full w-full object-cover object-[50%_30%]"
           />
         </span>
         <span className="micro bg-foreground px-2 py-1 text-[10px] leading-none text-background">

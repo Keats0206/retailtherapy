@@ -47,6 +47,8 @@ export default async function HostSetupPage({
               title: challenge.title,
               prompt: challenge.prompt,
               brandName: challenge.brandName,
+              // Already falls back to the brand domain in `toChallengeCard`.
+              storeUrl: challenge.storeUrl,
               emoji: challenge.emoji,
               budget: challenge.budget,
               currency: challenge.currency,

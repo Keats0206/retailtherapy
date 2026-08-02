@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
@@ -23,7 +22,6 @@ import {
   X,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -144,13 +142,10 @@ function screenTitle(screen: ScreenId, draft: ShowSetupDraft): string {
 export function HostOnboarding({
   onComplete,
   finishLabel = "Continue to studio",
-  chrome = "live",
   initialDraft,
 }: {
   onComplete: (draft: ShowSetupDraft) => void;
   finishLabel?: string;
-  /** Prototype chrome links back to /prototype; live is production. */
-  chrome?: "live" | "prototype";
   /** Resume a previous draft (e.g. host tapped Edit on /host). */
   initialDraft?: ShowSetupDraft | null;
 }) {
@@ -183,38 +178,6 @@ export function HostOnboarding({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {chrome === "prototype" ? (
-        <div className="flex items-center justify-between gap-4 border-b border-border px-6 py-3">
-          <div className="flex items-center gap-5">
-            <Badge variant="secondary" size="micro">
-              Prototype
-            </Badge>
-            <nav className="flex items-center gap-1">
-              <Button size="micro" variant="secondary" aria-current="page">
-                Onboarding
-              </Button>
-              <Button
-                size="micro"
-                variant="ghost"
-                render={<Link href="/prototype?view=creator" />}
-              >
-                Creator
-              </Button>
-              <Button
-                size="micro"
-                variant="ghost"
-                render={<Link href="/prototype?view=consumer" />}
-              >
-                Consumer
-              </Button>
-            </nav>
-          </div>
-          <span className="micro text-muted-foreground">
-            Mock data · not connected
-          </span>
-        </div>
-      ) : null}
-
       <main className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col gap-6 px-6 pt-6 pb-6 sm:pt-8">
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-2">
@@ -294,7 +257,7 @@ function IntentStep({
               });
             }}
             className={cn(
-              "flex min-h-36 flex-col gap-2 rounded-2xl p-5 text-left ring-1 transition-colors",
+              "flex min-h-36 flex-col gap-2 rounded-none p-5 text-left ring-1 transition-colors",
               active
                 ? "bg-muted/60 ring-foreground/30"
                 : "ring-foreground/8 hover:bg-muted/40",
@@ -353,7 +316,7 @@ function DetailStep({
               }
             }}
             className={cn(
-              "flex min-h-28 flex-col gap-2 rounded-2xl p-4 text-left ring-1 transition-colors",
+              "flex min-h-28 flex-col gap-2 rounded-none p-4 text-left ring-1 transition-colors",
               selected
                 ? "bg-muted/60 ring-foreground/30"
                 : "ring-foreground/8 hover:bg-muted/40",
@@ -408,7 +371,7 @@ function ItemsStep({
   }
 
   const customItems = draft.items.filter((item) => !PRESET_LABELS.has(item));
-  const chip = "h-10 gap-2 rounded-xl px-4 text-sm";
+  const chip = "h-10 gap-2 rounded-none px-4 text-sm";
 
   return (
     <div className="flex flex-wrap gap-2">
@@ -461,7 +424,7 @@ function ItemsStep({
             setAdding(false);
           }}
           placeholder="type an item, press enter"
-          className="h-10 w-56 rounded-xl"
+          className="h-10 w-56 rounded-none"
         />
       ) : (
         <Button

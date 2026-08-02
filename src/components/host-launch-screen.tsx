@@ -1,21 +1,31 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useTrackToggle, useTracks, VideoTrack } from "@/lib/live";
 import { Track, type Room } from "livekit-client";
 import {
-  Check,
   Mic,
   MicOff,
   MonitorUp,
+  Radio,
+  Square,
   Video,
   VideoOff,
 } from "lucide-react";
 
 import { EndLiveShowButton } from "@/components/end-live-show-button";
-import { PipStoreSuggestions } from "@/components/pip-store-suggestions";
+import { GoLiveChatRail } from "@/components/go-live-chat-rail";
+import {
+  GO_LIVE_STEPS,
+  GoLiveSteps,
+  type GoLiveProgress,
+} from "@/components/go-live-steps";
 import { ShareShowLinkButton } from "@/components/share-show-link-button";
+import {
+  StoreIdeasMenu,
+  StoreLauncher,
+  type ChallengeStore,
+} from "@/components/store-launcher";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,10 +34,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ViewerCount } from "@/components/viewer-count";
-import {
-  VideoFrame,
-  VideoPlaceholder,
-} from "@/components/video-placeholder";
+import { VideoPlaceholder } from "@/components/video-placeholder";
+import { useGoLiveProgress } from "@/hooks/use-go-live-progress";
 import { useStartScreenShare } from "@/hooks/use-start-screen-share";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import type { ShowSetupDraft } from "@/lib/show-setup";
@@ -40,6 +48,9 @@ export type MediaControls = {
   toggleCamera: () => void;
   toggleMic: () => void;
   cameraError: string | null;
+  /** True between asking for devices and the browser answering. */
+  requesting: boolean;
+  retry: () => void;
   stop: () => void;
 };
 
@@ -65,22 +76,50 @@ type LiveProps = {
   room: Room;
   sharing: boolean;
   onEndShow: () => void;
-  onBeforeShare?: () => void | Promise<void>;
   pipSupported?: boolean;
+  challengeStore?: ChallengeStore | null;
 };
 
 export type HostLaunchScreenProps = OfflineProps | LiveProps;
 
 /**
- * One screen for the whole launch. Going live doesn't navigate anywhere — the
- * same layout flips from "get ready" to "you're live", so the host watches
- * viewers arrive while they line up the share.
+ * The whole launch, on one full-bleed screen: camera on the left at video
+ * proportions, the ordered checklist stacked over chat on the right, and
+ * controls across the bottom. The checklist retires once every step is done, so
+ * chat — the only thing that keeps changing after that — takes the full rail.
+ *
+ * Going live doesn't navigate anywhere — the same layout flips from "get ready"
+ * to "you're live" so the host watches viewers arrive while they line up the
+ * share. It sits `fixed` above the site chrome deliberately: a header and
+ * footer around a broadcast console read as a web page, not a studio, and the
+ * host is about to be on camera.
  */
 export function HostLaunchScreen(props: HostLaunchScreenProps) {
   const live = props.live;
+  const { storeOpened, linkShared, markStoreOpened, markLinkShared } =
+    useGoLiveProgress();
+
+  const challengeStore: ChallengeStore | null = live
+    ? (props.challengeStore ?? null)
+    : challengeStoreFromDraft(props.setupDraft);
+
+  const cameraReady = live
+    ? true
+    : Boolean(props.media.stream) && !props.media.cameraError;
+
+  const progress: GoLiveProgress = {
+    store: storeOpened,
+    camera: cameraReady,
+    live,
+    share: live ? props.sharing : false,
+    invite: linkShared,
+  };
+
+  const slug = live ? props.slug : (props.liveShowSlug ?? null);
+  const stepsDone = GO_LIVE_STEPS.every((step) => progress[step.id]);
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
+    <div className="fixed inset-0 z-50 flex flex-col bg-background">
       {!live && props.liveShowSlug ? (
         <ExistingShowNotice
           slug={props.liveShowSlug}
@@ -90,211 +129,219 @@ export function HostLaunchScreen(props: HostLaunchScreenProps) {
         />
       ) : null}
 
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-        <div className="mx-auto w-full max-w-sm shrink-0 lg:mx-0 lg:w-64">
-          <VideoFrame
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        {/* The camera side never scrolls: it's a monitor, and a console that
+            slides under the mouse while the host is framing themselves is not
+            one. The feed is sized to fit whatever room is left. */}
+        <main className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-black p-3 max-lg:aspect-video lg:p-4">
+          <div
             className={cn(
-              "aspect-video w-full overflow-hidden rounded-2xl",
+              "relative aspect-video max-h-full w-full max-w-full overflow-hidden bg-black",
               live && "ring-2 ring-live/40",
             )}
           >
-            {live ? (
-              <>
-                <LiveCamera />
-                <LiveKitMediaToggles room={props.room} />
-              </>
-            ) : (
-              <>
-                <PreviewCamera media={props.media} />
-                <PreviewMediaToggles media={props.media} />
-              </>
-            )}
-          </VideoFrame>
-        </div>
-
-        <div className="flex min-w-0 flex-1 flex-col gap-5">
-          <div className="flex flex-col gap-3 text-left">
-            {/* Status swaps in place — the host stays on the same screen. */}
-            {live ? (
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-live px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-live-foreground">
-                  <span className="size-1.5 animate-pulse rounded-full bg-live-foreground/80" />
-                  Live
-                </span>
-                <ViewerCount className="text-muted-foreground" />
-              </div>
-            ) : (
-              <span className="micro text-muted-foreground">
-                Get ready to go live
-              </span>
-            )}
-
-            {live ? (
-              <h1 className="text-xl font-medium tracking-tight text-foreground sm:text-2xl">
-                {props.title || "Untitled show"}
-              </h1>
-            ) : (
-              <Input
-                value={props.title}
-                onChange={(e) => props.onTitleChange(e.target.value)}
-                placeholder="Untitled show"
-                aria-label="Show title"
-                className="h-auto border-0 bg-transparent px-0 py-0 text-xl font-medium tracking-tight shadow-none placeholder:text-muted-foreground/50 focus-visible:border-transparent focus-visible:ring-0 sm:text-2xl"
-              />
-            )}
-
-            {!live && props.setupDraft && !props.liveShowSlug ? (
-              <SetupSummary draft={props.setupDraft} />
-            ) : null}
-
-            {/* The share link is the first thing that changes on going live. */}
-            {live ? (
-              <ShareShowLinkButton slug={props.slug} showPath />
-            ) : props.liveShowSlug ? (
-              <ShareShowLinkButton slug={props.liveShowSlug} showPath />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Your share link unlocks as soon as you go live.
-              </p>
-            )}
+            {live ? <LiveCamera /> : <PreviewCamera media={props.media} />}
           </div>
 
-          <PipStoreSuggestions className="w-full [&_ul]:max-h-40 [&_ul]:overflow-y-auto" />
+          {/* Identity rides on the feed now that the console has no header. */}
+          {/* Right padding leaves room for the permanent "Share the show"
+              fixture that floats above this row. */}
+          <div className="pointer-events-none absolute inset-x-3 top-3 flex items-start justify-between gap-3 pr-36 lg:inset-x-4 lg:top-4 lg:pr-40">
+            <div className="pointer-events-auto flex min-w-0 items-center gap-2">
+              {live ? (
+                <>
+                  <LiveBadge />
+                  <h1 className="truncate rounded-full bg-black/50 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
+                    {props.title || "Untitled show"}
+                  </h1>
+                </>
+              ) : (
+                <Input
+                  value={props.title}
+                  onChange={(e) => props.onTitleChange(e.target.value)}
+                  placeholder="Untitled show"
+                  aria-label="Show title"
+                  className="h-9 w-64 rounded-full border-0 bg-black/50 px-3 text-sm font-medium text-white shadow-none backdrop-blur-sm placeholder:text-white/50 focus-visible:ring-1 focus-visible:ring-white/40"
+                />
+              )}
+            </div>
+            {live ? (
+              <ViewerCount className="pointer-events-auto rounded-full bg-black/50 px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-white backdrop-blur-sm" />
+            ) : null}
+          </div>
 
-          <LaunchChecklist live={live} />
+          {!live && props.error ? (
+            <div className="absolute inset-x-3 bottom-3 lg:inset-x-4 lg:bottom-4">
+              <InlineError message={props.error} />
+            </div>
+          ) : null}
+        </main>
 
-          <p className="micro text-muted-foreground">
-            Window lets you switch tabs — Tab only shares one page.
-          </p>
+        <div className="flex w-full shrink-0 flex-col border-border/60 max-lg:min-h-0 max-lg:flex-1 max-lg:border-t lg:w-96 lg:border-l">
+          {/* Checklist above chat, and only while there's something left to do:
+              once the show is fully set up the host is watching the audience,
+              not a list of ticks, so the rail hands the space back to chat. */}
+          {!stepsDone ? (
+            <div className="max-h-[55%] shrink-0 overflow-y-auto border-b border-border/60 px-4 py-3">
+              <GoLiveSteps
+                progress={progress}
+                actions={{
+                  store: (
+                    <StoreLauncher
+                      challengeStore={challengeStore}
+                      onOpened={markStoreOpened}
+                    />
+                  ),
+                  camera: !live ? (
+                    <CameraGateAction media={props.media} />
+                  ) : null,
+                  live: !live ? (
+                    <Button
+                      onClick={props.onGoLive}
+                      disabled={props.loading || Boolean(props.liveShowSlug)}
+                      title={
+                        props.liveShowSlug
+                          ? "End your current live show before starting another"
+                          : "Creates a shareable show and starts recording automatically"
+                      }
+                      className="w-fit gap-2 bg-live text-live-foreground hover:bg-live/90"
+                    >
+                      <Radio className="size-4" />
+                      {props.loading ? "Starting…" : "Go live"}
+                    </Button>
+                  ) : null,
+                  share: live ? (
+                    <ShareScreenAction
+                      room={props.room}
+                      sharing={props.sharing}
+                      pipSupported={props.pipSupported ?? false}
+                    />
+                  ) : null,
+                  invite: slug ? (
+                    <ShareShowLinkButton
+                      slug={slug}
+                      showPath
+                      size="default"
+                      className="w-fit"
+                      onShared={markLinkShared}
+                    />
+                  ) : null,
+                }}
+              />
+            </div>
+          ) : null}
 
-          {live ? (
-            <LiveShareControls
-              room={props.room}
-              sharing={props.sharing}
-              onBeforeShare={props.onBeforeShare}
-              pipSupported={props.pipSupported ?? false}
-              onEndShow={props.onEndShow}
-            />
-          ) : (
-            <OfflineGoLiveControls
-              onGoLive={props.onGoLive}
-              loading={props.loading}
-              error={props.error}
-              cameraError={props.media.cameraError}
-              blockedBy={props.liveShowSlug ?? null}
-            />
-          )}
+          <GoLiveChatRail live={live} className="min-h-0 flex-1" />
         </div>
       </div>
-    </main>
-  );
-}
 
-/**
- * The three steps are the same list before and after going live — step 1 just
- * ticks over. Numbering starts at 1 so it matches what the host has done.
- */
-function LaunchChecklist({ live }: { live: boolean }) {
-  const steps = [
-    {
-      label: "Go live so viewers can join",
-      done: live,
-    },
-    {
-      label: (
-        <>
-          In Chrome&apos;s share dialog pick{" "}
-          <strong className="font-medium text-foreground">Window</strong> (not
-          Tab), then select your shopping window
-        </>
-      ),
-      done: false,
-    },
-    {
-      label: "Paste product links in the studio as you shop",
-      done: false,
-    },
-  ];
+      <footer className="grid shrink-0 grid-cols-3 items-center gap-3 border-t border-border/60 px-4 py-3">
+        <div />
 
-  return (
-    <ol className="flex flex-col gap-2 text-left text-sm text-muted-foreground">
-      {steps.map((step, i) => (
-        <li key={i} className="flex gap-3">
-          <span
-            className={cn(
-              "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium",
-              step.done
-                ? "bg-live text-live-foreground"
-                : "bg-muted text-foreground",
-            )}
-          >
-            {step.done ? <Check className="size-3.5" /> : i + 1}
-          </span>
-          <span className={cn(step.done && "line-through opacity-60")}>
-            {step.label}
-          </span>
-        </li>
-      ))}
-    </ol>
-  );
-}
+        <div className="flex items-center justify-center gap-2">
+          {live ? (
+            <LiveKitMediaToggles room={props.room} />
+          ) : (
+            <PreviewMediaToggles media={props.media} />
+          )}
+        </div>
 
-function OfflineGoLiveControls({
-  onGoLive,
-  loading,
-  error,
-  cameraError,
-  blockedBy,
-}: {
-  onGoLive: () => void;
-  loading: boolean;
-  error: string | null;
-  cameraError: string | null;
-  blockedBy: string | null;
-}) {
-  return (
-    <div className="flex flex-col gap-3">
-      {cameraError ? <InlineError message={cameraError} /> : null}
-      {error ? <InlineError message={error} /> : null}
-
-      <Button
-        onClick={onGoLive}
-        disabled={loading || Boolean(blockedBy)}
-        title={
-          blockedBy
-            ? "End your current live show before starting another"
-            : "Creates a shareable show and starts recording automatically"
-        }
-        className="h-12 w-full rounded-full bg-live text-base font-medium text-live-foreground hover:bg-live/90 sm:h-14 sm:text-lg"
-      >
-        {loading ? "Starting…" : "Go live"}
-      </Button>
-      <p className="micro text-muted-foreground">
-        You&apos;ll share your shopping window on this screen once you&apos;re
-        live.
-      </p>
+        <div className="flex items-center justify-end gap-2">
+          <StoreIdeasMenu onOpened={markStoreOpened} />
+          {live ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={props.onEndShow}
+              className="gap-1.5 border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+            >
+              <Square className="size-3.5 fill-current" />
+              End show
+            </Button>
+          ) : null}
+        </div>
+      </footer>
     </div>
   );
 }
 
-function LiveShareControls({
+function challengeStoreFromDraft(
+  draft: ShowSetupDraft | null | undefined,
+): ChallengeStore | null {
+  if (!draft?.challengeStoreUrl) return null;
+  return {
+    url: draft.challengeStoreUrl,
+    brandName: draft.challengeBrandName ?? "the store",
+  };
+}
+
+function LiveBadge() {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-live px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-live-foreground">
+      <span className="size-1.5 animate-pulse rounded-full bg-live-foreground/80" />
+      Live
+    </span>
+  );
+}
+
+/**
+ * The permission moment. A denied prompt is not an error message the host can
+ * act on by reading it, so the retry that re-asks the browser sits right here.
+ */
+function CameraGateAction({ media }: { media: MediaControls }) {
+  if (media.requesting) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Waiting for you to allow camera and microphone…
+      </p>
+    );
+  }
+
+  if (media.cameraError) {
+    return (
+      <div className="flex flex-col gap-2">
+        <InlineError message={media.cameraError} />
+        <Button
+          type="button"
+          variant="outline"
+          className="w-fit gap-2"
+          onClick={media.retry}
+        >
+          <Video className="size-4" />
+          Allow camera and mic
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      className="w-fit gap-2"
+      onClick={media.retry}
+    >
+      <Video className="size-4" />
+      Turn on camera
+    </Button>
+  );
+}
+
+function ShareScreenAction({
   room,
   sharing,
-  onBeforeShare,
   pipSupported,
-  onEndShow,
 }: {
   room: Room;
   sharing: boolean;
-  onBeforeShare?: () => void | Promise<void>;
   pipSupported: boolean;
-  onEndShow: () => void;
 }) {
   const { startScreenShare, starting, shareError, clearShareError } =
-    useStartScreenShare({ room, sharing, onBeforeShare, pipSupported });
+    useStartScreenShare({ room, sharing });
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       {shareError ? (
         <p className="text-sm text-destructive" role="alert">
           {shareError}{" "}
@@ -313,9 +360,9 @@ function LiveShareControls({
         onClick={startScreenShare}
         disabled={starting}
         aria-busy={starting}
-        className="h-12 w-full rounded-full bg-live text-base font-medium text-live-foreground hover:bg-live/90 sm:h-14 sm:text-lg"
+        className="w-fit gap-2 bg-live text-live-foreground hover:bg-live/90"
       >
-        <MonitorUp className="size-5" />
+        <MonitorUp className="size-4" />
         {starting ? "Waiting for picker…" : "Share shopping window"}
       </Button>
 
@@ -324,14 +371,6 @@ function LiveShareControls({
           Use Chrome for floating controls while sharing
         </p>
       ) : null}
-
-      <button
-        type="button"
-        onClick={onEndShow}
-        className="w-fit text-sm text-muted-foreground underline-offset-4 hover:text-destructive hover:underline"
-      >
-        End show
-      </button>
     </div>
   );
 }
@@ -359,31 +398,17 @@ function ExistingShowNotice({
   resumeLoading?: boolean;
 }) {
   return (
-    <div className="mb-6 flex w-full flex-col gap-3 rounded-xl bg-muted/40 p-4 ring-1 ring-foreground/8">
-      <div className="flex flex-col gap-1">
-        <span className="micro inline-flex items-center gap-2 text-live">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-live" />
-          Show still live
-        </span>
-        <p className="text-sm text-muted-foreground">
-          {title ? (
-            <>
-              <span className="text-foreground">{title}</span> is still live at
-              /s/{slug}. Reconnect to keep hosting, or end it before starting a
-              new one.
-            </>
-          ) : (
-            <>
-              You still have a live show at /s/{slug}. Reconnect to keep hosting,
-              or end it before starting a new one.
-            </>
-          )}
-        </p>
-      </div>
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-live/30 bg-live/10 px-4 py-2.5">
+      <p className="text-sm text-muted-foreground">
+        {title ? <span className="text-foreground">{title}</span> : "A show"} is
+        still live at /s/{slug}. Reconnect to keep hosting, or end it before
+        starting a new one.
+      </p>
       <div className="flex flex-wrap gap-2">
         {onResume ? (
           <Button
             type="button"
+            size="sm"
             disabled={resumeLoading}
             className="bg-live text-live-foreground hover:bg-live/90"
             onClick={onResume}
@@ -399,7 +424,7 @@ function ExistingShowNotice({
 
 function PreviewCamera({ media }: { media: MediaControls }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { stream, cameraOn, cameraError } = media;
+  const { stream, cameraOn, cameraError, requesting } = media;
 
   useEffect(() => {
     const el = videoRef.current;
@@ -414,14 +439,18 @@ function PreviewCamera({ media }: { media: MediaControls }) {
         autoPlay
         muted
         playsInline
-        className="h-full w-full object-cover"
+        className="h-full w-full scale-x-[-1] object-cover"
       />
     );
   }
 
   return (
     <VideoPlaceholder>
-      {cameraError ? "Camera unavailable" : "Starting camera…"}
+      {requesting
+        ? "Allow camera access to see yourself"
+        : cameraError
+          ? "Camera unavailable — check browser permissions"
+          : "Camera off"}
     </VideoPlaceholder>
   );
 }
@@ -439,195 +468,122 @@ function LiveCamera() {
   return <VideoTrack trackRef={camera} className="h-full w-full object-cover" />;
 }
 
-function ToggleBar({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="absolute inset-x-0 bottom-4 flex justify-center">
-      <div className="flex items-center gap-2 rounded-full border border-white/20 bg-black/60 px-2 py-1.5 backdrop-blur-sm">
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function PreviewMediaToggles({ media }: { media: MediaControls }) {
   const { cameraOn, micOn, toggleCamera, toggleMic, stream } = media;
 
   return (
-    <ToggleBar>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              type="button"
-              variant={micOn ? "secondary" : "outline"}
-              size="icon"
-              onClick={toggleMic}
-              disabled={!stream}
-              aria-label={micOn ? "Mute microphone" : "Unmute microphone"}
-              className={cn(
-                "size-10 rounded-full",
-                !micOn &&
-                  "border-white/30 bg-black/40 text-white hover:bg-black/60",
-              )}
-            >
-              {micOn ? <Mic /> : <MicOff />}
-            </Button>
-          }
-        />
-        <TooltipContent>{micOn ? "Mic on" : "Mic off"}</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              type="button"
-              variant={cameraOn ? "secondary" : "outline"}
-              size="icon"
-              onClick={toggleCamera}
-              disabled={!stream}
-              aria-label={cameraOn ? "Turn camera off" : "Turn camera on"}
-              className={cn(
-                "size-10 rounded-full",
-                !cameraOn &&
-                  "border-white/30 bg-black/40 text-white hover:bg-black/60",
-              )}
-            >
-              {cameraOn ? <Video /> : <VideoOff />}
-            </Button>
-          }
-        />
-        <TooltipContent>{cameraOn ? "Camera on" : "Camera off"}</TooltipContent>
-      </Tooltip>
-    </ToggleBar>
+    <>
+      <BarToggle
+        on={micOn}
+        disabled={!stream}
+        onClick={toggleMic}
+        label={micOn ? "Mute microphone" : "Unmute microphone"}
+        icon={micOn ? <Mic /> : <MicOff />}
+      />
+      <BarToggle
+        on={cameraOn}
+        disabled={!stream}
+        onClick={toggleCamera}
+        label={cameraOn ? "Turn camera off" : "Turn camera on"}
+        icon={cameraOn ? <Video /> : <VideoOff />}
+      />
+    </>
   );
 }
 
 function LiveKitMediaToggles({ room }: { room: Room }) {
   return (
-    <ToggleBar>
-      <MicToggle room={room} />
-      <CameraToggle room={room} />
-    </ToggleBar>
-  );
-}
-
-function CameraToggle({ room }: { room: Room }) {
-  const { enabled, buttonProps } = useTrackToggle({
-    source: Track.Source.Camera,
-    room,
-  });
-
-  function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
-    trackEvent(AnalyticsEvent.HOST_CAMERA_TOGGLE, {
-      area: "host_studio",
-      enabled: !enabled,
-    });
-    buttonProps.onClick?.(e);
-  }
-
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Button
-            type="button"
-            {...buttonProps}
-            onClick={handleClick}
-            aria-label={enabled ? "Turn camera off" : "Turn camera on"}
-            className={cn(
-              "size-10 rounded-full",
-              enabled
-                ? "border-foreground/20 bg-foreground/10"
-                : "text-muted-foreground",
-            )}
-          >
-            {enabled ? <Video /> : <VideoOff />}
-          </Button>
-        }
+    <>
+      <TrackToggle
+        room={room}
+        source={Track.Source.Microphone}
+        onIcon={<Mic />}
+        offIcon={<MicOff />}
+        onLabel="Mute microphone"
+        offLabel="Unmute microphone"
+        event={AnalyticsEvent.HOST_MIC_TOGGLE}
       />
-      <TooltipContent>{enabled ? "Camera on" : "Camera off"}</TooltipContent>
-    </Tooltip>
-  );
-}
-
-function MicToggle({ room }: { room: Room }) {
-  const { enabled, buttonProps } = useTrackToggle({
-    source: Track.Source.Microphone,
-    room,
-  });
-
-  function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
-    trackEvent(AnalyticsEvent.HOST_MIC_TOGGLE, {
-      area: "host_studio",
-      enabled: !enabled,
-    });
-    buttonProps.onClick?.(e);
-  }
-
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Button
-            type="button"
-            {...buttonProps}
-            onClick={handleClick}
-            aria-label={enabled ? "Mute microphone" : "Unmute microphone"}
-            className={cn(
-              "size-10 rounded-full",
-              enabled
-                ? "border-foreground/20 bg-foreground/10"
-                : "text-muted-foreground",
-            )}
-          >
-            {enabled ? <Mic /> : <MicOff />}
-          </Button>
-        }
+      <TrackToggle
+        room={room}
+        source={Track.Source.Camera}
+        onIcon={<Video />}
+        offIcon={<VideoOff />}
+        onLabel="Turn camera off"
+        offLabel="Turn camera on"
+        event={AnalyticsEvent.HOST_CAMERA_TOGGLE}
       />
-      <TooltipContent>{enabled ? "Mic on" : "Mic off"}</TooltipContent>
-    </Tooltip>
+    </>
   );
 }
 
-function SetupSummary({
-  draft,
-  className,
+function TrackToggle({
+  room,
+  source,
+  onIcon,
+  offIcon,
+  onLabel,
+  offLabel,
+  event,
 }: {
-  draft: ShowSetupDraft;
-  className?: string;
+  room: Room;
+  source: Track.Source.Microphone | Track.Source.Camera;
+  onIcon: React.ReactNode;
+  offIcon: React.ReactNode;
+  onLabel: string;
+  offLabel: string;
+  event: (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent];
 }) {
-  const intentLabel =
-    draft.intent === "season"
-      ? "Season"
-      : draft.intent === "event"
-        ? "Event"
-        : draft.intent === "browsing"
-          ? "Browsing"
-          : null;
-  const focus = [draft.detail, ...draft.items].filter(Boolean).join(" · ");
+  const { enabled, buttonProps } = useTrackToggle({ source, room });
 
   return (
-    <div
-      className={cn(
-        "flex w-full flex-col gap-2 rounded-xl bg-muted/40 p-4 text-left ring-1 ring-foreground/8",
-        className,
-      )}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <span className="micro text-muted-foreground">Show setup</span>
-        <Link
-          href="/host/setup"
-          className="micro text-foreground underline-offset-4 hover:underline"
-        >
-          Edit
-        </Link>
-      </div>
-      {intentLabel ? (
-        <p className="text-sm text-foreground">
-          {intentLabel}
-          {focus ? <span className="text-muted-foreground"> · {focus}</span> : null}
-        </p>
-      ) : null}
-    </div>
+    <BarToggle
+      on={enabled}
+      label={enabled ? onLabel : offLabel}
+      icon={enabled ? onIcon : offIcon}
+      onClick={(e) => {
+        trackEvent(event, { area: "host_studio", enabled: !enabled });
+        buttonProps.onClick?.(e);
+      }}
+    />
+  );
+}
+
+function BarToggle({
+  on,
+  icon,
+  label,
+  onClick,
+  disabled,
+}: {
+  on: boolean;
+  icon: React.ReactNode;
+  label: string;
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={onClick}
+            disabled={disabled}
+            aria-label={label}
+            className={cn(
+              "size-11 rounded-full",
+              on
+                ? "border-foreground/20 bg-foreground/10"
+                : "border-destructive/40 bg-destructive/10 text-destructive",
+            )}
+          >
+            {icon}
+          </Button>
+        }
+      />
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }

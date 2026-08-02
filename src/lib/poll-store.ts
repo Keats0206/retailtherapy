@@ -2,8 +2,7 @@
  * A live audience poll and the pure transitions over it.
  *
  * Deliberately transport-free, like `stream-store.ts`: no LiveKit, no React.
- * `useMockPollState` drives these transitions from local state for /prototype;
- * a future `usePollState` would drive the same ones over the room's data
+ * `usePollState` (`poll-state.ts`) drives these transitions over the room's data
  * channel. Every reducer is id-guarded and idempotent so duplicate or
  * out-of-order delivery is a no-op rather than a corruption.
  */

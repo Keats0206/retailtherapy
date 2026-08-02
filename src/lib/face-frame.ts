@@ -17,7 +17,9 @@
  *   `[o(1 - 1/z), o + (1 - o)/z]`, always inside `[0, 1]` for `z >= 1`.
  */
 
-import { clamp01 } from "@/lib/cinema/telemetry";
+function clamp01(n: number): number {
+  return n < 0 ? 0 : n > 1 ? 1 : n;
+}
 
 /** A face box in normalized (0..1) coordinates of the camera frame. */
 export type FaceBox = {

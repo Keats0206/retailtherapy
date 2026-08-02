@@ -27,13 +27,9 @@ function shareErrorMessage(err: unknown): string {
 export function useStartScreenShare({
   room,
   sharing,
-  onBeforeShare,
-  pipSupported = false,
 }: {
   room?: Room;
   sharing: boolean;
-  onBeforeShare?: () => void | Promise<void>;
-  pipSupported?: boolean;
 }) {
   const { buttonProps } = useTrackToggle({
     source: Track.Source.ScreenShare,
@@ -59,14 +55,6 @@ export function useStartScreenShare({
       setShareError(null);
       setStarting(true);
 
-      if (pipSupported && onBeforeShare) {
-        try {
-          await onBeforeShare();
-        } catch {
-          // Fall back to in-page studio if PiP fails.
-        }
-      }
-
       trackEvent(AnalyticsEvent.HOST_SCREEN_SHARE, {
         area: "host_studio",
         action: "start",
@@ -88,7 +76,7 @@ export function useStartScreenShare({
         setStarting(false);
       }
     },
-    [buttonProps, localRoom, onBeforeShare, pipSupported, room, sharing],
+    [buttonProps, localRoom, room, sharing],
   );
 
   return {

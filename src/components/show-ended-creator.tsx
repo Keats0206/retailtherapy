@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ExternalLink, RotateCcw } from "lucide-react";
 
+import { HostExitSurvey } from "@/components/host-exit-survey";
+import { PostShowProcessing } from "@/components/post-show-processing";
 import { ShoppingTrail } from "@/components/shopping-trail";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -36,9 +38,12 @@ function tallyVotes(recap: EndedShowRecap) {
 
 export function ShowEndedCreator({
   recap,
+  initialRating = null,
   onStartNew,
 }: {
   recap: EndedShowRecap;
+  /** The host's previous answer to the exit survey, if they gave one. */
+  initialRating?: number | null;
   onStartNew?: () => void;
 }) {
   const votes = tallyVotes(recap);
@@ -68,6 +73,16 @@ export function ShowEndedCreator({
           rewatch and shop everything you added.
         </p>
       </header>
+
+      {/* Above the stats: the two things that are true right now — something is
+          still finishing, and we want to know how it went. */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <PostShowProcessing
+          trailCount={recap.snapshot.trail.length}
+          recordingReady={Boolean(recap.muxPlaybackId)}
+        />
+        <HostExitSurvey slug={recap.slug} initialRating={initialRating} />
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
@@ -132,7 +147,7 @@ export function ShowEndedCreator({
 
       <div className="flex flex-col gap-4 border-t border-border pt-8 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          The recording may take a few minutes to appear on the recap page.
+          Ready to go again? Your next show starts from a clean checklist.
         </p>
         {onStartNew ? (
           <Button

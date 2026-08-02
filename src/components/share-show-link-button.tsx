@@ -16,6 +16,8 @@ type ShareShowLinkButtonProps = {
   showPath?: boolean;
   /** Compact icon-only style for stage overlay */
   compact?: boolean;
+  /** Fired once the link actually reached the clipboard. */
+  onShared?: () => void;
 };
 
 export function ShareShowLinkButton({
@@ -25,6 +27,7 @@ export function ShareShowLinkButton({
   variant = "outline",
   showPath = false,
   compact = false,
+  onShared,
 }: ShareShowLinkButtonProps) {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
@@ -36,6 +39,7 @@ export function ShareShowLinkButton({
     try {
       await navigator.clipboard.writeText(url);
       trackEvent(AnalyticsEvent.HOST_SHARE_LINK, { area: "host_studio" });
+      onShared?.();
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -67,8 +71,7 @@ export function ShareShowLinkButton({
         ) : (
           <>
             <Share2 className="size-3.5" />
-            Share
-            <span className="font-normal text-white/70">{sharePath}</span>
+            Share the show
           </>
         )}
       </button>

@@ -355,7 +355,9 @@ function TopPick({ product, votes }: { product: Product; votes: VoteTally }) {
           {pct !== null ? ` · ${pct}% said buy` : ""}
         </p>
       </div>
-      <span className="hidden shrink-0 items-center gap-1.5 bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors group-hover:bg-primary/85 sm:inline-flex">
+      {/* Sits at the bottom of the card rather than centred — it reads as the
+          end of the item's story (name → price → buy) instead of floating. */}
+      <span className="hidden shrink-0 items-center gap-1.5 self-end bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors group-hover:bg-primary/85 sm:inline-flex">
         Shop
         <ArrowUpRight className="size-4" />
       </span>

@@ -4,7 +4,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Track } from "livekit-client";
 import "@livekit/components-styles";
-import { ExternalLink, Square } from "lucide-react";
+import {
+  ExternalLink,
+  PictureInPicture,
+  PictureInPicture2,
+  Square,
+} from "lucide-react";
 
 import {
   LiveBridgeProvider,
@@ -22,13 +27,13 @@ import { EndShowDialog } from "@/components/end-show-dialog";
 import { FaceBubble } from "@/components/face-bubble";
 import { HostControlBar } from "@/components/host-control-bar";
 import { HostFloatingStudio } from "@/components/host-floating-studio";
-import { PipStoreSuggestions } from "@/components/pip-store-suggestions";
 import { PollComposer } from "@/components/poll-composer";
 import { PollLaunchButton, PollOverlay } from "@/components/poll-overlay";
 import { HostLaunchScreen } from "@/components/host-launch-screen";
 import { ShareShowLinkButton } from "@/components/share-show-link-button";
 import { ShareSurfaceBanner } from "@/components/share-surface-banner";
 import { StudioLayout } from "@/components/studio-layout";
+import type { ChallengeStore } from "@/components/store-launcher";
 import { HostStageOverlays } from "@/components/watch-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,12 +41,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useAutoPip } from "@/hooks/use-auto-pip";
 import { useDocumentPiP } from "@/hooks/use-document-pip";
+import { useWindowPresence } from "@/hooks/use-window-presence";
 import { readResponseJson } from "@/lib/fetch-json";
-import {
-  clearLiveShare,
-  publishLiveShare,
-} from "@/lib/live-share-channel";
+import { pipDebug } from "@/lib/pip-debug";
 import { mountPipApp, unmountPipApp } from "@/lib/pip-react-root";
 import {
   getShareDisplaySurface,
@@ -72,11 +76,13 @@ export type ShowSession = {
 export default function LiveBroadcast({
   session,
   channel3Configured,
+  challengeStore,
   onShowEnded,
   onDisconnected,
 }: {
   session: ShowSession;
   channel3Configured: boolean;
+  challengeStore?: ChallengeStore | null;
   onShowEnded: (slug: string) => void;
   onDisconnected: () => void;
 }) {
@@ -104,7 +110,14 @@ export default function LiveBroadcast({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col lg:min-h-[calc(100vh-4.5rem)]">
+    // `data-hide-site-chrome` tells the (chrome) layout to drop the header and
+    // footer while we're live — the studio is full-bleed like /watch, but it's
+    // a phase of /host rather than its own route, so it can't opt out by living
+    // outside the route group. See globals.css.
+    <div
+      data-hide-site-chrome
+      className="flex min-h-0 flex-1 flex-col lg:min-h-dvh"
+    >
       {studioError ? (
         <div
           className="border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
@@ -127,6 +140,7 @@ export default function LiveBroadcast({
         <BroadcastStudio
           session={session}
           channel3Configured={channel3Configured}
+          challengeStore={challengeStore}
           onShowEnded={onShowEnded}
           onStudioError={setStudioError}
         />
@@ -138,11 +152,13 @@ export default function LiveBroadcast({
 function BroadcastStudio({
   session,
   channel3Configured,
+  challengeStore,
   onShowEnded,
   onStudioError,
 }: {
   session: ShowSession;
   channel3Configured: boolean;
+  challengeStore?: ChallengeStore | null;
   onShowEnded: (slug: string) => void;
   onStudioError: (message: string | null) => void;
 }) {
@@ -187,47 +203,6 @@ function BroadcastStudio({
   useEffect(() => {
     const mediaTrack =
       localShareTrack?.publication?.track?.mediaStreamTrack ?? null;
-
-    async function syncShareState() {
-      let captureHandle: string | null = null;
-      if (mediaTrack && sharing) {
-        try {
-          const handle = await mediaTrack.getCaptureHandle?.();
-          captureHandle = handle?.handle ?? null;
-        } catch {
-          captureHandle = null;
-        }
-      }
-
-      publishLiveShare({
-        slug: session.slug,
-        live: true,
-        sharing,
-        captureHandle,
-        surfaceLabel: mediaTrack?.label ?? null,
-      });
-    }
-
-    void syncShareState();
-
-    if (!mediaTrack) return;
-
-    function onCaptureHandleChange() {
-      void syncShareState();
-    }
-
-    mediaTrack.addEventListener?.("capturehandlechange", onCaptureHandleChange);
-    return () => {
-      mediaTrack.removeEventListener?.(
-        "capturehandlechange",
-        onCaptureHandleChange,
-      );
-    };
-  }, [localShareTrack, session.slug, sharing]);
-
-  useEffect(() => {
-    const mediaTrack =
-      localShareTrack?.publication?.track?.mediaStreamTrack ?? null;
     if (!mediaTrack || !sharing) {
       setShareSurface(undefined);
       return;
@@ -242,17 +217,6 @@ function BroadcastStudio({
     });
   }, [room]);
 
-  useEffect(() => {
-    void navigator.mediaDevices?.setCaptureHandleConfig?.({
-      handle: session.slug,
-    });
-
-    return () => {
-      clearLiveShare();
-      void navigator.mediaDevices?.setCaptureHandleConfig?.({ handle: "" });
-    };
-  }, [session.slug]);
-
   const openFloatingStudio = useCallback(async () => {
     await openPip({ width: 400, height: 720 });
   }, [openPip]);
@@ -263,7 +227,6 @@ function BroadcastStudio({
 
   const confirmEndShow = useCallback(async () => {
     closePip();
-    clearLiveShare();
     setEnding(true);
     setEndingStep(0);
     setEndError(null);
@@ -328,6 +291,69 @@ function BroadcastStudio({
     wasSharingRef.current = sharing;
   }, [sharing, pipIsOpen, closePip]);
 
+  // The floating studio's visibility is a pure function of one thing: whether
+  // this tab is the window the host is looking at. On it, this tab is already
+  // the confidence monitor and a pop-over would just duplicate it; away from it,
+  // the pop-over is the only studio they can see.
+  //
+  // Chrome opens it (see useAutoPip); we close it. `armed` is what stops a
+  // manual "Pop out" — clicked while the host is right here — from closing
+  // itself in the same breath: a hand-opened window only becomes closeable once
+  // the host has actually left the tab at least once. A Chrome-opened one is
+  // armed from birth, so a quick flick away and back doesn't strand it on
+  // screen.
+  const autoOpenedRef = useRef(false);
+
+  useAutoPip({
+    enabled: sharing && pipSupported,
+    onEnter: () => {
+      autoOpenedRef.current = true;
+      void openFloatingStudio().catch(() => {
+        autoOpenedRef.current = false;
+      });
+    },
+  });
+
+  // Second, best-effort trigger. Chrome only hands us the action above once the
+  // tab is genuinely hidden or occluded — a store window that sits beside this
+  // one rather than over it leaves the tab "visible", so nothing fires. Blur
+  // catches that case, but only when the host's last click here is still inside
+  // Chrome's ~5s activation window; outside it requestWindow is rejected and
+  // this costs nothing.
+  useEffect(() => {
+    if (!sharing || !pipSupported || pipIsOpen) return;
+
+    function onBlur() {
+      pipDebug("blur — trying to open on leftover activation");
+      void openPip({ width: 400, height: 720 }).catch((err) => {
+        pipDebug("blur open refused (no activation left)", {
+          err: String(err),
+        });
+      });
+    }
+
+    window.addEventListener("blur", onBlur);
+    return () => window.removeEventListener("blur", onBlur);
+  }, [sharing, pipSupported, pipIsOpen, openPip]);
+
+  const present = useWindowPresence();
+  const armedRef = useRef(false);
+
+  useEffect(() => {
+    pipDebug("presence", { present, pipIsOpen, sharing });
+
+    if (!pipIsOpen) {
+      armedRef.current = false;
+      autoOpenedRef.current = false;
+      return;
+    }
+    if (!present || autoOpenedRef.current) armedRef.current = true;
+    if (present && armedRef.current) {
+      pipDebug("closing — host is back");
+      closePip();
+    }
+  }, [pipIsOpen, present, sharing, closePip]);
+
   useEffect(() => {
     if (!pipIsOpen || !pipWindow) return;
     return () => unmountPipApp(pipWindow);
@@ -346,7 +372,6 @@ function BroadcastStudio({
           chatCount={chatMessages.length}
           channel3Configured={channel3Configured}
           onEndShow={handleEndShow}
-          onBeforeShare={openFloatingStudio}
           pipSupported={pipSupported}
           endDialogOpen={endDialogOpen}
           onEndDialogOpenChange={(open) => {
@@ -429,9 +454,15 @@ function BroadcastStudio({
 
   return (
     <>
-      {sharing && pipIsOpen ? (
-        <ConnectionKeeper slug={session.slug} pipSupported={pipSupported} />
-      ) : !sharing ? (
+      {/* Sharing the show is the one action that matters in every phase, so it
+          sits above the sharing / not-sharing split rather than inside either
+          branch — it stays put when the host starts or stops sharing instead of
+          disappearing with the stage. z-60 clears the launch screen's z-50. */}
+      <div className="fixed right-3 top-3 z-[60] lg:right-4 lg:top-4">
+        <ShareShowLinkButton slug={session.slug} compact />
+      </div>
+
+      {!sharing ? (
         <HostLaunchScreen
           live
           slug={session.slug}
@@ -439,10 +470,14 @@ function BroadcastStudio({
           room={room}
           sharing={sharing}
           onEndShow={handleEndShow}
-          onBeforeShare={openFloatingStudio}
           pipSupported={pipSupported}
+          challengeStore={challengeStore}
         />
       ) : (
+        /* Sharing: this tab is the confidence monitor. It shows exactly what
+           the audience is watching — the shared window with the host's face
+           riding in the corner — rather than a "you're live" holding page. The
+           floating window is for when the host is somewhere else entirely. */
         <>
           <ShareSurfaceBanner
             surface={shareSurface}
@@ -451,93 +486,56 @@ function BroadcastStudio({
             }
           />
           <StudioLayout
-          stream={stream}
-          channel3Configured={channel3Configured}
-          chatCount={chatMessages.length}
-          stage={
-            <HostStage
-              slug={session.slug}
-              viewerPath={viewerPath}
-              sharing={sharing}
-              onEndShow={handleEndShow}
-              onBeforeShare={openFloatingStudio}
-              pipSupported={pipSupported}
-            />
-          }
-          chat={<ChatPanel variant="rail" className="min-h-0 flex-1" />}
-        />
+            stream={stream}
+            channel3Configured={channel3Configured}
+            chatCount={chatMessages.length}
+            stage={
+              <HostStage
+                viewerPath={viewerPath}
+                sharing={sharing}
+                onEndShow={handleEndShow}
+                pipSupported={pipSupported}
+                pipIsOpen={pipIsOpen}
+                onPopOut={() => void openFloatingStudio()}
+                onClosePopOut={closePip}
+              />
+            }
+            chat={<ChatPanel variant="rail" className="min-h-0 flex-1" />}
+          />
         </>
       )}
 
-      {!(sharing && pipIsOpen) ? (
-        <EndShowDialog
-          open={endDialogOpen}
-          onOpenChange={(open) => {
-            setEndDialogOpen(open);
-            if (!open) setEndError(null);
-          }}
-          onConfirm={confirmEndShow}
-          ending={ending}
-          endingStep={endingStep}
-          error={endError}
-        />
-      ) : null}
+      <EndShowDialog
+        open={endDialogOpen}
+        onOpenChange={(open) => {
+          setEndDialogOpen(open);
+          if (!open) setEndError(null);
+        }}
+        onConfirm={confirmEndShow}
+        ending={ending}
+        endingStep={endingStep}
+        error={endError}
+      />
     </>
   );
 }
 
-function ConnectionKeeper({
-  slug,
-  pipSupported,
-}: {
-  slug: string;
-  pipSupported: boolean;
-}) {
-  return (
-    <main className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-6 py-12">
-      <div className="flex w-full max-w-xl flex-col items-center gap-3 text-center">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-live px-3 py-1 text-xs font-semibold uppercase tracking-wide text-live-foreground">
-          <span className="size-1.5 animate-pulse rounded-full bg-live-foreground/80" />
-          Live
-        </span>
-        <h1 className="text-xl font-medium tracking-tight text-foreground">
-          You&apos;re live
-        </h1>
-        <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
-          {pipSupported
-            ? "Controls are in the floating window. Share the store window so viewers follow along."
-            : "Controls stay on this page while you share. Use Chrome for a floating control window while sharing."}
-        </p>
-      </div>
-
-      <PipStoreSuggestions className="max-w-xl" />
-
-      <ShareShowLinkButton slug={slug} showPath className="max-w-xl" />
-      <p className="micro max-w-xl text-center text-muted-foreground">
-        Keep this tab open to stay connected — closing or leaving this page ends
-        the show for viewers.
-        {pipSupported
-          ? " Close the floating window to return controls here."
-          : null}
-      </p>
-    </main>
-  );
-}
-
 function HostStage({
-  slug,
   viewerPath,
   sharing,
   onEndShow,
-  onBeforeShare,
   pipSupported,
+  pipIsOpen,
+  onPopOut,
+  onClosePopOut,
 }: {
-  slug: string;
   viewerPath: string;
   sharing: boolean;
   onEndShow: () => void;
-  onBeforeShare?: () => void | Promise<void>;
   pipSupported: boolean;
+  pipIsOpen: boolean;
+  onPopOut: () => void;
+  onClosePopOut: () => void;
 }) {
   const [pollComposerOpen, setPollComposerOpen] = useState(false);
   const poll = usePollState({ isHost: true });
@@ -564,7 +562,9 @@ function HostStage({
         </div>
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 bg-gradient-to-b from-black/70 via-black/30 to-transparent p-3 sm:p-4">
+      {/* Right padding leaves room for the permanent "Share the show" fixture
+          that floats above this bar. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 bg-gradient-to-b from-black/70 via-black/30 to-transparent p-3 pr-36 sm:p-4 sm:pr-40">
         <div className="pointer-events-auto flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-live px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-live-foreground">
             <span className="size-1.5 animate-pulse rounded-full bg-live-foreground/80" />
@@ -574,12 +574,37 @@ function HostStage({
         </div>
 
         <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-2">
+          {pipSupported ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={pipIsOpen ? onClosePopOut : onPopOut}
+                    aria-label={
+                      pipIsOpen
+                        ? "Close floating controls"
+                        : "Pop out floating controls"
+                    }
+                    className="size-9 rounded-full bg-black/50 text-white backdrop-blur-sm hover:bg-black/70"
+                  >
+                    {pipIsOpen ? (
+                      <PictureInPicture2 className="size-4" />
+                    ) : (
+                      <PictureInPicture className="size-4" />
+                    )}
+                  </Button>
+                }
+              />
+              <TooltipContent>
+                {pipIsOpen
+                  ? "Floating controls are open — they follow you to the store window"
+                  : "Pop out controls so they follow you to the store window"}
+              </TooltipContent>
+            </Tooltip>
+          ) : null}
           <PollLaunchButton onClick={() => setPollComposerOpen(true)} />
-          <ShareShowLinkButton
-            slug={slug}
-            compact
-            className="hidden sm:inline-flex"
-          />
           <Link
             href={viewerPath}
             target="_blank"
@@ -628,16 +653,11 @@ function HostStage({
         onLaunch={poll.start}
       />
 
-      <div className="pointer-events-auto absolute inset-x-3 top-14 z-10 sm:hidden">
-        <ShareShowLinkButton slug={slug} compact className="w-full" />
-      </div>
-
       <div className={HOST_CONTROL_BAR}>
         <div className={HOST_CONTROL_BAR_INNER}>
           <HostControlBar
             sharing={sharing}
             onEndShow={onEndShow}
-            onBeforeShare={onBeforeShare}
             pipSupported={pipSupported}
             variant="stage"
           />

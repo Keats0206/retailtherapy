@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>PiP lab</title>
+    <style>
+      body { font: 13px ui-monospace, monospace; margin: 16px; }
+      button { font: inherit; padding: 6px 10px; margin-right: 6px; }
+      #log { white-space: pre-wrap; border: 1px solid #ccc; padding: 8px; height: 60vh; overflow: auto; margin-top: 12px; }
+      .row { margin-bottom: 8px; }
+      video { width: 160px; border: 1px solid #ccc; vertical-align: middle; }
+    </style>
+  </head>
+  <body>
+    <div class="row">
+      <button id="start">1. Start camera+mic</button>
+      <button id="register">2. Register handler</button>
+      <button id="manual">3. Open PiP manually</button>
+      <button id="clear">Clear log</button>
+    </div>
+    <div class="row">
+      <video id="preview" autoplay muted playsinline></video>
+      <span id="status">idle</span>
+    </div>
+    <div id="log"></div>
+
+    <script>
+      const logEl = document.getElementById("log");
+      const statusEl = document.getElementById("status");
+      const events = [];
+
+      function log(msg) {
+        const line = new Date().toISOString().slice(11, 23) + "  " + msg;
+        events.push(line);
+        logEl.textContent = events.join("\n");
+        logEl.scrollTop = logEl.scrollHeight;
+        console.log("[piplab] " + msg);
+      }
+      window.__piplab = () => events.join("\n");
+
+      log("ua: " + navigator.userAgent);
+      log("documentPictureInPicture: " + ("documentPictureInPicture" in window));
+      log("mediaSession: " + ("mediaSession" in navigator));
+
+      document.addEventListener("visibilitychange", () =>
+        log("visibilitychange -> " + document.visibilityState + " hasFocus=" + document.hasFocus()),
+      );
+      window.addEventListener("focus", () =>
+        log("window focus         hasFocus=" + document.hasFocus() + " vis=" + document.visibilityState),
+      );
+      window.addEventListener("blur", () =>
+        log("window blur          hasFocus=" + document.hasFocus() + " vis=" + document.visibilityState),
+      );
+
+      let stream = null;
+
+      document.getElementById("start").onclick = async () => {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          document.getElementById("preview").srcObject = stream;
+          statusEl.textContent = "capturing";
+          log("getUserMedia OK — tracks: " + stream.getTracks().map((t) => t.kind).join(","));
+        } catch (e) {
+          log("getUserMedia FAILED: " + e.name + " " + e.message);
+        }
+      };
+
+      document.getElementById("register").onclick = () => {
+        try {
+          navigator.mediaSession.setActionHandler("enterpictureinpicture", async (details) => {
+            log(">>> enterpictureinpicture FIRED  reason=" + (details && details.reason));
+            try {
+              const w = await documentPictureInPicture.requestWindow({ width: 380, height: 500 });
+              w.document.body.style.background = "#111";
+              w.document.body.style.color = "#fff";
+              w.document.body.innerHTML = "<h2 style='font-family:system-ui'>AUTO PiP</h2>";
+              log("    requestWindow OK (auto path)");
+              w.addEventListener("pagehide", () => log("    pip pagehide"));
+            } catch (e) {
+              log("    requestWindow FAILED: " + e.name + " " + e.message);
+            }
+          });
+          log("handler registered OK");
+        } catch (e) {
+          log("setActionHandler FAILED: " + e.name + " " + e.message);
+        }
+      };
+
+      document.getElementById("manual").onclick = async () => {
+        try {
+          const w = await documentPictureInPicture.requestWindow({ width: 380, height: 500 });
+          w.document.body.style.background = "#022";
+          w.document.body.style.color = "#fff";
+          w.document.body.innerHTML = "<h2 style='font-family:system-ui'>MANUAL PiP</h2>";
+          log("manual requestWindow OK");
+          w.addEventListener("pagehide", () => log("manual pip pagehide"));
+        } catch (e) {
+          log("manual requestWindow FAILED: " + e.name + " " + e.message);
+        }
+      };
+
+      document.getElementById("clear").onclick = () => {
+        events.length = 0;
+        logEl.textContent = "";
+      };
+    </script>
+  </body>
+</html>

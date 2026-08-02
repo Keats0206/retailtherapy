@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { HostOnboarding } from "@/components/host-onboarding";
 import {
+  EMPTY_DRAFT,
   readShowSetupDraft,
   type ShowSetupDraft,
   writeShowSetupDraft,
@@ -18,6 +19,8 @@ export type SetupChallenge = {
   title: string;
   prompt: string;
   brandName: string;
+  /** Where the host is meant to shop — becomes step one on the go-live screen. */
+  storeUrl: string | null;
   emoji: string | null;
   budget: number;
   currency: string;
@@ -42,16 +45,10 @@ export default function HostSetupClient({
     // title is the event's, unless they have already typed their own.
     const seeded: ShowSetupDraft | null = challenge
       ? {
-          ...(stored ?? {
-            intent: null,
-            detail: null,
-            items: [],
-            showName: "",
-            nameTouched: false,
-            socials: { instagram: "", tiktok: "", youtube: "" },
-            challengeSlug: null,
-          }),
+          ...(stored ?? EMPTY_DRAFT),
           challengeSlug: challenge.slug,
+          challengeStoreUrl: challenge.storeUrl,
+          challengeBrandName: challenge.brandName,
           showName: stored?.nameTouched ? stored.showName : challenge.title,
         }
       : stored;
@@ -76,7 +73,7 @@ export default function HostSetupClient({
     <>
       {challenge ? (
         <div className="mx-auto w-full max-w-2xl px-6 pt-6">
-          <div className="flex items-start gap-3 rounded-2xl bg-muted/50 p-4 ring-1 ring-foreground/8">
+          <div className="flex items-start gap-3 rounded-none bg-muted/50 p-4 ring-1 ring-foreground/8">
             <span className="text-xl" aria-hidden>
               {challenge.emoji ?? "🛍️"}
             </span>
@@ -96,7 +93,6 @@ export default function HostSetupClient({
         initialDraft={initialDraft}
         onComplete={handleComplete}
         finishLabel="Continue to studio"
-        chrome="live"
       />
     </>
   );

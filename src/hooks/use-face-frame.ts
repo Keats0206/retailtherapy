@@ -10,7 +10,7 @@ import {
   type FaceBox,
   type FaceDetectorFn,
   type FaceFrameStyle,
-} from "@/lib/cinema/face-frame";
+} from "@/lib/face-frame";
 
 export type FaceTrackingMode = "detected" | "heuristic";
 

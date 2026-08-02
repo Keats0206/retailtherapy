@@ -217,6 +217,16 @@ export async function listLiveShowsForAdmin(limit = 50): Promise<Show[]> {
   return listLiveShowRows(limit);
 }
 
+/** Past shows across every host, for admin moderation. */
+export async function listPastShowsForAdmin(limit = 50): Promise<Show[]> {
+  return db
+    .select()
+    .from(streams)
+    .where(eq(streams.status, "ended"))
+    .orderBy(desc(streams.endedAt))
+    .limit(limit);
+}
+
 /** Force-end every live show. Returns slugs that were successfully ended. */
 export async function endAllLiveShows(limit = 50): Promise<string[]> {
   const live = await listLiveShowRows(limit);
@@ -671,6 +681,23 @@ export async function deleteShow(
   if (!show || show.hostUserId !== hostUserId) return null;
   if (show.status === "live") return null;
 
+  return removeShow(show);
+}
+
+/**
+ * Admin counterpart to `deleteShow`: removes a finished show regardless of who
+ * hosted it. Live shows are still off limits — force-end them first, so viewers
+ * land on the recap instead of a dead link.
+ */
+export async function deleteShowAsAdmin(slug: string): Promise<Show | null> {
+  const show = await getShowBySlug(slug);
+  if (!show || show.status === "live") return null;
+
+  return removeShow(show);
+}
+
+/** Drops the Mux artifacts, then the row. Ownership is checked by the caller. */
+async function removeShow(show: Show): Promise<Show> {
   if (show.muxLiveStreamId) {
     await deleteMuxLiveStream(show.muxLiveStreamId);
   }
@@ -678,9 +705,7 @@ export async function deleteShow(
     await deleteMuxAsset(show.muxAssetId);
   }
 
-  await db
-    .delete(streams)
-    .where(and(eq(streams.id, show.id), eq(streams.hostUserId, hostUserId)));
+  await db.delete(streams).where(eq(streams.id, show.id));
 
   return show;
 }

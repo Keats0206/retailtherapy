@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import { getSignedInUser } from "@/lib/auth";
+import { getHostFeedback } from "@/lib/host-feedback";
 import { buildEndedRecap } from "@/lib/show-recap";
 import { getShowBySlug, resolveRecording, snapshotOf } from "@/lib/shows";
 
@@ -26,6 +27,7 @@ export default async function HostRecapPage({
 
   show = await resolveRecording(show);
   const snapshot = snapshotOf(show);
+  const feedback = await getHostFeedback(slug, user.id);
 
   const recap = buildEndedRecap({
     slug: show.slug,
@@ -39,5 +41,10 @@ export default async function HostRecapPage({
     muxPlaybackId: show.muxPlaybackId,
   });
 
-  return <HostRecapClient initialRecap={recap} />;
+  return (
+    <HostRecapClient
+      initialRecap={recap}
+      initialRating={feedback?.rating ?? null}
+    />
+  );
 }

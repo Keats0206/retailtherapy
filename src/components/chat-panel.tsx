@@ -27,9 +27,12 @@ export type { ChatLine };
 export function ChatPanel({
   className,
   variant = "panel",
+  extraLines,
 }: {
   className?: string;
   variant?: "panel" | "rail" | "pip";
+  /** Locally-synthesized lines (room events) merged into the feed by time. */
+  extraLines?: ChatLine[];
 }) {
   const { chatMessages, send, isSending } = useChat();
   const { localParticipant } = useLocalParticipant();
@@ -41,10 +44,13 @@ export function ChatPanel({
   // Memoized: the merge dedupes through a Set and sorts up to 200 messages,
   // and this panel sits inside WatchLayout, which re-renders on every stream
   // change, reaction burst and poll countdown tick.
-  const messages = useMemo(
-    () => (isHost ? chatMessages : mergeChatMessages(history, chatMessages)),
-    [isHost, history, chatMessages],
-  );
+  const messages = useMemo(() => {
+    const own = isHost
+      ? chatMessages
+      : mergeChatMessages(history, chatMessages);
+    if (!extraLines?.length) return own;
+    return mergeChatMessages(own, extraLines);
+  }, [isHost, history, chatMessages, extraLines]);
 
   return (
     <ChatPanelView
@@ -125,16 +131,25 @@ export function ChatPanelView({
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {messages.map((m) => (
-                <div key={m.id ?? m.timestamp} className="group">
-                  <p className="text-xs font-semibold text-foreground">
-                    {m.from?.name || m.from?.identity || "Viewer"}
+              {messages.map((m) =>
+                m.kind === "system" ? (
+                  <p
+                    key={m.id ?? m.timestamp}
+                    className="text-xs text-muted-foreground/80"
+                  >
+                    {m.message}
                   </p>
-                  <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
-                    {linkify(m.message)}
-                  </p>
-                </div>
-              ))}
+                ) : (
+                  <div key={m.id ?? m.timestamp} className="group">
+                    <p className="text-xs font-semibold text-foreground">
+                      {m.from?.name || m.from?.identity || "Viewer"}
+                    </p>
+                    <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
+                      {linkify(m.message)}
+                    </p>
+                  </div>
+                ),
+              )}
               <div ref={bottomRef} />
             </div>
           )}

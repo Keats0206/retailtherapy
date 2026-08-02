@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Show, SignUpButton } from "@clerk/nextjs";
 import { ArrowLeft, Clock, ExternalLink, Wallet } from "lucide-react";
 
+import { ChallengeSteps } from "@/components/challenge-steps";
 import { ShowCard } from "@/components/show-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,9 @@ export function ChallengePage({ challenge }: { challenge: ChallengeDetail }) {
         <ArrowLeft className="size-3.5" />
         All challenges
       </Link>
+
+      {/* What taking this on actually involves, before the brief itself. */}
+      <ChallengeSteps />
 
       <section className="flex flex-col overflow-hidden rounded-3xl bg-card ring-1 ring-foreground/8">
         {challenge.brandLogoUrl ? (

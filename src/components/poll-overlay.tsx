@@ -171,7 +171,7 @@ function votesLabel(total: number): string {
 
 /**
  * Display-only: shows the seconds and runs the shrinking bar. Never closes the
- * poll — `useMockPollState` owns that timer.
+ * poll — `usePollState` owns that timer.
  */
 function PollCountdown({
   endsAt,

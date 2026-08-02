@@ -25,28 +25,38 @@ export function DeleteShowButton({
   slug,
   title,
   disabled = false,
+  variant = "host",
 }: {
   slug: string;
   title: string;
   disabled?: boolean;
+  /** Host deletes their own show; admin deletes any ended show. */
+  variant?: "host" | "admin";
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isAdmin = variant === "admin";
+  const deleteUrl = isAdmin ? `/api/admin/shows/${slug}` : `/api/shows/${slug}`;
+  const disabledLabel = isAdmin
+    ? "Close the show before deleting"
+    : "End the show before deleting";
 
   async function confirmDelete() {
     setDeleting(true);
     setError(null);
 
     try {
-      const res = await fetch(`/api/shows/${slug}`, { method: "DELETE" });
+      const res = await fetch(deleteUrl, { method: "DELETE" });
       const data = await readResponseJson<{ error?: string }>(res);
       if (!res.ok) {
         throw new Error(data.error ?? "Failed to delete show");
       }
 
-      trackEvent(AnalyticsEvent.SHOW_DELETE, { area: "browse" });
+      trackEvent(AnalyticsEvent.SHOW_DELETE, {
+        area: isAdmin ? "admin" : "browse",
+      });
       setOpen(false);
       router.refresh();
     } catch (err) {
@@ -66,7 +76,7 @@ export function DeleteShowButton({
               variant="ghost"
               size="icon"
               disabled={disabled}
-              aria-label={disabled ? "End the show before deleting" : "Delete show"}
+              aria-label={disabled ? disabledLabel : "Delete show"}
               className="shrink-0 text-muted-foreground hover:text-destructive"
               onClick={() => {
                 if (!disabled) setOpen(true);
@@ -76,9 +86,7 @@ export function DeleteShowButton({
             </Button>
           }
         />
-        <TooltipContent>
-          {disabled ? "End the show before deleting" : "Delete show"}
-        </TooltipContent>
+        <TooltipContent>{disabled ? disabledLabel : "Delete show"}</TooltipContent>
       </Tooltip>
 
       <Dialog
@@ -94,8 +102,9 @@ export function DeleteShowButton({
           <DialogHeader>
             <DialogTitle>Delete this show?</DialogTitle>
             <DialogDescription>
-              &ldquo;{title}&rdquo; and its recap will be removed from your
-              home. The viewer link at /s/{slug} will stop working.
+              &ldquo;{title}&rdquo; and its recap will be removed
+              {isAdmin ? " for everyone" : " from your home"}. The viewer link
+              at /s/{slug} will stop working.
             </DialogDescription>
           </DialogHeader>
 

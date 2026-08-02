@@ -57,6 +57,13 @@
       "when": 1785598317875,
       "tag": "0007_flat_drax",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785680494756,
+      "tag": "0008_lethal_squadron_sinister",
+      "breakpoints": true
     }
   ]
 }

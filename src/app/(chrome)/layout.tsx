@@ -21,7 +21,10 @@ export default function ChromeLayout({
 }>) {
   return (
     <>
-      <header className="flex shrink-0 items-center justify-between px-6 py-4">
+      <header
+        data-site-chrome
+        className="flex shrink-0 items-center justify-between px-6 py-4"
+      >
         <Link href="/" className="font-brand text-xl uppercase tracking-[0.12em]">
           frontrow
         </Link>
@@ -48,7 +51,9 @@ export default function ChromeLayout({
           so ordinary pages need to scroll inside this container instead. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {children}
-        <SiteFooter />
+        <div data-site-chrome className="contents">
+          <SiteFooter />
+        </div>
       </div>
     </>
   );

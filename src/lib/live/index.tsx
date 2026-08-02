@@ -346,7 +346,13 @@ export const useTrackToggle: UseTrackToggle = LOCAL_STREAM
 
 // --- participants ----------------------------------------------------------
 
-type ParticipantLike = { permissions?: { canPublish?: boolean } };
+// LiveKit's `Participant` carries these; the design-mode shim below does not,
+// so both are optional and callers must cope with an anonymous participant.
+type ParticipantLike = {
+  identity?: string;
+  name?: string;
+  permissions?: { canPublish?: boolean };
+};
 
 const useDesignParticipants: () => ParticipantLike[] = () => {
   const { viewerCount } = useLocalRoom();
