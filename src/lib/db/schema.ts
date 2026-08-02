@@ -14,6 +14,7 @@ import {
 
 // Relative, not the `@/` alias: drizzle-kit loads this file outside Next and
 // does not resolve tsconfig paths.
+import type { ProfileSocials } from "../social-links";
 import type { ShowSetup } from "../show-setup";
 import type { StreamSnapshot } from "../stream-store";
 
@@ -151,6 +152,37 @@ export const streamProducts = pgTable(
 );
 
 /**
+ * Who a signed-in user is on frontrow: display name, city, and where they
+ * publish elsewhere. One row per Clerk user, created the first time they save
+ * the profile form on /home — its absence is what routes a fresh signup into
+ * profile setup. `socials` values are either a bare handle ("leon") or a full
+ * URL for accounts the handle grammar can't express; `socialProfileUrl` in
+ * lib/social-links.ts turns either form back into a link.
+ */
+export const profiles = pgTable(
+  "profiles",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    // Clerk user id — the only identity we have; there is no local users table.
+    userId: text("user_id").notNull(),
+    name: text("name"),
+    city: text("city"),
+    // Free-text "a little about you" — capped in lib/profile.ts, not here.
+    bio: text("bio"),
+    socials: jsonb("socials").$type<ProfileSocials>(),
+    // When the user last pressed Save — doubles as "setup completed".
+    savedAt: timestamp("saved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [uniqueIndex("profiles_user_id_idx").on(table.userId)],
+);
+
+/**
  * Hosting is invite-only, so /apply collects interest instead of granting
  * access. One row per email — a repeat signup refreshes the details rather
  * than stacking duplicates.
@@ -273,6 +305,8 @@ export type Stream = typeof streams.$inferSelect;
 export type NewStream = typeof streams.$inferInsert;
 export type StreamProduct = typeof streamProducts.$inferSelect;
 export type NewStreamProduct = typeof streamProducts.$inferInsert;
+export type Profile = typeof profiles.$inferSelect;
+export type NewProfile = typeof profiles.$inferInsert;
 export type WaitlistSignup = typeof waitlistSignups.$inferSelect;
 export type NewWaitlistSignup = typeof waitlistSignups.$inferInsert;
 export type CreatorProspect = typeof creatorProspects.$inferSelect;

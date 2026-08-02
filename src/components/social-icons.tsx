@@ -34,6 +34,19 @@ export function TikTokIcon() {
   );
 }
 
+export function SubstackIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="size-4"
+      aria-hidden
+    >
+      <path d="M22.54 8.24H1.46V5.41h21.08v2.83zM1.46 10.81V24L12 18.11 22.54 24V10.81H1.46zM22.54 0H1.46v2.84h21.08V0z" />
+    </svg>
+  );
+}
+
 export function YouTubeIcon() {
   return (
     <svg

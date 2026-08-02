@@ -143,7 +143,12 @@ export function BrowsePage({
             </p>
           </div>
           <Show when="signed-out">
-            <SignUpButton mode="modal">
+            {/* Land on /home: first-timers get profile setup there. */}
+            <SignUpButton
+              mode="modal"
+              forceRedirectUrl="/home"
+              signInForceRedirectUrl="/home"
+            >
               <Button size="micro" className="w-fit">
                 Get started
               </Button>
@@ -183,7 +188,11 @@ export function BrowsePage({
                   Sign in
                 </Button>
               </SignInButton>
-              <SignUpButton mode="modal">
+              <SignUpButton
+                mode="modal"
+                forceRedirectUrl="/home"
+                signInForceRedirectUrl="/home"
+              >
                 <Button size="micro">Get started</Button>
               </SignUpButton>
             </Show>

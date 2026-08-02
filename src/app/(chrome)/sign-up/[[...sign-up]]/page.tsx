@@ -11,7 +11,8 @@ export default async function Page() {
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <SignUp />
+      {/* Land on /home: first-timers get profile setup there. */}
+      <SignUp forceRedirectUrl="/home" />
     </main>
   );
 }

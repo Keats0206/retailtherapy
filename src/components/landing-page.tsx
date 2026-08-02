@@ -40,7 +40,12 @@ export function LandingPage() {
                   Sign in
                 </Button>
               </SignInButton>
-              <SignUpButton mode="modal">
+              {/* Land on /home: first-timers get profile setup there. */}
+              <SignUpButton
+                mode="modal"
+                forceRedirectUrl="/home"
+                signInForceRedirectUrl="/home"
+              >
                 <Button
                   variant="secondary"
                   size="micro"

@@ -43,6 +43,20 @@
       "when": 1784936234146,
       "tag": "0005_opposite_naoko",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785639664138,
+      "tag": "0006_big_lady_vermin",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785640872526,
+      "tag": "0007_bent_skrulls",
+      "breakpoints": true
     }
   ]
 }
