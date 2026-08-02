@@ -29,7 +29,11 @@ export function LandingPage({ challenges }: { challenges: Challenge[] }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <SignUpButton mode="modal">
+          <SignUpButton
+            mode="modal"
+            forceRedirectUrl="/home"
+            signInForceRedirectUrl="/home"
+          >
             <Button
               size="sm"
               onClick={() =>

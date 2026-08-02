@@ -5,6 +5,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 const isProtectedRoute = createRouteMatcher([
   "/home(.*)",
   "/host(.*)",
+  "/profile",
   "/admin(.*)",
   // A personal board only means anything with an account behind it.
   "/saved",

@@ -71,6 +71,13 @@
       "when": 1785760000000,
       "tag": "0009_replay_search",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785930932885,
+      "tag": "0010_modern_blackheart",
+      "breakpoints": true
     }
   ]
 }
