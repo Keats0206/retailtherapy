@@ -4,7 +4,7 @@ import { useTrackToggle } from "@/lib/live";
 import { useMaybeLocalRoom } from "@/lib/live/local-room";
 import { LOCAL_STREAM } from "@/lib/live/mode";
 import { Track, type Room } from "livekit-client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 
@@ -39,9 +39,13 @@ export function useStartScreenShare({
   const [starting, setStarting] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Clear the pending flag the moment the share goes live, so stopping the
+  // share later doesn't leave a stale spinner behind.
+  const [lastSharing, setLastSharing] = useState(sharing);
+  if (sharing !== lastSharing) {
+    setLastSharing(sharing);
     if (sharing) setStarting(false);
-  }, [sharing]);
+  }
 
   const clearShareError = useCallback(() => setShareError(null), []);
 

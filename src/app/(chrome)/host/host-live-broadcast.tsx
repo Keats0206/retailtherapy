@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Track } from "livekit-client";
 import "@livekit/components-styles";
 import {
@@ -47,10 +47,7 @@ import { useWindowPresence } from "@/hooks/use-window-presence";
 import { readResponseJson } from "@/lib/fetch-json";
 import { pipDebug } from "@/lib/pip-debug";
 import { mountPipApp, unmountPipApp } from "@/lib/pip-react-root";
-import {
-  getShareDisplaySurface,
-  type ShareDisplaySurface,
-} from "@/lib/screen-share-surface";
+import { getShareDisplaySurface } from "@/lib/screen-share-surface";
 import { usePollState } from "@/lib/poll-state";
 import type { StreamSnapshot } from "@/lib/stream-store";
 import { useStreamState } from "@/lib/stream-state";
@@ -185,9 +182,6 @@ function BroadcastStudio({
     close: closePip,
   } = useDocumentPiP();
   const wasSharingRef = useRef(false);
-  const [shareSurface, setShareSurface] = useState<
-    ShareDisplaySurface | undefined
-  >();
   const shareTracks = useTracks([Track.Source.ScreenShare], {
     onlySubscribed: false,
   });
@@ -200,14 +194,11 @@ function BroadcastStudio({
 
   const viewerPath = `/s/${session.slug}`;
 
-  useEffect(() => {
-    const mediaTrack =
-      localShareTrack?.publication?.track?.mediaStreamTrack ?? null;
-    if (!mediaTrack || !sharing) {
-      setShareSurface(undefined);
-      return;
-    }
-    setShareSurface(getShareDisplaySurface(mediaTrack));
+  const shareSurface = useMemo(() => {
+    if (!sharing) return undefined;
+    return getShareDisplaySurface(
+      localShareTrack?.publication?.track?.mediaStreamTrack ?? null,
+    );
   }, [localShareTrack, sharing]);
 
   const reshareWindow = useCallback(async () => {
