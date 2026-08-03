@@ -32,6 +32,7 @@ export function ShoppingTrail({
   size = "compact",
   variant = "panel",
   sortable = false,
+  hostCart = false,
   className,
 }: {
   products: Product[];
@@ -45,6 +46,8 @@ export function ShoppingTrail({
   variant?: "panel" | "rail" | "feed" | "pip";
   /** Show sort tabs (live viewer). */
   sortable?: boolean;
+  /** Host studio cart — copy tuned for add + re-pin flow. */
+  hostCart?: boolean;
   className?: string;
 }) {
   const comfortable = size === "comfortable";
@@ -131,10 +134,12 @@ export function ShoppingTrail({
             </div>
             <div>
               <p className="text-sm font-medium text-foreground">
-                No products yet
+                {hostCart ? "Cart is empty" : "No products yet"}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Links you add will collect here as a shoppable trail.
+                {hostCart
+                  ? "Paste a link above to add your first item."
+                  : "Links you add will collect here as a shoppable trail."}
               </p>
             </div>
           </div>
@@ -170,10 +175,10 @@ export function ShoppingTrail({
                       alt={p.name}
                       loading="lazy"
                       decoding="async"
-                      className="size-12 shrink-0 rounded-lg bg-muted object-cover"
+                      className="size-12 shrink-0 rounded-none bg-muted object-cover"
                     />
                   ) : (
-                    <div className="size-12 shrink-0 rounded-lg bg-muted" />
+                    <div className="size-12 shrink-0 rounded-none bg-muted" />
                   )}
                   <div className="min-w-0 flex-1">
                     <p
@@ -191,7 +196,7 @@ export function ShoppingTrail({
                   </div>
                   {active && (
                     <Badge size="micro" className="shrink-0 bg-live text-live-foreground">
-                      Live
+                      {hostCart ? "On screen" : "Live"}
                     </Badge>
                   )}
                 </Wrapper>
@@ -239,7 +244,7 @@ export function ShoppingTrail({
                     ? { onClick: () => onSelect(p), type: "button" as const }
                     : {})}
                   className={cn(
-                    "group rounded-lg border p-3 text-left transition-all",
+                    "group rounded-none border p-3 text-left transition-all",
                     comfortable ? "w-full" : "w-32 shrink-0 p-2",
                     active
                       ? "border-primary/40 bg-accent opacity-100"
@@ -256,7 +261,7 @@ export function ShoppingTrail({
                       loading="lazy"
                       decoding="async"
                       className={cn(
-                        "mb-2 aspect-square w-full rounded-md bg-muted object-cover",
+                        "mb-2 aspect-square w-full rounded-none bg-muted object-cover",
                         comfortable && "mb-3",
                       )}
                     />
@@ -334,10 +339,10 @@ function TrailFeedItem({
             alt={product.name}
             loading="lazy"
             decoding="async"
-            className="size-14 shrink-0 rounded-lg bg-muted object-cover"
+            className="size-14 shrink-0 rounded-none bg-muted object-cover"
           />
         ) : (
-          <div className="size-14 shrink-0 rounded-lg bg-muted" />
+          <div className="size-14 shrink-0 rounded-none bg-muted" />
         )}
 
         <div className="min-w-0 flex-1">

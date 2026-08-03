@@ -10,7 +10,7 @@ import type { Product } from "@/lib/types";
  * What the signed-in viewer has saved, held once for the whole app.
  *
  * Mounted at the root rather than in the `(chrome)` group because two of the
- * three save surfaces — /browse and /s/<slug> — render outside that group.
+ * three save surfaces — /browse and /show/<slug> — render outside that group.
  *
  * State is seeded with one request on mount instead of being threaded down
  * from each server page: the alternative is passing the same list through four

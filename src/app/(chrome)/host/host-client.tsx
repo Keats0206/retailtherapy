@@ -12,13 +12,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { useGoLiveProgress } from "@/hooks/use-go-live-progress";
 import {
+  clearPendingLiveSession,
+  readPendingLiveSession,
+} from "@/lib/host-go-live";
+import {
   clearShowSetupDraft,
-  draftToSetup,
   readShowSetupDraft,
-  type ShowSetupDraft,
 } from "@/lib/show-setup";
-import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import { readResponseJson } from "@/lib/fetch-json";
+import { hostShowPath, viewerShowPath } from "@/lib/show-urls";
 
 import type { ShowSession } from "./host-live-broadcast";
 import LiveBroadcast from "./host-live-broadcast";
@@ -34,15 +36,13 @@ function endShowOnLeave(slug: string) {
 }
 
 export default function HostClient({
-  channel3Configured,
+  showSlug,
   resumeSlug,
-  liveShowSlug,
   liveShowTitle,
 }: {
   hostName: string | null;
-  channel3Configured: boolean;
+  showSlug: string;
   resumeSlug?: string | null;
-  liveShowSlug?: string | null;
   liveShowTitle?: string | null;
 }) {
   const router = useRouter();
@@ -50,47 +50,53 @@ export default function HostClient({
     "preshow",
   );
   const [session, setSession] = useState<ShowSession | null>(null);
-  const [title, setTitle] = useState("");
-  const [setupDraft, setSetupDraft] = useState<ShowSetupDraft | null>(null);
-  const [setupReady, setSetupReady] = useState(
-    () => Boolean(liveShowSlug || resumeSlug),
+  const [setupDraft, setSetupDraft] = useState(
+    () => readShowSetupDraft(),
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [setupReady, setSetupReady] = useState(() => Boolean(resumeSlug));
   const liveStartedAt = useRef<number | null>(null);
-  // Hold the camera until we know we're staying — no permission prompt on a
-  // page we're about to bounce to /host/setup.
-  const media = useMediaPreview(setupReady);
+  const media = useMediaPreview(setupReady && phase === "preshow");
   const { reset: resetGoLiveProgress } = useGoLiveProgress();
   const stopMediaRef = useRef(media.stop);
-  // Leave-to-end: track the live slug across nav/tab close without ending on
-  // transient LiveKit disconnects (phase → disconnected while still on /host).
   const liveSlugRef = useRef<string | null>(null);
   const intentionallyEndedRef = useRef(false);
+  const pendingHandledRef = useRef(false);
+
   useEffect(() => {
     stopMediaRef.current = media.stop;
   }, [media.stop]);
 
-  // New shows must come through /host/setup. Reconnecting an existing live
-  // show (or resuming via ?slug=) skips setup. Draft is cleared when the show
-  // ends so a remount after go-live doesn't bounce back to setup.
-  const setupCheckedRef = useRef(false);
+  // Enter live studio after completing setup on /host/setup.
   useLayoutEffect(() => {
-    if (liveShowSlug || resumeSlug) {
+    if (pendingHandledRef.current) return;
+
+    const pending = readPendingLiveSession();
+    if (pending) {
+      pendingHandledRef.current = true;
+      clearPendingLiveSession();
+      liveStartedAt.current = Date.now();
+      intentionallyEndedRef.current = false;
+      setSession({
+        slug: pending.slug,
+        title: pending.title,
+        room: pending.room,
+        token: pending.token,
+        url: pending.url,
+        snapshot: pending.snapshot,
+      });
+      setPhase("live");
+      setSetupReady(true);
+      setSetupDraft(readShowSetupDraft());
+      if (pending.slug !== showSlug) {
+        router.replace(hostShowPath(pending.slug));
+      }
       return;
     }
-    if (setupCheckedRef.current) return;
-    setupCheckedRef.current = true;
-    const draft = readShowSetupDraft();
-    if (!draft?.intent) {
-      router.replace("/host/setup");
-      return;
-    }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSetupDraft(draft);
-    if (draft.showName.trim()) setTitle(draft.showName.trim());
+
     setSetupReady(true);
-  }, [liveShowSlug, resumeSlug, router]);
+  }, [showSlug, router]);
 
   useEffect(() => {
     const active =
@@ -116,7 +122,6 @@ export default function HostClient({
     window.addEventListener("pagehide", onPageHide);
     return () => {
       window.removeEventListener("pagehide", onPageHide);
-      // SPA navigate away from /host (browser back, logo, etc.)
       endIfHostLeft();
     };
   }, []);
@@ -174,82 +179,26 @@ export default function HostClient({
 
   useEffect(() => {
     if (!resumeSlug) return;
+    if (pendingHandledRef.current) return;
     const timer = window.setTimeout(() => {
       void resumeShow(resumeSlug);
     }, 0);
     return () => window.clearTimeout(timer);
   }, [resumeSlug, resumeShow]);
 
-  async function goLive() {
-    setLoading(true);
-    setError(null);
-    try {
-      const setup = setupDraft ? draftToSetup(setupDraft) : null;
-      const res = await fetch("/api/shows", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim() || setupDraft?.showName.trim() || "Untitled show",
-          setup: setup ?? undefined,
-          // The event the host took on, if they came from a challenge card.
-          // The server re-checks it — an unknown or closed slug just yields an
-          // ordinary show rather than failing the go-live.
-          challengeSlug: setupDraft?.challengeSlug ?? undefined,
-        }),
-      });
-      const data = await readResponseJson<{
-        error?: string;
-        slug: string;
-        title: string;
-        room: string;
-        token: string;
-        url: string;
-        snapshot?: ShowSession["snapshot"];
-      }>(res);
-      if (!res.ok) {
-        if (res.status === 409 && liveShowSlug) {
-          throw new Error(
-            "You already have a live show. Reconnect below or end it first.",
-          );
-        }
-        throw new Error(data.error ?? "Failed to start show");
-      }
-
-      trackEvent(AnalyticsEvent.HOST_GO_LIVE, { area: "host_studio" });
-      stopMediaRef.current();
-      liveStartedAt.current = Date.now();
-      intentionallyEndedRef.current = false;
-      setSession({
-        slug: data.slug,
-        title: data.title,
-        room: data.room,
-        token: data.token,
-        url: data.url,
-        snapshot: data.snapshot,
-      });
-      setPhase("live");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   function handleShowEnded(slug: string) {
     markShowEnded();
     clearShowSetupDraft();
-    // The checklist belongs to one show; the next one starts from step 1.
     resetGoLiveProgress();
     setSession(null);
     setPhase("preshow");
-    router.replace(`/host/${slug}`);
+    router.replace(hostShowPath(slug));
   }
 
   if (phase === "live" && session) {
     return (
       <LiveBroadcast
         session={session}
-        channel3Configured={channel3Configured}
         challengeStore={
           setupDraft?.challengeStoreUrl
             ? {
@@ -277,27 +226,24 @@ export default function HostClient({
           setSession(null);
           setPhase("preshow");
           setError(null);
-          router.replace(`/host/${session.slug}`);
+          router.replace(hostShowPath(session.slug));
         }}
       />
     );
   }
 
+  if (!setupReady && !pendingHandledRef.current) {
+    return null;
+  }
+
   return (
     <HostLaunchScreen
-      live={false}
-      title={title}
-      onTitleChange={setTitle}
-      onGoLive={goLive}
-      loading={loading}
+      title={liveShowTitle || setupDraft?.showName || "Untitled show"}
       error={error}
       media={media}
-      setupDraft={setupDraft}
-      liveShowSlug={liveShowSlug}
+      liveShowSlug={showSlug}
       liveShowTitle={liveShowTitle}
-      onResumeLiveShow={
-        liveShowSlug ? () => void resumeShow(liveShowSlug) : undefined
-      }
+      onResumeLiveShow={() => void resumeShow(showSlug)}
       resumeLoading={loading}
     />
   );
@@ -339,7 +285,7 @@ function DisconnectedPanel({
           title={title}
           onEnded={onShowEnded}
         />
-        <Button variant="outline" render={<Link href={`/s/${slug}`} target="_blank" />}>
+        <Button variant="outline" render={<Link href={viewerShowPath(slug)} target="_blank" />}>
           Open viewer page
         </Button>
       </div>
@@ -353,8 +299,6 @@ function useMediaPreview(enabled: boolean): MediaControls {
   const [micOn, setMicOn] = useState(true);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [requesting, setRequesting] = useState(false);
-  // Bumping this re-runs the effect, which is how "Allow camera and mic"
-  // re-opens a prompt the host dismissed the first time.
   const [attempt, setAttempt] = useState(0);
   const streamRef = useRef<MediaStream | null>(null);
 

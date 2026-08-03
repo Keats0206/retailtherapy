@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { createAccessToken, getLiveKitConfig } from "@/lib/livekit";
 import { getShowByRoomName } from "@/lib/shows";
+import { viewerShowPath } from "@/lib/show-urls";
 
 import Player from "./player";
 
@@ -12,7 +13,7 @@ export default async function WatchPage({
 }: PageProps<"/watch/[playbackId]">) {
   const { playbackId: room } = await params;
   const show = await getShowByRoomName(room);
-  if (show) redirect(`/s/${show.slug}`);
+  if (show) redirect(viewerShowPath(show.slug));
 
   // Fall back for direct room access that predates the show lifecycle.
   if (!room) notFound();

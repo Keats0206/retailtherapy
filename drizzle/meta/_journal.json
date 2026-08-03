@@ -64,6 +64,13 @@
       "when": 1785680494756,
       "tag": "0008_lethal_squadron_sinister",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785760000000,
+      "tag": "0009_replay_search",
+      "breakpoints": true
     }
   ]
 }

@@ -24,6 +24,7 @@ export function PollOverlay({
   myVote,
   role,
   size = "default",
+  embedded = false,
   onVote,
   onDismiss,
   onNewVote,
@@ -33,6 +34,8 @@ export function PollOverlay({
   role: "creator" | "viewer";
   /** `compact` fits the studio confidence monitor's narrow column. */
   size?: "default" | "compact";
+  /** When true, skip absolute positioning — parent stacks overlays. */
+  embedded?: boolean;
   onVote?: (optionId: string) => void;
   onDismiss?: () => void;
   onNewVote?: () => void;
@@ -48,8 +51,9 @@ export function PollOverlay({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-x-0 bottom-0 z-10",
-        compact ? "p-1.5" : "p-3",
+        !embedded && "pointer-events-none absolute inset-x-0 bottom-0 z-10",
+        !embedded && (compact ? "p-1.5" : "p-3"),
+        embedded && "pointer-events-auto w-full",
       )}
     >
       {/* Keyed so a replacement poll replays the entrance. */}

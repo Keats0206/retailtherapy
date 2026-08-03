@@ -20,6 +20,27 @@ export interface PollInput {
   durationMs?: number;
 }
 
+export const YAY_NAY_POLL: PollInput = {
+  question: "Yay or nay?",
+  options: [
+    { label: "Yay", emoji: "🙌" },
+    { label: "Nay", emoji: "👎" },
+  ],
+};
+
+export const POLL_PRESETS: { chip: string; input: PollInput }[] = [
+  {
+    chip: "🛒 Buy / 🙅 Skip",
+    input: {
+      question: "Should we buy it?",
+      options: [
+        { label: "Buy", emoji: "🛒" },
+        { label: "Skip", emoji: "🙅" },
+      ],
+    },
+  },
+];
+
 export function createPoll(input: PollInput, now: number): Poll {
   const durationMs = input.durationMs ?? POLL_DURATION_MS;
   const options: PollOption[] = input.options

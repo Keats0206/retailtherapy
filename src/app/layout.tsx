@@ -100,14 +100,14 @@ export default function RootLayout({
           which every route except /watch renders under. */}
       <body className="flex h-full flex-col overflow-hidden">
         <ClerkProvider appearance={clerkAppearance}>
-          {/* Root, not (chrome): /browse and /s/<slug> both carry save buttons
+          {/* Root, not (chrome): /browse and /show/<slug> both carry save buttons
               and render outside that group. */}
           <SavedProvider>
             <TooltipProvider>{children}</TooltipProvider>
           </SavedProvider>
           <Analytics debug={process.env.NODE_ENV === "development"} />
           {/* Real-user Core Web Vitals. Worth having on a video-heavy app —
-              LCP and INP on /browse and /s/<slug> are the ones to watch. */}
+              LCP and INP on /browse and /show/<slug> are the ones to watch. */}
           <SpeedInsights />
           {process.env.NODE_ENV === "development" && <Agentation />}
         </ClerkProvider>

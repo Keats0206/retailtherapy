@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import { viewerShowPath } from "@/lib/show-urls";
 import { readResponseJson } from "@/lib/fetch-json";
 import { cn } from "@/lib/utils";
 
@@ -98,7 +99,7 @@ export function EndLiveShowButton({
           }
         }}
       >
-        <DialogContent showCloseButton={!ending}>
+        <DialogContent showCloseButton={!ending} className="rounded-none">
           <DialogHeader>
             <DialogTitle>
               {variant === "admin" ? "Close this show?" : "End this show?"}
@@ -107,13 +108,13 @@ export function EndLiveShowButton({
               {variant === "admin" ? (
                 <>
                   &ldquo;{title}&rdquo; will be removed from browse and moved to
-                  the recap at /s/{slug}. The host cannot go live on this link
+                  the recap at {viewerShowPath(slug)}. The host cannot go live on this link
                   again.
                 </>
               ) : (
                 <>
                   &ldquo;{title}&rdquo; will move to your past shows. Viewers
-                  will see the recap at /s/{slug}. You can&rsquo;t go live on
+                  will see the recap at {viewerShowPath(slug)}. You can&rsquo;t go live on
                   this link again.
                 </>
               )}
@@ -126,7 +127,7 @@ export function EndLiveShowButton({
             </p>
           ) : null}
 
-          <DialogFooter>
+          <DialogFooter className="rounded-none">
             <Button
               type="button"
               variant="outline"

@@ -5,63 +5,49 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * The five things that have to happen, in order, between "Go live" and a show
- * an audience can actually watch. Ordered rather than a loose row of buttons:
- * a host who shares their screen before opening a store shares an empty
- * desktop, and one who never copies the link streams to nobody.
+ * The two things a host does after they're live: open a store in its own
+ * window, then share that window. Ordered rather than a loose row of buttons —
+ * sharing before opening a store means sharing an empty desktop.
  */
-export const GO_LIVE_STEPS = [
+export const POST_LIVE_STEPS = [
   {
     id: "store",
     title: "Open a store",
     hint: "Opens in its own window — that's the window you'll share.",
   },
   {
-    id: "camera",
-    title: "Turn on your camera",
-    hint: "Your face is the show. Allow camera and mic access to continue.",
-  },
-  {
-    id: "live",
-    title: "Go live",
-    hint: "Creates your share link and starts recording.",
-  },
-  {
     id: "share",
     title: "Share your screen",
     hint: "Pick Window (not Tab) so you can switch between stores.",
   },
-  {
-    id: "invite",
-    title: "Send the link to your audience",
-    hint: "Nobody arrives until you post it.",
-  },
 ] as const;
 
-export type GoLiveStepId = (typeof GO_LIVE_STEPS)[number]["id"];
+export type PostLiveStepId = (typeof POST_LIVE_STEPS)[number]["id"];
 
-export type GoLiveProgress = Record<GoLiveStepId, boolean>;
+export type PostLiveProgress = Record<PostLiveStepId, boolean>;
 
 /** First unfinished step — the only one that gets its action rendered. */
-export function currentGoLiveStep(progress: GoLiveProgress): GoLiveStepId | null {
-  return GO_LIVE_STEPS.find((step) => !progress[step.id])?.id ?? null;
+export function currentPostLiveStep(
+  progress: PostLiveProgress,
+): PostLiveStepId | null {
+  return POST_LIVE_STEPS.find((step) => !progress[step.id])?.id ?? null;
 }
 
-export function GoLiveSteps({
+export function PostLiveSteps({
   progress,
   actions,
   className,
 }: {
-  progress: GoLiveProgress;
+  progress: PostLiveProgress;
   /** Per-step control, shown only while that step is the current one. */
-  actions?: Partial<Record<GoLiveStepId, React.ReactNode>>;
+  actions?: Partial<Record<PostLiveStepId, React.ReactNode>>;
   className?: string;
 }) {
-  const current = currentGoLiveStep(progress);
+  const current = currentPostLiveStep(progress);
 
   return (
     <ol className={cn("flex flex-col", className)}>
-      {GO_LIVE_STEPS.map((step, i) => {
+      {POST_LIVE_STEPS.map((step, i) => {
         const done = progress[step.id];
         const active = step.id === current;
         const action = active ? actions?.[step.id] : null;

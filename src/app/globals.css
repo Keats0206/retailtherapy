@@ -24,6 +24,12 @@
  *   @utility micro — eyebrow labels only (section headers, metadata, status)
  *   Do NOT use micro on headings, product names, or buttons.
  *
+ * Border radius:
+ *   --radius: 0 — square corners everywhere; no rounded surfaces.
+ *   App primitives (Card, Input, Button, Panel, Dialog) use rounded-none.
+ *   rounded-full is overridden to var(--radius) so pills/circles are square too.
+ *   Cinema overlays follow the same rule (no rounded exceptions).
+ *
  * Rule: app surfaces use semantic tokens; video overlays use cinema white/black.
  *
  * Cinema-mode exceptions (intentional hardcoded white/black for legibility over video):
@@ -77,7 +83,7 @@
   /* Apple's SF Pro Display for headings / hero type; system fonts elsewhere already
      resolve to SF Pro on Apple devices. Graceful fallback on non-Apple platforms. */
   --font-display: "SF Pro Display", "SF Pro", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --radius: 0.625rem;
+  --radius: 0;
   --shadow-x: 0;
   --shadow-y: 1px;
   --shadow-blur: 3px;
@@ -140,7 +146,7 @@
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --font-display: "SF Pro Display", "SF Pro", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --radius: 0.625rem;
+  --radius: 0;
   --shadow-x: 0;
   --shadow-y: 1px;
   --shadow-blur: 3px;
@@ -236,10 +242,13 @@
   --text-9xl: 9rem;
   --text-9xl--line-height: 1;
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 
   --shadow-2xs: var(--shadow-2xs);
   --shadow-xs: var(--shadow-xs);
@@ -249,9 +258,11 @@
   --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-xl);
   --shadow-2xl: var(--shadow-2xl);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/** Tailwind's rounded-full ignores theme tokens — wire it to --radius. */
+@utility rounded-full {
+  border-radius: var(--radius);
 }
 
 /**
@@ -311,7 +322,7 @@
 
 /** Inset app section — setup summaries, apply forms, browse empty states. */
 @utility soft-panel {
-  border-radius: calc(var(--radius) + 4px);
+  border-radius: 0;
   background-color: color-mix(in oklch, var(--muted) 40%, transparent);
   box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 8%, transparent);
 }
@@ -419,7 +430,7 @@
   -webkit-appearance: none;
   appearance: none;
   height: 0.375rem;
-  border-radius: 9999px;
+  border-radius: var(--radius);
   background: color-mix(in oklch, var(--muted-foreground) 18%, transparent);
   outline: none;
 }
@@ -429,7 +440,7 @@
   appearance: none;
   width: 1.125rem;
   height: 1.125rem;
-  border-radius: 9999px;
+  border-radius: var(--radius);
   border: 2px solid var(--background);
   background: var(--live);
   box-shadow: 0 1px 3px color-mix(in oklch, var(--foreground) 20%, transparent);
@@ -439,7 +450,7 @@
 .host-earnings-slider::-moz-range-thumb {
   width: 1.125rem;
   height: 1.125rem;
-  border-radius: 9999px;
+  border-radius: var(--radius);
   border: 2px solid var(--background);
   background: var(--live);
   box-shadow: 0 1px 3px color-mix(in oklch, var(--foreground) 20%, transparent);
@@ -508,4 +519,8 @@
    route, so it opts out of the site header/footer from inside the tree. */
 body:has([data-hide-site-chrome]) [data-site-chrome] {
   display: none;
+}
+
+body:has([data-hide-site-chrome]) [data-chrome-scroll] {
+  overflow: hidden;
 }

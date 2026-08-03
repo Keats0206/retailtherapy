@@ -41,13 +41,15 @@ export default function HostRecapClient({
         peakViewers: data.snapshot.stats?.peakViewers ?? 0,
         chatCount: data.snapshot.stats?.chatCount ?? 0,
         muxPlaybackId: data.muxPlaybackId,
+        muxDurationSeconds: data.muxDurationSeconds,
+        recordingStatus: data.recordingStatus,
       }),
     );
   }, [recap.slug]);
 
-  // Waiting on Mux to finish packaging the recording. Each poll reaches out to
-  // the Mux API server-side, so it stops entirely while the tab is hidden.
-  useVisiblePoll(refreshShow, POLL_MS, !recap.muxPlaybackId);
+  const shouldPoll = recap.recordingStatus === "processing";
+
+  useVisiblePoll(refreshShow, POLL_MS, shouldPoll);
 
   return <ShowEndedCreator recap={recap} initialRating={initialRating} />;
 }

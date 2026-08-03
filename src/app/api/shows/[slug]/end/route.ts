@@ -6,7 +6,7 @@ import type { StreamSnapshot } from "@/lib/stream-store";
 //
 // Irreversible, and the UI asks twice before calling it. Stops the egress, tells
 // Mux to package the asset, and freezes the final trail and tallies. The asset
-// itself lands a little later; /s/<slug> handles the gap.
+// itself lands a little later; /show/<slug> handles the gap.
 export async function POST(
   request: Request,
   { params }: RouteContext<"/api/shows/[slug]/end">,

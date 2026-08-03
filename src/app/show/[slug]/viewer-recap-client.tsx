@@ -39,17 +39,21 @@ export default function ViewerRecapClient({
         peakViewers: data.snapshot.stats?.peakViewers ?? 0,
         chatCount: data.snapshot.stats?.chatCount ?? 0,
         muxPlaybackId: data.muxPlaybackId,
+        muxDurationSeconds: data.muxDurationSeconds,
+        recordingStatus: data.recordingStatus,
       }),
     );
   }, [recap.slug]);
 
-  useVisiblePoll(refreshShow, POLL_MS, !recap.muxPlaybackId);
+  const shouldPoll = recap.recordingStatus === "processing";
+
+  useVisiblePoll(refreshShow, POLL_MS, shouldPoll);
 
   return (
     <ShowEndedViewer
       recap={recap}
       onRecordingReady={refreshShow}
-      polling={!recap.muxPlaybackId}
+      polling={shouldPoll}
     />
   );
 }

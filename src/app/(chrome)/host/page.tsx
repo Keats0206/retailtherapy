@@ -1,33 +1,41 @@
+import { redirect } from "next/navigation";
+
 import { getSignedInUser } from "@/lib/auth";
-import { isChannel3Configured } from "@/lib/channel3";
-import { getLiveShowForHost } from "@/lib/shows";
-import HostClient from "./host-client";
+import { LOCAL_STREAM } from "@/lib/live/mode";
+import {
+  endDesignModeOrphansForHost,
+  getLiveShowForHost,
+} from "@/lib/shows";
+import { hostShowPath } from "@/lib/show-urls";
 
 // Server gate: proxy.ts requires a signed-in user to reach /host.
 export default async function HostPage({
   searchParams,
 }: {
-  searchParams: Promise<{ slug?: string }>;
+  searchParams: Promise<{ slug?: string; challenge?: string }>;
 }) {
   const user = await getSignedInUser();
   if (!user) return null;
 
-  const { slug: resumeSlug } = await searchParams;
+  const { slug: resumeSlug, challenge: challengeSlug } = await searchParams;
 
-  const hostName =
-    user.username ??
-    [user.firstName, user.lastName].filter(Boolean).join(" ") ??
-    null;
+  if (challengeSlug) {
+    redirect(`/host/setup?challenge=${challengeSlug}`);
+  }
 
-  const liveShow = await getLiveShowForHost(user.id);
+  if (resumeSlug) {
+    redirect(hostShowPath(resumeSlug));
+  }
 
-  return (
-    <HostClient
-      hostName={hostName}
-      channel3Configured={isChannel3Configured()}
-      resumeSlug={resumeSlug ?? null}
-      liveShowSlug={liveShow?.slug ?? null}
-      liveShowTitle={liveShow?.title ?? null}
-    />
-  );
+  let liveShow = await getLiveShowForHost(user.id);
+  if (LOCAL_STREAM) {
+    await endDesignModeOrphansForHost(user.id);
+    liveShow = await getLiveShowForHost(user.id);
+  }
+
+  if (liveShow) {
+    redirect(hostShowPath(liveShow.slug));
+  }
+
+  redirect("/host/setup");
 }

@@ -25,7 +25,7 @@ export function ChallengeSteps({ className }: { className?: string }) {
   return (
     <ol
       className={cn(
-        "grid gap-4 rounded-3xl bg-card p-6 ring-1 ring-foreground/8 sm:grid-cols-3 sm:p-7",
+        "grid gap-4 bg-muted p-6 sm:grid-cols-3 sm:p-7",
         className,
       )}
     >

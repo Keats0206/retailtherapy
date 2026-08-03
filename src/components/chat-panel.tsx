@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat, useLocalParticipant } from "@/lib/live";
-import { MessageSquare, SendHorizontal } from "lucide-react";
+import { MessageSquare, SendHorizontal, Sparkles } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,11 +28,14 @@ export function ChatPanel({
   className,
   variant = "panel",
   extraLines,
+  onOpenInteractions,
 }: {
   className?: string;
   variant?: "panel" | "rail" | "pip";
   /** Locally-synthesized lines (room events) merged into the feed by time. */
   extraLines?: ChatLine[];
+  /** Host rail: jump to the interactions launcher. */
+  onOpenInteractions?: () => void;
 }) {
   const { chatMessages, send, isSending } = useChat();
   const { localParticipant } = useLocalParticipant();
@@ -59,6 +62,7 @@ export function ChatPanel({
       isSending={isSending}
       className={className}
       variant={variant}
+      onOpenInteractions={onOpenInteractions}
     />
   );
 }
@@ -69,12 +73,14 @@ export function ChatPanelView({
   isSending = false,
   className,
   variant = "panel",
+  onOpenInteractions,
 }: {
   messages: ChatLine[];
   onSend: (message: string) => void | Promise<unknown>;
   isSending?: boolean;
   className?: string;
   variant?: "panel" | "rail" | "pip";
+  onOpenInteractions?: () => void;
 }) {
   const [text, setText] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -164,11 +170,27 @@ export function ChatPanelView({
               aria-label="Chat message"
               className="h-10 flex-1"
             />
+            {onOpenInteractions ? (
+              <Button
+                type="button"
+                size="icon"
+                aria-label="Launch interaction"
+                onClick={onOpenInteractions}
+                className="size-10 shrink-0 bg-foreground text-background hover:bg-foreground/90"
+              >
+                <Sparkles className="size-4" />
+              </Button>
+            ) : null}
             <Button
               type="submit"
               size="icon"
               aria-label="Send message"
-              className="size-10 shrink-0 bg-foreground text-background hover:bg-foreground/90"
+              variant={onOpenInteractions ? "outline" : "default"}
+              className={cn(
+                "size-10 shrink-0",
+                !onOpenInteractions &&
+                  "bg-foreground text-background hover:bg-foreground/90",
+              )}
               disabled={isSending || !text.trim()}
             >
               <SendHorizontal className="size-4" />

@@ -20,7 +20,7 @@ import { createSyntheticVideo } from "./synthetic-video";
  * Everything the studio needs from LiveKit is served from here instead: local
  * media capture for the host, a `BroadcastChannel` standing in for the data
  * channel, and a participant list. Tabs on the same origin share the channel,
- * so opening /host in one tab and /s/<slug> in another gives you a working
+ * so opening /host in one tab and /show/<slug> in another gives you a working
  * host↔viewer pair with no server in the middle.
  *
  * Nothing in this file is reachable unless `LOCAL_STREAM` is on — see `./mode`.

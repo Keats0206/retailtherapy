@@ -4,7 +4,7 @@ import {
   getShowBySlug,
   resolveRecording,
 } from "@/lib/shows";
-import { toPublicShow } from "@/lib/show-public";
+import { toPublicShow, getRecordingStatus } from "@/lib/show-public";
 
 // DELETE /api/shows/<slug> — remove a finished show. Host-only.
 export async function DELETE(
@@ -61,7 +61,7 @@ export async function GET(
   const cacheControl =
     show.status === "live"
       ? "private, max-age=2"
-      : show.muxPlaybackId
+      : show.muxPlaybackId || getRecordingStatus(show) !== "processing"
         ? "private, max-age=60"
         : "private, max-age=5";
 

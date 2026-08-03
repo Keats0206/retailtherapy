@@ -16,6 +16,7 @@ import { Card } from "@/components/ui/card";
 import type { ChallengeCard as Challenge } from "@/lib/challenges";
 import type { DiscoveryShow } from "@/lib/shows";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import { hostShowPath, viewerShowPath } from "@/lib/show-urls";
 import { cn } from "@/lib/utils";
 
 /** One of the signed-in user's own shows, serialized for the client. */
@@ -82,13 +83,14 @@ export function BrowsePage({
         </Section>
       ) : null}
 
-      {/* The terms of taking one on, read before the grid of them. */}
-      <ChallengeSteps />
-
       <Section
+        id="challenges"
         title="Challenges"
-        description="Brands set the budget and the clock. Hosts go live and try to beat it — you vote on every pick."
+        description="Brands set the budget and the brief. Hosts go live for at least 30 minutes — you vote on every pick."
       >
+        {/* The terms of taking one on, read before the grid of them. */}
+        <ChallengeSteps />
+
         {challenges.length === 0 ? (
           <p className="soft-panel p-6 text-sm leading-relaxed text-muted-foreground">
             No challenges are running right now. Check back soon — new brand
@@ -248,18 +250,20 @@ function PageHeader({ liveCount }: { liveCount: number }) {
 }
 
 function Section({
+  id,
   title,
   description,
   eyebrow,
   children,
 }: {
+  id?: string;
   title: string;
   description?: string;
   eyebrow?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-4">
+    <section id={id} className="flex flex-col gap-4 scroll-mt-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-xl font-medium tracking-tight sm:text-2xl">
           {title}
@@ -306,7 +310,7 @@ function ChallengeGrid({
 
 function HostCallout() {
   return (
-    <section className="mt-auto flex flex-col gap-4 rounded-xl bg-muted/40 p-6 ring-1 ring-foreground/8 sm:flex-row sm:items-center sm:justify-between">
+    <section className="soft-panel mt-auto flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-2">
         <span className="micro text-muted-foreground">Host a show</span>
         <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
@@ -345,7 +349,7 @@ function HostShowRow({ show }: { show: HostShow }) {
       ? "Ended"
       : "Scheduled";
   const actionLabel = isLive ? "Open studio" : "View recap";
-  const href = isLive ? `/host?slug=${show.slug}` : `/host/${show.slug}`;
+  const href = hostShowPath(show.slug);
   const dateLabel = show.startedAt
     ? new Date(show.startedAt).toLocaleDateString(undefined, {
         month: "short",
@@ -370,7 +374,7 @@ function HostShowRow({ show }: { show: HostShow }) {
         >
           <span
             className={cn(
-              "flex size-11 shrink-0 items-center justify-center rounded-xl",
+              "flex size-11 shrink-0 items-center justify-center rounded-none",
               isLive
                 ? "bg-live/15 text-live-foreground"
                 : "bg-muted text-muted-foreground",
@@ -399,7 +403,7 @@ function HostShowRow({ show }: { show: HostShow }) {
               )}
             </div>
             <p className="truncate text-sm text-muted-foreground">
-              /s/{show.slug}
+              {viewerShowPath(show.slug)}
               {dateLabel ? ` · ${dateLabel}` : null}
             </p>
           </div>

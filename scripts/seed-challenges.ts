@@ -8,12 +8,12 @@ import { neon } from "@neondatabase/serverless";
 /**
  * Seeds the curated challenge events shown on /browse.
  *
- * Challenges are brand-sponsored launch events — a budget, a clock and a store
- * ("15 minutes to spend $500 at Net-a-Porter") — and there is no admin UI for
- * them yet, so this script is how they get created and edited. Re-runnable:
- * rows upsert on `slug`, so changing copy here and re-running updates in place
- * rather than duplicating. Attempts already recorded against an event keep
- * pointing at it, since the id is preserved.
+ * Challenges are brand-sponsored launch events — a budget, a minimum show
+ * length, and a store ("Spend $500 at Net-a-Porter") — and there is no admin
+ * UI for them yet, so this script is how they get created and edited.
+ * Re-runnable: rows upsert on `slug`, so changing copy here and re-running
+ * updates in place rather than duplicating. Attempts already recorded against
+ * an event keep pointing at it, since the id is preserved.
  *
  *   npx tsx scripts/seed-challenges.ts
  */
@@ -26,67 +26,69 @@ function inDays(days: number, hour = 19): Date {
   return date;
 }
 
+const MINIMUM_SHOW_SECONDS = 30 * 60;
+
 const CHALLENGES = [
   {
     slug: "net-a-porter-500",
-    title: "15 minutes to spend $500 at Net-a-Porter",
+    title: "Spend $500 at Net-a-Porter",
     prompt:
-      "The clock starts when you go live. Fill a $500 cart from Net-a-Porter before it runs out — the room votes on every pick, and whatever survives the vote is the look.",
+      "Go live and fill a $500 cart from Net-a-Porter. The room votes on every pick, and whatever survives the vote is the look.",
     brandName: "Net-a-Porter",
     brandDomain: "net-a-porter.com",
     brandLogoUrl: "/challenges/net-a-porter.jpg",
     storeUrl: "https://www.net-a-porter.com",
     emoji: "👜",
     budgetCents: 500_00,
-    durationSeconds: 15 * 60,
+    durationSeconds: MINIMUM_SHOW_SECONDS,
     startsAt: null, // Open now — the flagship event.
     endsAt: null,
     sortOrder: 0,
   },
   {
     slug: "glossier-150-beauty-run",
-    title: "$150 Glossier beauty run in 10 minutes",
+    title: "$150 Glossier beauty run",
     prompt:
-      "One routine, ten minutes, $150. Build a full face from Glossier and defend every add to the room before the timer kills the cart.",
+      "One routine, $150 to spend. Build a full face from Glossier and defend every add to the room — they vote on what's worth it.",
     brandName: "Glossier",
     brandDomain: "glossier.com",
     brandLogoUrl: "/challenges/glossier.jpg",
     storeUrl: "https://www.glossier.com",
     emoji: "💄",
     budgetCents: 150_00,
-    durationSeconds: 10 * 60,
+    durationSeconds: MINIMUM_SHOW_SECONDS,
     startsAt: null,
     endsAt: null,
     sortOrder: 1,
   },
   {
     slug: "ssense-750-drop",
-    title: "$750 at SSENSE, 20 minutes, no basics",
+    title: "$750 at SSENSE, no basics",
     prompt:
-      "Nothing plain allowed. Twenty minutes to spend $750 at SSENSE on pieces the room would actually stop scrolling for — a single white tee ends the run.",
+      "Nothing plain allowed. Spend $750 at SSENSE on pieces the room would actually stop scrolling for — a single white tee ends the run.",
     brandName: "SSENSE",
     brandDomain: "ssense.com",
     brandLogoUrl: "/challenges/ssense.jpg",
     storeUrl: "https://www.ssense.com",
     emoji: "🧥",
     budgetCents: 750_00,
-    durationSeconds: 20 * 60,
+    durationSeconds: MINIMUM_SHOW_SECONDS,
     startsAt: inDays(2),
     endsAt: inDays(3),
     sortOrder: 0,
   },
   {
     slug: "goop-300-wellness",
-    title: "$300 of goop in 12 minutes",
+    title: "$300 of goop",
     prompt:
-      "Twelve minutes, $300, and a shelf to fill. Talk the room through what's worth it and what is very much not.",
+      "$300 and a shelf to fill. Talk the room through what's worth it and what is very much not.",
     brandName: "goop",
     brandDomain: "goop.com",
     brandLogoUrl: "/challenges/goop.jpg",
     storeUrl: "https://goop.com",
     emoji: "🕯️",
     budgetCents: 300_00,
-    durationSeconds: 12 * 60,
+    durationSeconds: MINIMUM_SHOW_SECONDS,
     startsAt: inDays(5),
     endsAt: inDays(6),
     sortOrder: 0,

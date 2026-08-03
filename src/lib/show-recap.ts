@@ -1,4 +1,5 @@
 import type { StreamSnapshot } from "@/lib/stream-store";
+import type { RecordingStatus } from "@/lib/show-public";
 
 /** Post-show recap data shared by creator and viewer pages. */
 export type EndedShowRecap = {
@@ -13,6 +14,7 @@ export type EndedShowRecap = {
   snapshot: StreamSnapshot;
   /** Set once Mux finishes packaging the recording. */
   muxPlaybackId?: string | null;
+  recordingStatus: RecordingStatus;
 };
 
 export function buildEndedRecap(opts: {
@@ -24,10 +26,18 @@ export function buildEndedRecap(opts: {
   peakViewers: number;
   chatCount: number;
   muxPlaybackId?: string | null;
+  muxDurationSeconds?: number | null;
+  recordingStatus: RecordingStatus;
   endedAt?: number;
 }): EndedShowRecap {
   const now = Date.now();
   const endedAt = opts.endedAt ?? now;
+  const durationMs = opts.muxDurationSeconds
+    ? opts.muxDurationSeconds * 1000
+    : opts.startedAt
+      ? endedAt - opts.startedAt
+      : 0;
+
   return {
     slug: opts.slug,
     title: opts.title,
@@ -36,8 +46,9 @@ export function buildEndedRecap(opts: {
     endedAt,
     peakViewers: opts.peakViewers,
     chatCount: opts.chatCount,
-    durationMs: opts.startedAt ? endedAt - opts.startedAt : 0,
+    durationMs,
     snapshot: opts.snapshot,
     muxPlaybackId: opts.muxPlaybackId,
+    recordingStatus: opts.recordingStatus,
   };
 }

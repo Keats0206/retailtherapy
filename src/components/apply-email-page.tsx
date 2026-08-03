@@ -98,7 +98,7 @@ export function ApplyEmailPage() {
 
           <form
             onSubmit={handleSubmit}
-            className="flex flex-col gap-5 rounded-xl bg-muted/40 p-6 ring-1 ring-foreground/8"
+            className="soft-panel flex flex-col gap-5 p-6"
           >
             <label htmlFor="email" className="flex flex-col gap-1.5 text-sm">
               <span className="font-medium">

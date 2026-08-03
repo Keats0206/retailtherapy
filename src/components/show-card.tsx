@@ -8,6 +8,7 @@ import { HostAvatar, ShowMosaic } from "@/components/show-mosaic";
 import { Badge } from "@/components/ui/badge";
 import type { DiscoveryShow } from "@/lib/shows";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import { viewerShowPath } from "@/lib/show-urls";
 import { cn } from "@/lib/utils";
 
 /**
@@ -49,7 +50,7 @@ export function ShowCard({
   return (
     <div className="group relative">
       <Link
-        href={`/s/${show.slug}`}
+        href={viewerShowPath(show.slug)}
         className="flex w-full flex-col gap-3 bg-card p-2 text-left outline-none ring-1 ring-border transition-shadow hover:shadow-lg hover:ring-foreground focus-visible:ring-2 focus-visible:ring-ring"
         onClick={() =>
           trackEvent(

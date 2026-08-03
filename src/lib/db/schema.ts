@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import {
   boolean,
+  customType,
   index,
   integer,
   jsonb,
@@ -11,6 +12,22 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+
+/** pgvector column for semantic search embeddings (1536 dims). */
+const vector1536 = customType<{ data: number[]; driverData: string }>({
+  dataType() {
+    return "vector(1536)";
+  },
+  toDriver(value: number[]) {
+    return `[${value.join(",")}]`;
+  },
+  fromDriver(value: string) {
+    return value
+      .slice(1, -1)
+      .split(",")
+      .map((part) => Number(part.trim()));
+  },
+});
 
 // Relative, not the `@/` alias: drizzle-kit loads this file outside Next and
 // does not resolve tsconfig paths.
@@ -27,7 +44,7 @@ import type { StreamSnapshot } from "../stream-store";
  * A stream's video takes two paths at once: LiveKit carries the low-latency
  * WebRTC feed to live viewers, while a LiveKit Egress mirrors the same room to
  * Mux over RTMP so Mux can archive it as an on-demand asset. That asset is the
- * replay served at /s/<slug> once the show ends.
+ * replay served at /show/<slug> once the show ends.
  */
 
 export const streamStatus = pgEnum("stream_status", [
@@ -68,9 +85,9 @@ export const products = pgTable(
 );
 
 /**
- * A brand-sponsored shopping event a host goes live to attempt: "15 minutes to
- * spend $500 at Net-a-Porter". Three things define one — a brand, a budget,
- * and a clock — and together they are the front door of discovery. A viewer
+ * A brand-sponsored shopping event a host goes live to attempt: "Spend $500
+ * at Net-a-Porter" is the shape. Three things define one — a brand, a budget,
+ * and a minimum show length — and together they are the front door of discovery. A viewer
  * arriving to an empty schedule still has something to react to, and a host
  * staring at a blank Go live screen has a format to start from.
  *
@@ -101,7 +118,7 @@ export const challenges = pgTable(
     // The spend cap, in minor units — the "$500" half of the format.
     budgetCents: integer("budget_cents").notNull(),
     currency: text("currency").notNull().default("usd"),
-    // The clock, in seconds — the "15 minutes" half. Null for an untimed event.
+    // Minimum show length, in seconds. Null when there is no floor.
     durationSeconds: integer("duration_seconds"),
     // A challenge is a launch event, so it has a slot on the calendar. Hosts
     // can go live for it any time between `startsAt` and `endsAt`; before that
@@ -132,7 +149,7 @@ export const streams = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     // Short, URL-safe public handle. This — not the uuid — is what appears in
-    // the shareable link (/s/<slug>), so it stays short enough to say out loud.
+    // the shareable link (/show/<slug>), so it stays short enough to say out loud.
     slug: text("slug").notNull(),
     title: text("title").notNull(),
     // Clerk user id of the host. Scopes "my shows" without a users table.
@@ -156,10 +173,20 @@ export const streams = pgTable(
     muxLiveStreamId: text("mux_live_stream_id"),
     muxStreamKey: text("mux_stream_key"),
     // The on-demand asset Mux creates from the broadcast, and its playback id.
-    // Both are null until Mux finishes packaging, which is why /s/<slug> has a
+    // Both are null until Mux finishes packaging, which is why /show/<slug> has a
     // "still processing" state (see `resolveRecording` in lib/shows.ts).
     muxAssetId: text("mux_asset_id"),
     muxPlaybackId: text("mux_playback_id"),
+    // Actual encoded length from Mux once the asset is ready.
+    muxDurationSeconds: integer("mux_duration_seconds"),
+    // Whether LiveKit egress ran before the show ended — distinguishes "still
+    // packaging" from "nothing was ever recorded".
+    recordingCaptured: boolean("recording_captured").notNull().default(false),
+    // Plain text from Mux auto-captions, indexed for search.
+    transcript: text("transcript"),
+    // Denormalized document used to build the embedding (metadata + transcript).
+    searchText: text("search_text"),
+    embedding: vector1536("embedding"),
     // Final shopping state: trail, pinned item and vote tallies. Written
     // periodically during the show and definitively on end, so the recap
     // survives a host who closes the tab instead of pressing End show.

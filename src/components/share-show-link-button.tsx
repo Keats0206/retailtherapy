@@ -5,6 +5,7 @@ import { Check, Link2, Share2 } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import { viewerShowPath } from "@/lib/show-urls";
 import { cn } from "@/lib/utils";
 import type { VariantProps } from "class-variance-authority";
 
@@ -31,7 +32,7 @@ export function ShareShowLinkButton({
 }: ShareShowLinkButtonProps) {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
-  const sharePath = `/s/${slug}`;
+  const sharePath = viewerShowPath(slug);
 
   async function shareLink() {
     setCopyError(false);
@@ -54,7 +55,7 @@ export function ShareShowLinkButton({
         type="button"
         onClick={() => void shareLink()}
         className={cn(
-          "inline-flex h-9 items-center gap-1.5 rounded-full bg-black/50 px-3 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-black/70",
+          "inline-flex h-9 items-center gap-1.5 rounded-full bg-black px-3 text-xs font-medium text-white shadow-sm transition-colors hover:bg-black/85",
           className,
         )}
       >

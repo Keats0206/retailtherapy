@@ -6,6 +6,12 @@ import Mux from "@mux/mux-node";
 // Viewers watch via https://stream.mux.com/<playbackId>.m3u8 (handled by Mux Player).
 export const MUX_RTMP_URL = "rtmps://global-live.mux.com:443/app";
 
+export type RecordingBackfill = {
+  assetId: string;
+  playbackId: string;
+  duration: number | null;
+};
+
 let client: Mux | null = null;
 
 /**
@@ -29,6 +35,10 @@ export function getMux(): Mux {
   return client;
 }
 
+function getMuxWebhookSecret(): string | null {
+  return process.env.MUX_WEBHOOK_SECRET ?? null;
+}
+
 /**
  * Creates the Mux live stream a LiveKit egress pushes into, and returns the
  * RTMP URL to point that egress at.
@@ -44,7 +54,11 @@ export async function createMuxLiveStream(): Promise<{
 }> {
   const stream = await getMux().video.liveStreams.create({
     playback_policies: ["public"],
-    new_asset_settings: { playback_policies: ["public"] },
+    generated_subtitles: [{ language_code: "en", name: "English (auto)" }],
+    new_asset_settings: {
+      playback_policies: ["public"],
+      max_resolution_tier: "1080p",
+    },
     latency_mode: "low",
     // A dropped egress has this long to reconnect before Mux calls the stream
     // over and cuts the asset.
@@ -88,31 +102,83 @@ export async function deleteMuxAsset(assetId: string) {
   }
 }
 
-/**
- * Finds the recording produced by a finished live stream.
- *
- * Mux creates the asset asynchronously, so this returns `null` while it is
- * still packaging — the caller polls rather than us blocking. Deliberately no
- * webhook: polling on page load needs no publicly reachable URL, which keeps
- * local development working the same as production.
- */
-export async function resolveMuxRecording(liveStreamId: string): Promise<{
-  assetId: string;
-  playbackId: string;
-  duration: number | null;
-} | null> {
-  const mux = getMux();
-
-  const live = await mux.video.liveStreams.retrieve(liveStreamId);
-  // Most recent first.
-  const assetId = live.recent_asset_ids?.[0];
-  if (!assetId) return null;
-
-  const asset = await mux.video.assets.retrieve(assetId);
+/** Pull playback id + duration from a ready Mux asset. */
+export function extractRecordingFromAsset(asset: {
+  id: string;
+  status?: string;
+  playback_ids?: Array<{ id?: string }> | null;
+  duration?: number | null;
+}): RecordingBackfill | null {
   if (asset.status !== "ready") return null;
 
   const playbackId = asset.playback_ids?.[0]?.id;
   if (!playbackId) return null;
 
-  return { assetId, playbackId, duration: asset.duration ?? null };
+  return {
+    assetId: asset.id,
+    playbackId,
+    duration: asset.duration ?? null,
+  };
+}
+
+/**
+ * Finds the recording produced by a finished live stream.
+ *
+ * Mux creates the asset asynchronously, so this returns `null` while it is
+ * still packaging. Webhooks are the primary backfill path; polling remains as a
+ * fallback for local dev without a webhook tunnel.
+ */
+export async function resolveMuxRecording(liveStreamId: string): Promise<RecordingBackfill | null> {
+  const mux = getMux();
+
+  const live = await mux.video.liveStreams.retrieve(liveStreamId);
+  const assetId = live.recent_asset_ids?.[0];
+  if (!assetId) return null;
+
+  const asset = await mux.video.assets.retrieve(assetId);
+  return extractRecordingFromAsset(asset);
+}
+
+/** Verify and parse a Mux webhook payload. Returns null if webhooks are not configured. */
+export async function unwrapMuxWebhook(body: string, headers: Headers) {
+  const secret = getMuxWebhookSecret();
+  if (!secret) return null;
+
+  const headerRecord: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    headerRecord[key] = value;
+  });
+
+  return getMux().webhooks.unwrap(body, headerRecord, secret);
+}
+
+/** Fetch auto-generated captions as plain text from a Mux text track. */
+export async function fetchMuxCaptionText(opts: {
+  playbackId: string;
+  trackId: string;
+}): Promise<string | null> {
+  const url = `https://stream.mux.com/${opts.playbackId}/text/${opts.trackId}.vtt`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+
+  const vtt = await res.text();
+  return vttToPlainText(vtt);
+}
+
+/** Strip WebVTT cues down to spoken text for search indexing. */
+export function vttToPlainText(vtt: string): string {
+  return vtt
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(
+      (line) =>
+        line.length > 0 &&
+        line !== "WEBVTT" &&
+        !line.startsWith("NOTE") &&
+        !/^\d+$/.test(line) &&
+        !/^\d{2}:\d{2}:\d{2}/.test(line),
+    )
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
 }

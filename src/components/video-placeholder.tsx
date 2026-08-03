@@ -23,7 +23,7 @@ export const CAMERA_BUBBLE =
 
 /** Full-stage container for the host while live — mirrors the viewer theatre pane. */
 export const HOST_STAGE =
-  "relative min-h-0 min-w-0 flex-1 bg-black max-lg:aspect-video max-lg:flex-none";
+  "relative min-h-0 min-w-0 flex-1 bg-black max-lg:aspect-video max-lg:min-h-[40vh] max-lg:flex-none lg:h-full";
 
 /** Host camera PiP on the stage (bottom-right, slightly larger than viewer bubble). */
 export const HOST_CAMERA_BUBBLE =

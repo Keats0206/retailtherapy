@@ -34,7 +34,7 @@ export type ShowSetupDraft = {
   socials: ShowSocials;
   /**
    * The challenge event this show is an attempt at, carried from
-   * `/host/setup?challenge=<slug>` through to the create-show call. The server
+   * `/host?challenge=<slug>` through to the create-show call. The server
    * resolves it to an id and rejects unknown or closed events, so a stale slug
    * here just means an ordinary show.
    */
@@ -129,6 +129,30 @@ export function parseShowSetup(input: unknown): ShowSetup | null {
       youtube: cleanHandle(socialsRaw.youtube),
     },
   };
+}
+
+/** Local name suggestions keyed by the most specific onboarding answer. */
+const NAME_POOLS: Record<string, string[]> = {
+  fall: ["layers incoming", "sweater weather watch", "the fall edit, live"],
+  winter: ["coat season opens", "cold snap cart", "the winter warm-up"],
+  spring: ["light layers only", "spring clean, new cart", "petal to the metal"],
+  summer: ["heatwave haul", "linen season live", "out of office fits"],
+  wedding: ["something borrowed live", "guest list dressing", "aisle be shopping"],
+  festival: ["festival fits forever", "dust and glitter run", "main stage wardrobe"],
+  holiday: ["holiday gifting spree", "wrapped and ready", "the gift list live"],
+  "back to school": ["first day fits", "locker room refresh", "study hall haul"],
+  "back to work": ["office era reboot", "commute-proof cart", "monday uniform hunt"],
+  "new job": ["first day energy", "new badge, new bag", "dress for the offer"],
+  season: ["four seasons, one cart", "weather permitting", "forecast: shopping"],
+  event: ["save the date, save the look", "occasion incoming", "rsvp: shopping"],
+  browsing: ["no agenda, all links", "just looking, kind of", "window shopping, live"],
+};
+
+/** Pick a default show title from onboarding answers when the host skips naming. */
+export function suggestShowName(draft: ShowSetupDraft): string {
+  const key = draft.detail?.toLowerCase() ?? draft.intent ?? "browsing";
+  const pool = NAME_POOLS[key] ?? NAME_POOLS.browsing;
+  return pool[Math.floor(Math.random() * pool.length)] ?? "Untitled show";
 }
 
 export function draftToSetup(draft: ShowSetupDraft): ShowSetup | null {

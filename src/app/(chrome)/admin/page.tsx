@@ -9,6 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getAdminUser, isSuperAdmin } from "@/lib/auth";
 import { listLiveShowsForAdmin, listPastShowsForAdmin } from "@/lib/shows";
+import { viewerShowPath } from "@/lib/show-urls";
 import { cn } from "@/lib/utils";
 
 export const metadata = {
@@ -123,7 +124,7 @@ export default async function AdminPage() {
                       </Badge>
                     </div>
                     <p className="truncate text-sm text-muted-foreground">
-                      /s/{show.slug}
+                      {viewerShowPath(show.slug)}
                       {show.hostName ? ` · ${show.hostName}` : null}
                       {show.startedAt
                         ? ` · ${formatShowDate(show.startedAt)}`
@@ -136,7 +137,7 @@ export default async function AdminPage() {
                     ) : null}
                   </div>
                   <Link
-                    href={`/s/${show.slug}`}
+                    href={viewerShowPath(show.slug)}
                     className="shrink-0 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                   >
                     View
@@ -190,7 +191,7 @@ export default async function AdminPage() {
                         ) : null}
                       </div>
                       <p className="truncate text-sm text-muted-foreground">
-                        /s/{show.slug}
+                        {viewerShowPath(show.slug)}
                         {show.hostName ? ` · ${show.hostName}` : null}
                         {show.endedAt ? ` · ${formatShowDate(show.endedAt)}` : null}
                       </p>
@@ -199,7 +200,7 @@ export default async function AdminPage() {
                       ) : null}
                     </div>
                     <Link
-                      href={`/s/${show.slug}`}
+                      href={viewerShowPath(show.slug)}
                       className="shrink-0 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                     >
                       View

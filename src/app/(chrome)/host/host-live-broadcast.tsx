@@ -1,15 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Track } from "livekit-client";
 import "@livekit/components-styles";
-import {
-  ExternalLink,
-  PictureInPicture,
-  PictureInPicture2,
-  Square,
-} from "lucide-react";
+import { Square } from "lucide-react";
 
 import {
   LiveBridgeProvider,
@@ -21,21 +15,24 @@ import {
   useRoomContext,
   useTracks,
 } from "@/lib/live";
+import { useMaybeLocalRoom } from "@/lib/live/local-room";
+import { LOCAL_STREAM } from "@/lib/live/mode";
 
-import { ChatPanel } from "@/components/chat-panel";
+
 import { EndShowDialog } from "@/components/end-show-dialog";
 import { FaceBubble } from "@/components/face-bubble";
 import { HostControlBar } from "@/components/host-control-bar";
+import { HostLiveSetupSteps } from "@/components/host-launch-screen";
 import { HostFloatingStudio } from "@/components/host-floating-studio";
-import { PollComposer } from "@/components/poll-composer";
-import { PollLaunchButton, PollOverlay } from "@/components/poll-overlay";
-import { HostLaunchScreen } from "@/components/host-launch-screen";
-import { ShareShowLinkButton } from "@/components/share-show-link-button";
 import { ShareSurfaceBanner } from "@/components/share-surface-banner";
 import { StudioLayout } from "@/components/studio-layout";
 import type { ChallengeStore } from "@/components/store-launcher";
-import { HostStageOverlays } from "@/components/watch-layout";
+import { ViewerStageOverlays } from "@/components/viewer-stage-overlays";
 import { Button } from "@/components/ui/button";
+import {
+  POST_LIVE_STEPS,
+  type PostLiveProgress,
+} from "@/components/go-live-steps";
 import {
   Tooltip,
   TooltipContent,
@@ -43,13 +40,14 @@ import {
 } from "@/components/ui/tooltip";
 import { useAutoPip } from "@/hooks/use-auto-pip";
 import { useDocumentPiP } from "@/hooks/use-document-pip";
+import { useGoLiveProgress } from "@/hooks/use-go-live-progress";
 import { useWindowPresence } from "@/hooks/use-window-presence";
 import { readResponseJson } from "@/lib/fetch-json";
 import { pipDebug } from "@/lib/pip-debug";
 import { mountPipApp, unmountPipApp } from "@/lib/pip-react-root";
 import { getShareDisplaySurface } from "@/lib/screen-share-surface";
 import { usePollState } from "@/lib/poll-state";
-import type { StreamSnapshot } from "@/lib/stream-store";
+import type { StreamSnapshot, StreamState } from "@/lib/stream-store";
 import { useStreamState } from "@/lib/stream-state";
 import {
   HOST_CAMERA_BUBBLE,
@@ -72,13 +70,11 @@ export type ShowSession = {
 
 export default function LiveBroadcast({
   session,
-  channel3Configured,
   challengeStore,
   onShowEnded,
   onDisconnected,
 }: {
   session: ShowSession;
-  channel3Configured: boolean;
   challengeStore?: ChallengeStore | null;
   onShowEnded: (slug: string) => void;
   onDisconnected: () => void;
@@ -108,12 +104,10 @@ export default function LiveBroadcast({
 
   return (
     // `data-hide-site-chrome` tells the (chrome) layout to drop the header and
-    // footer while we're live — the studio is full-bleed like /watch, but it's
-    // a phase of /host rather than its own route, so it can't opt out by living
-    // outside the route group. See globals.css.
+    // footer while we're live — the studio is full-bleed like /watch. See globals.css.
     <div
       data-hide-site-chrome
-      className="flex min-h-0 flex-1 flex-col lg:min-h-dvh"
+      className="flex min-h-0 flex-1 flex-col lg:h-dvh"
     >
       {studioError ? (
         <div
@@ -136,7 +130,6 @@ export default function LiveBroadcast({
       >
         <BroadcastStudio
           session={session}
-          channel3Configured={channel3Configured}
           challengeStore={challengeStore}
           onShowEnded={onShowEnded}
           onStudioError={setStudioError}
@@ -148,13 +141,11 @@ export default function LiveBroadcast({
 
 function BroadcastStudio({
   session,
-  channel3Configured,
   challengeStore,
   onShowEnded,
   onStudioError,
 }: {
   session: ShowSession;
-  channel3Configured: boolean;
   challengeStore?: ChallengeStore | null;
   onShowEnded: (slug: string) => void;
   onStudioError: (message: string | null) => void;
@@ -163,7 +154,9 @@ function BroadcastStudio({
     isHost: true,
     initialSnapshot: session.snapshot,
   });
+  const poll = usePollState({ isHost: true });
   const room = useRoomContext();
+  const localRoom = useMaybeLocalRoom();
   const bridge = useLiveBridge();
   const participants = useParticipants();
   const { chatMessages } = useChat();
@@ -192,8 +185,6 @@ function BroadcastStudio({
     (t) => t.participant.isLocal && t.source === Track.Source.ScreenShare,
   );
 
-  const viewerPath = `/s/${session.slug}`;
-
   const shareSurface = useMemo(() => {
     if (!sharing) return undefined;
     return getShareDisplaySurface(
@@ -202,11 +193,16 @@ function BroadcastStudio({
   }, [localShareTrack, sharing]);
 
   const reshareWindow = useCallback(async () => {
+    if (LOCAL_STREAM && localRoom) {
+      if (sharing) await localRoom.toggleSource(Track.Source.ScreenShare);
+      await localRoom.toggleSource(Track.Source.ScreenShare);
+      return;
+    }
     await room.localParticipant.setScreenShareEnabled(false);
     await room.localParticipant.setScreenShareEnabled(true, {
       video: { displaySurface: "window" },
     });
-  }, [room]);
+  }, [localRoom, room, sharing]);
 
   const openFloatingStudio = useCallback(async () => {
     await openPip({ width: 400, height: 720 });
@@ -359,9 +355,9 @@ function BroadcastStudio({
         <HostFloatingStudio
           room={room}
           stream={stream}
+          poll={poll}
           sharing={sharing}
           chatCount={chatMessages.length}
-          channel3Configured={channel3Configured}
           onEndShow={handleEndShow}
           pipSupported={pipSupported}
           endDialogOpen={endDialogOpen}
@@ -382,9 +378,9 @@ function BroadcastStudio({
     bridge,
     room,
     stream,
+    poll,
     sharing,
     chatMessages.length,
-    channel3Configured,
     handleEndShow,
     openFloatingStudio,
     pipSupported,
@@ -443,58 +439,54 @@ function BroadcastStudio({
     return () => clearInterval(id);
   }, [onStudioError, session.slug]);
 
+  const { storeOpened, markStoreOpened } = useGoLiveProgress();
+  const setupProgress: PostLiveProgress = {
+    store: storeOpened,
+    share: sharing,
+  };
+  const setupDone = POST_LIVE_STEPS.every((step) => setupProgress[step.id]);
+
   return (
     <>
-      {/* Sharing the show is the one action that matters in every phase, so it
-          sits above the sharing / not-sharing split rather than inside either
-          branch — it stays put when the host starts or stops sharing instead of
-          disappearing with the stage. z-60 clears the launch screen's z-50. */}
-      <div className="fixed right-3 top-3 z-[60] lg:right-4 lg:top-4">
-        <ShareShowLinkButton slug={session.slug} compact />
-      </div>
-
-      {!sharing ? (
-        <HostLaunchScreen
-          live
-          slug={session.slug}
-          title={session.title}
-          room={room}
-          sharing={sharing}
-          onEndShow={handleEndShow}
-          pipSupported={pipSupported}
-          challengeStore={challengeStore}
-        />
-      ) : (
-        /* Sharing: this tab is the confidence monitor. It shows exactly what
-           the audience is watching — the shared window with the host's face
-           riding in the corner — rather than a "you're live" holding page. The
-           floating window is for when the host is somewhere else entirely. */
-        <>
+      <div className="flex min-h-0 flex-1 flex-col">
+        {sharing ? (
           <ShareSurfaceBanner
             surface={shareSurface}
+            slug={session.slug}
             onReshare={
               shareSurface === "browser" ? () => void reshareWindow() : undefined
             }
           />
-          <StudioLayout
-            stream={stream}
-            channel3Configured={channel3Configured}
-            chatCount={chatMessages.length}
-            stage={
-              <HostStage
-                viewerPath={viewerPath}
+        ) : null}
+        <StudioLayout
+          stream={stream}
+          poll={poll}
+          chatCount={chatMessages.length}
+          setup={
+            !setupDone ? (
+              <HostLiveSetupSteps
+                slug={session.slug}
+                room={room}
                 sharing={sharing}
-                onEndShow={handleEndShow}
                 pipSupported={pipSupported}
-                pipIsOpen={pipIsOpen}
-                onPopOut={() => void openFloatingStudio()}
-                onClosePopOut={closePip}
+                challengeStore={challengeStore}
+                progress={setupProgress}
+                onStoreOpened={markStoreOpened}
               />
-            }
-            chat={<ChatPanel variant="rail" className="min-h-0 flex-1" />}
-          />
-        </>
-      )}
+            ) : undefined
+          }
+          stage={
+            <HostStage
+              room={room}
+              stream={stream}
+              poll={poll}
+              sharing={sharing}
+              onEndShow={handleEndShow}
+              pipSupported={pipSupported}
+            />
+          }
+        />
+      </div>
 
       <EndShowDialog
         open={endDialogOpen}
@@ -512,25 +504,20 @@ function BroadcastStudio({
 }
 
 function HostStage({
-  viewerPath,
+  room,
+  stream,
+  poll,
   sharing,
   onEndShow,
   pipSupported,
-  pipIsOpen,
-  onPopOut,
-  onClosePopOut,
 }: {
-  viewerPath: string;
+  room: ReturnType<typeof useRoomContext>;
+  stream: StreamState;
+  poll: ReturnType<typeof usePollState>;
   sharing: boolean;
   onEndShow: () => void;
   pipSupported: boolean;
-  pipIsOpen: boolean;
-  onPopOut: () => void;
-  onClosePopOut: () => void;
 }) {
-  const [pollComposerOpen, setPollComposerOpen] = useState(false);
-  const poll = usePollState({ isHost: true });
-
   const tracks = useTracks(
     [Track.Source.ScreenShare, Track.Source.Camera],
     { onlySubscribed: false },
@@ -540,10 +527,8 @@ function HostStage({
   const camera = local.find((t) => t.source === Track.Source.Camera);
 
   return (
-    <div className={cn(HOST_STAGE, "max-lg:min-h-[50vh]")}>
-      {!share ? (
-        <VideoPlaceholder>Share your screen to start</VideoPlaceholder>
-      ) : (
+    <div className={cn(HOST_STAGE, "h-full min-h-0 w-full")}>
+      {share ? (
         <div className="relative h-full w-full">
           <VideoTrack
             trackRef={share}
@@ -551,11 +536,13 @@ function HostStage({
           />
           {camera && <FaceBubble trackRef={camera} className={HOST_CAMERA_BUBBLE} />}
         </div>
+      ) : camera ? (
+        <VideoTrack trackRef={camera} className="h-full w-full object-cover" />
+      ) : (
+        <VideoPlaceholder>Waiting for the host to start…</VideoPlaceholder>
       )}
 
-      {/* Right padding leaves room for the permanent "Share the show" fixture
-          that floats above this bar. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 bg-gradient-to-b from-black/70 via-black/30 to-transparent p-3 pr-36 sm:p-4 sm:pr-40">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 bg-gradient-to-b from-black/70 via-black/30 to-transparent p-3 sm:p-4">
         <div className="pointer-events-auto flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-live px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-live-foreground">
             <span className="size-1.5 animate-pulse rounded-full bg-live-foreground/80" />
@@ -565,45 +552,6 @@ function HostStage({
         </div>
 
         <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-2">
-          {pipSupported ? (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={pipIsOpen ? onClosePopOut : onPopOut}
-                    aria-label={
-                      pipIsOpen
-                        ? "Close floating controls"
-                        : "Pop out floating controls"
-                    }
-                    className="size-9 rounded-full bg-black/50 text-white backdrop-blur-sm hover:bg-black/70"
-                  >
-                    {pipIsOpen ? (
-                      <PictureInPicture2 className="size-4" />
-                    ) : (
-                      <PictureInPicture className="size-4" />
-                    )}
-                  </Button>
-                }
-              />
-              <TooltipContent>
-                {pipIsOpen
-                  ? "Floating controls are open — they follow you to the store window"
-                  : "Pop out controls so they follow you to the store window"}
-              </TooltipContent>
-            </Tooltip>
-          ) : null}
-          <PollLaunchButton onClick={() => setPollComposerOpen(true)} />
-          <Link
-            href={viewerPath}
-            target="_blank"
-            aria-label="Open viewer page"
-            className="inline-flex size-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
-          >
-            <ExternalLink className="size-4" />
-          </Link>
           <Tooltip>
             <TooltipTrigger
               render={
@@ -612,7 +560,7 @@ function HostStage({
                   size="icon"
                   onClick={onEndShow}
                   aria-label="End show"
-                  className="size-9 rounded-full border border-destructive/50 bg-black/50 text-destructive backdrop-blur-sm hover:bg-destructive hover:text-destructive-foreground"
+                  className="size-9 rounded-none border border-destructive/50 bg-black/50 text-destructive backdrop-blur-sm hover:bg-destructive hover:text-destructive-foreground"
                 >
                   <Square className="size-4 fill-current" />
                 </Button>
@@ -623,30 +571,12 @@ function HostStage({
         </div>
       </div>
 
-      <HostStageOverlays />
-
-      {poll.poll && (
-        <PollOverlay
-          poll={poll.poll}
-          myVote={poll.myVote}
-          role="creator"
-          onDismiss={poll.dismiss}
-          onNewVote={() => {
-            poll.dismiss();
-            setPollComposerOpen(true);
-          }}
-        />
-      )}
-
-      <PollComposer
-        open={pollComposerOpen}
-        onOpenChange={setPollComposerOpen}
-        onLaunch={poll.start}
-      />
+      <ViewerStageOverlays stream={stream} poll={poll} role="creator" />
 
       <div className={HOST_CONTROL_BAR}>
         <div className={HOST_CONTROL_BAR_INNER}>
           <HostControlBar
+            room={room}
             sharing={sharing}
             onEndShow={onEndShow}
             pipSupported={pipSupported}

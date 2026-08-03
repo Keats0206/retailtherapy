@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/tooltip";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import { readResponseJson } from "@/lib/fetch-json";
+import { viewerShowPath } from "@/lib/show-urls";
 
 export function DeleteShowButton({
   slug,
@@ -104,7 +105,7 @@ export function DeleteShowButton({
             <DialogDescription>
               &ldquo;{title}&rdquo; and its recap will be removed
               {isAdmin ? " for everyone" : " from your home"}. The viewer link
-              at /s/{slug} will stop working.
+              at {viewerShowPath(slug)} will stop working.
             </DialogDescription>
           </DialogHeader>
 

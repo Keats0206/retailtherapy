@@ -20,6 +20,7 @@ import { VideoFrame, VideoPlaceholder } from "@/components/video-placeholder";
 import { formatCount, formatDuration } from "@/lib/format";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import type { EndedShowRecap } from "@/lib/show-recap";
+import { viewerShowPath } from "@/lib/show-urls";
 import { cn } from "@/lib/utils";
 
 const MuxPlayer = dynamic(() => import("@mux/mux-player-react"), {
@@ -47,7 +48,7 @@ export function ShowEndedCreator({
   onStartNew?: () => void;
 }) {
   const votes = tallyVotes(recap);
-  const viewerPath = `/s/${recap.slug}`;
+  const viewerPath = viewerShowPath(recap.slug);
 
   const stats = [
     { label: "Peak viewers", value: formatCount(recap.peakViewers) },
@@ -79,7 +80,7 @@ export function ShowEndedCreator({
       <div className="grid gap-4 lg:grid-cols-2">
         <PostShowProcessing
           trailCount={recap.snapshot.trail.length}
-          recordingReady={Boolean(recap.muxPlaybackId)}
+          recordingStatus={recap.recordingStatus}
         />
         <HostExitSurvey slug={recap.slug} initialRating={initialRating} />
       </div>
@@ -110,7 +111,16 @@ export function ShowEndedCreator({
                   playbackId={recap.muxPlaybackId}
                   className="h-full w-full"
                   streamType="on-demand"
+                  preload="auto"
                 />
+              ) : recap.recordingStatus === "unavailable" ? (
+                <VideoPlaceholder>
+                  No recording was captured for this show
+                </VideoPlaceholder>
+              ) : recap.recordingStatus === "failed" ? (
+                <VideoPlaceholder>
+                  Recording packaging failed — trail is still live
+                </VideoPlaceholder>
               ) : (
                 <VideoPlaceholder>
                   Recording processing — ready in a few minutes

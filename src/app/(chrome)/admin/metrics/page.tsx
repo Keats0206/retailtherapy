@@ -247,7 +247,7 @@ export default async function AdminMetricsPage({
           />
         </div>
 
-        <div className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+        <div className="flex flex-col gap-3 rounded-none bg-card p-4 ring-1 ring-foreground/10">
           <span className="micro text-muted-foreground">Buy vs. skip</span>
           <SplitMeter
             left={{ label: "Buy", value: engagement.buyVotes }}

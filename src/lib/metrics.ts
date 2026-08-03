@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { countProspectsByStatus } from "@/lib/creator-outreach";
 import { db } from "@/lib/db";
+import { getMetricsExcludedHostIds } from "@/lib/excluded-hosts";
 import type { OutreachCounts } from "@/lib/outreach-status";
 import { streamProducts, streams, waitlistSignups } from "@/lib/db/schema";
 import type { StreamSnapshot } from "@/lib/stream-store";
@@ -36,18 +37,9 @@ export const MAX_SESSION_HOURS = 4;
  * Hosts whose shows never count. `npm run smoke` writes a real `streams` row
  * as `smoke-test-user` against the same database, and because that row is
  * abandoned rather than ended it lands at the full session cap every time —
- * enough to dominate the headline. Extend with `METRICS_EXCLUDED_HOST_IDS`
- * (comma-separated Clerk ids) as more test accounts appear.
+ * enough to dominate the headline. See `lib/excluded-hosts.ts` for the full
+ * allowlist and env vars.
  */
-const BUILTIN_EXCLUDED_HOST_IDS = ["smoke-test-user"];
-
-function excludedHostIds(): Set<string> {
-  const fromEnv = (process.env.METRICS_EXCLUDED_HOST_IDS ?? "")
-    .split(",")
-    .map((id) => id.trim())
-    .filter(Boolean);
-  return new Set([...BUILTIN_EXCLUDED_HOST_IDS, ...fromEnv]);
-}
 
 const MAX_SESSION_MS = MAX_SESSION_HOURS * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
@@ -223,7 +215,7 @@ export async function getMetrics(
   // Only sessions that actually started are creator hours. A "scheduled" row
   // that never went live has no start and would otherwise read as zero-length
   // noise in the show counts.
-  const excluded = excludedHostIds();
+  const excluded = getMetricsExcludedHostIds();
   const started = sessions.filter(
     (s): s is SessionRow & { startedAt: Date } =>
       s.startedAt !== null && !excluded.has(s.hostUserId),

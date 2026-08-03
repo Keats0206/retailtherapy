@@ -233,14 +233,14 @@ function ChallengePoster({
           <span aria-hidden className="text-6xl sm:text-7xl">
             {challenge.emoji ?? "🛍️"}
           </span>
-          {/* The offer, set like a poster headline — the budget and the clock
-              are what a host is actually being pitched. */}
+          {/* The offer, set like a poster headline — the budget and the minimum
+              show length are what a host is actually being pitched. */}
           <span className="absolute inset-x-0 bottom-0 flex items-baseline gap-2 p-3 sm:p-4">
             <span className="text-2xl font-medium tracking-tight text-foreground sm:text-3xl">
               {budget}
             </span>
             {duration ? (
-              <span className="micro text-muted-foreground">in {duration}</span>
+              <span className="micro text-muted-foreground">{duration}</span>
             ) : null}
           </span>
         </>

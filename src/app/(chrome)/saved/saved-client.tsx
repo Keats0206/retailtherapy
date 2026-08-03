@@ -16,6 +16,7 @@ import {
 } from "@/lib/format";
 import type { SavedProduct } from "@/lib/saved";
 import type { DiscoveryShow } from "@/lib/shows";
+import { viewerShowPath } from "@/lib/show-urls";
 import { cn } from "@/lib/utils";
 
 /**
@@ -148,7 +149,7 @@ function SavedShowCard({ show }: { show: DiscoveryShow }) {
   return (
     <div className="group relative">
       <Link
-        href={`/s/${show.slug}`}
+        href={viewerShowPath(show.slug)}
         className="flex w-full flex-col gap-3 rounded-none bg-card p-2 text-left outline-none ring-1 ring-transparent transition-shadow hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring"
       >
         <ShowMosaic
@@ -242,7 +243,7 @@ function SavedItemCard({ entry }: { entry: SavedProduct }) {
 
         {source && (
           <Link
-            href={`/s/${source.slug}`}
+            href={viewerShowPath(source.slug)}
             className="mt-1 truncate text-xs text-muted-foreground underline-offset-2 hover:underline"
           >
             From {source.host}&apos;s {source.title}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { ExternalLink, Store } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -60,8 +61,7 @@ export function StoreLauncher({
             </span>
           </Button>
           <span className="micro text-muted-foreground">
-            Opens in your shopping window. More stores under Store ideas,
-            bottom right.
+            Opens in your shopping window. More stores below.
           </span>
         </>
       ) : (
@@ -91,6 +91,49 @@ export function StoreLauncher({
  * the host only wants it when they don't already know where they're shopping,
  * so it collapses into one button instead of taking up console space.
  */
+function useMenuPosition(
+  anchorRef: React.RefObject<HTMLElement | null>,
+  open: boolean,
+  placement: "up" | "down",
+) {
+  const [style, setStyle] = useState<CSSProperties>({});
+
+  useEffect(() => {
+    if (!open || !anchorRef.current) return;
+
+    function update() {
+      const el = anchorRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setStyle(
+        placement === "down"
+          ? {
+              position: "fixed",
+              top: rect.bottom + 8,
+              left: rect.left,
+              zIndex: 50,
+            }
+          : {
+              position: "fixed",
+              bottom: window.innerHeight - rect.top + 8,
+              left: rect.left,
+              zIndex: 50,
+            },
+      );
+    }
+
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open, placement, anchorRef]);
+
+  return style;
+}
+
 export function StoreIdeasMenu({
   onOpened,
   className,
@@ -107,12 +150,21 @@ export function StoreIdeasMenu({
   placement?: "up" | "down";
 }) {
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLUListElement>(null);
+  const menuStyle = useMenuPosition(buttonRef, open, placement);
 
   useEffect(() => {
     if (!open) return;
     function onPointerDown(e: PointerEvent) {
-      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (
+        buttonRef.current?.contains(target) ||
+        menuRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setOpen(false);
     }
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
@@ -125,9 +177,37 @@ export function StoreIdeasMenu({
     };
   }, [open]);
 
+  const menu =
+    open && typeof document !== "undefined" ? (
+      <ul
+        ref={menuRef}
+        role="menu"
+        style={menuStyle}
+        className="max-h-80 w-56 overflow-y-auto border border-border bg-background p-1 shadow-lg"
+      >
+        {WOMENS_CLOTHING_STORES.map((store) => (
+          <li key={store.url}>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                openStore(store.url, store.name, onOpened);
+                setOpen(false);
+              }}
+              className="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-foreground/8"
+            >
+              <span className="truncate">{store.name}</span>
+              <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+            </button>
+          </li>
+        ))}
+      </ul>
+    ) : null;
+
   return (
-    <div ref={containerRef} className={cn("relative", className)}>
+    <div className={cn("relative", className)}>
       <Button
+        ref={buttonRef}
         type="button"
         variant={variant}
         size={size}
@@ -140,34 +220,7 @@ export function StoreIdeasMenu({
         {label}
       </Button>
 
-      {open ? (
-        <ul
-          role="menu"
-          className={cn(
-            "absolute z-50 max-h-80 w-56 overflow-y-auto border border-border bg-background p-1 shadow-lg",
-            placement === "up"
-              ? "bottom-full right-0 mb-2"
-              : "top-full left-0 mt-2",
-          )}
-        >
-          {WOMENS_CLOTHING_STORES.map((store) => (
-            <li key={store.url}>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  openStore(store.url, store.name, onOpened);
-                  setOpen(false);
-                }}
-                className="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-foreground/8"
-              >
-                <span className="truncate">{store.name}</span>
-                <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {menu ? createPortal(menu, document.body) : null}
     </div>
   );
 }

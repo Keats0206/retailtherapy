@@ -2,9 +2,11 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 import { unstable_cache } from "next/cache";
-import { and, desc, eq, lt, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, notInArray, or, sql } from "drizzle-orm";
 
 import { db, products, streamProducts, streams } from "@/lib/db";
+import { getDiscoveryExclusions } from "@/lib/excluded-hosts";
+import type { DiscoveryExclusions } from "@/lib/excluded-hosts";
 import type { Stream } from "@/lib/db";
 import { startRoomRecording, stopRoomRecording } from "@/lib/livekit";
 import {
@@ -14,7 +16,9 @@ import {
   deleteMuxAsset,
   deleteMuxLiveStream,
   resolveMuxRecording,
+  type RecordingBackfill,
 } from "@/lib/mux";
+import { indexShowForSearch } from "@/lib/show-search";
 import type { ShowSetup } from "@/lib/show-setup";
 import { EMPTY, type StreamSnapshot } from "@/lib/stream-store";
 import { normalizeSnapshot, spotlightProductId } from "@/lib/interaction-models";
@@ -110,6 +114,58 @@ export async function getShowByRoomName(roomName: string): Promise<Show | null> 
   return show ?? null;
 }
 
+export async function getShowByMuxLiveStreamId(
+  liveStreamId: string,
+): Promise<Show | null> {
+  const [show] = await db
+    .select()
+    .from(streams)
+    .where(eq(streams.muxLiveStreamId, liveStreamId))
+    .limit(1);
+  return show ?? null;
+}
+
+export async function getShowByMuxAssetId(assetId: string): Promise<Show | null> {
+  const [show] = await db
+    .select()
+    .from(streams)
+    .where(eq(streams.muxAssetId, assetId))
+    .limit(1);
+  return show ?? null;
+}
+
+/** Write Mux playback ids onto a show once the asset is ready. */
+export async function backfillRecording(
+  show: Show,
+  recording: RecordingBackfill,
+): Promise<Show> {
+  if (show.muxPlaybackId) return show;
+
+  const [updated] = await db
+    .update(streams)
+    .set({
+      muxAssetId: recording.assetId,
+      muxPlaybackId: recording.playbackId,
+      muxDurationSeconds:
+        recording.duration != null ? Math.round(recording.duration) : null,
+      updatedAt: new Date(),
+    })
+    .where(eq(streams.id, show.id))
+    .returning();
+
+  return updated ?? show;
+}
+
+export async function storeShowTranscript(
+  slug: string,
+  transcript: string,
+): Promise<void> {
+  await db
+    .update(streams)
+    .set({ transcript, updatedAt: new Date() })
+    .where(eq(streams.slug, slug));
+}
+
 /** Public discovery cards for the homepage. */
 export type DiscoveryShow = {
   slug: string;
@@ -201,7 +257,8 @@ export function toDiscoveryShow(
  */
 const listLiveShowsCached = unstable_cache(
   async (limit: number) => {
-    const rows = await listLiveShowCards(limit);
+    const excluded = await getDiscoveryExclusions();
+    const rows = await listLiveShowCards(limit, excluded);
     return rows.map((show) => toDiscoveryShow(show));
   },
   ["list-live-shows"],
@@ -251,26 +308,49 @@ async function listLiveShowRows(limit: number): Promise<Show[]> {
     .limit(limit);
 }
 
-function listLiveShowCards(limit: number) {
+function discoveryWhere(
+  status: "live" | "ended",
+  excluded: DiscoveryExclusions,
+) {
+  const filters = [eq(streams.status, status)];
+
+  if (excluded.hostIds.size > 0) {
+    filters.push(notInArray(streams.hostUserId, [...excluded.hostIds]));
+  }
+
+  if (excluded.hostNames.size > 0) {
+    filters.push(
+      or(
+        isNull(streams.hostName),
+        notInArray(streams.hostName, [...excluded.hostNames]),
+      )!,
+    );
+  }
+
+  return filters.length === 1 ? filters[0] : and(...filters);
+}
+
+function listLiveShowCards(limit: number, excluded: DiscoveryExclusions) {
   return db
     .select(showCardColumns)
     .from(streams)
-    .where(eq(streams.status, "live"))
+    .where(discoveryWhere("live", excluded))
     .orderBy(desc(streams.startedAt))
     .limit(limit);
 }
 
-function listEndedShowCards(limit: number) {
+function listEndedShowCards(limit: number, excluded: DiscoveryExclusions) {
   return db
     .select(showCardColumns)
     .from(streams)
-    .where(eq(streams.status, "ended"))
+    .where(discoveryWhere("ended", excluded))
     .orderBy(desc(streams.endedAt))
     .limit(limit);
 }
 
 export async function listEndedShows(limit = 24): Promise<DiscoveryShow[]> {
-  const rows = await listEndedShowCards(limit);
+  const excluded = await getDiscoveryExclusions();
+  const rows = await listEndedShowCards(limit, excluded);
   return rows.map((show) =>
     toDiscoveryShow(show, { placeholderLabel: "RECAP", includeEndedAt: true }),
   );
@@ -298,6 +378,29 @@ export async function getLiveShowForHost(
 }
 
 /**
+ * Design mode never joins a LiveKit room, so the room_finished webhook never
+ * fires and tab-close keepalive is the only cleanup — which often doesn't run.
+ * End orphaned design-mode live rows (no Mux stream was provisioned) so /host
+ * doesn't keep surfacing a ghost show from a previous dev session.
+ *
+ * Skips shows touched in the last 30s so a go-live → /host redirect isn't
+ * ended mid-flight.
+ */
+export async function endDesignModeOrphansForHost(
+  hostUserId: string,
+): Promise<void> {
+  if (!DESIGN_MODE) return;
+
+  const existing = await getLiveShowForHost(hostUserId);
+  if (!existing || existing.muxLiveStreamId) return;
+
+  const ageMs = Date.now() - existing.updatedAt.getTime();
+  if (ageMs < 30_000) return;
+
+  await endShow(existing.slug, hostUserId, snapshotOf(existing));
+}
+
+/**
  * Hours without a snapshot update before a live show is considered stale. This
  * is only a backstop now — the LiveKit `room_finished` webhook ends shows
  * within minutes of the host leaving. It catches the case where the webhook
@@ -322,9 +425,15 @@ export async function createShow(opts: {
 }): Promise<Show> {
   const existing = await getLiveShowForHost(opts.hostUserId);
   if (existing) {
-    throw new Error(
-      "You already have a live show. Open studio to reconnect, or end it first.",
-    );
+    // Design-mode shows never get a Mux stream and never join a real room, so
+    // a leftover `live` row is always an orphan — end it and start fresh.
+    if (DESIGN_MODE && !existing.muxLiveStreamId) {
+      await endShow(existing.slug, opts.hostUserId, snapshotOf(existing));
+    } else {
+      throw new Error(
+        "You already have a live show. Open studio to reconnect, or end it first.",
+      );
+    }
   }
 
   const slug = generateSlug();
@@ -466,6 +575,7 @@ export async function endShow(
       status: "ended",
       endedAt: new Date(),
       snapshot: final,
+      recordingCaptured: !!show.egressId,
       // The key has no use once the broadcast is over, and it is a credential.
       muxStreamKey: null,
       egressId: null,
@@ -487,6 +597,8 @@ export async function endShow(
   } catch {
     // The row is already ended; relational trail backfill is best-effort.
   }
+
+  void indexShowForSearch(updated.slug).catch(() => {});
 
   return updated;
 }
@@ -664,7 +776,7 @@ export function toProduct(
 /**
  * Fills in the Mux asset for a finished show, once Mux has packaged it.
  *
- * Called on render of /s/<slug>, so the first viewer after processing finishes
+ * Called on render of /show/<slug>, so the first viewer after processing finishes
  * is the one who backfills it and every viewer after that reads it straight
  * from the row. Returns the show unchanged if the recording is not ready yet —
  * the page renders a "still processing" state and polls.
@@ -745,7 +857,7 @@ export async function resolveRecording(show: Show): Promise<Show> {
   if (show.muxPlaybackId) return show;
   if (show.status !== "ended" || !show.muxLiveStreamId) return show;
 
-  let recording: Awaited<ReturnType<typeof resolveMuxRecording>> = null;
+  let recording: RecordingBackfill | null = null;
   try {
     recording = await resolveMuxRecording(show.muxLiveStreamId);
   } catch {
@@ -753,15 +865,5 @@ export async function resolveRecording(show: Show): Promise<Show> {
   }
   if (!recording) return show;
 
-  const [updated] = await db
-    .update(streams)
-    .set({
-      muxAssetId: recording.assetId,
-      muxPlaybackId: recording.playbackId,
-      updatedAt: new Date(),
-    })
-    .where(eq(streams.id, show.id))
-    .returning();
-
-  return updated ?? show;
+  return backfillRecording(show, recording);
 }

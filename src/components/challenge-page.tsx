@@ -42,7 +42,7 @@ export function ChallengePage({ challenge }: { challenge: ChallengeDetail }) {
       {/* What taking this on actually involves, before the brief itself. */}
       <ChallengeSteps />
 
-      <section className="flex flex-col overflow-hidden rounded-3xl bg-card ring-1 ring-foreground/8">
+      <section className="flex flex-col overflow-hidden rounded-none bg-card ring-1 ring-foreground/8">
         {challenge.brandLogoUrl ? (
           /* The brand's artwork, set as a banner — on the detail page there is
              room to let the shoot carry the pitch before the brief does. */
@@ -57,7 +57,7 @@ export function ChallengePage({ challenge }: { challenge: ChallengeDetail }) {
         <div className="flex flex-col gap-5 p-6 sm:p-8">
           <div className="flex items-start justify-between gap-4">
             <span
-              className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-muted text-2xl"
+              className="flex size-14 shrink-0 items-center justify-center rounded-none bg-muted text-2xl"
               aria-hidden
             >
               {challenge.emoji ?? "🛍️"}
@@ -91,7 +91,7 @@ export function ChallengePage({ challenge }: { challenge: ChallengeDetail }) {
               <div className="flex flex-col gap-0.5">
                 <dt className="micro text-muted-foreground">
                   <Clock className="mr-1 inline size-3" />
-                  On the clock
+                  Minimum show
                 </dt>
                 <dd className="text-base font-medium">{duration}</dd>
               </div>

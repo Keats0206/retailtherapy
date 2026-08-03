@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useVisiblePoll } from "@/hooks/use-visible-poll";
 import { readResponseJson } from "@/lib/fetch-json";
 import type { PublicShow } from "@/lib/show-public";
+import { viewerShowPath } from "@/lib/show-urls";
 
 const POLL_MS = 5_000;
 
@@ -21,11 +22,11 @@ export default function WaitroomClient({
 
   // The show may already have started (or finished) by the time this renders.
   useEffect(() => {
-    if (show.status !== "scheduled") router.replace(`/s/${show.slug}`);
+    if (show.status !== "scheduled") router.replace(viewerShowPath(show.slug));
   }, [router, show.slug, show.status]);
 
   // Poll the show's status. The instant the host goes live (or the show has
-  // already ended and only its replay remains), hand off to /s/<slug>. Pauses
+  // already ended and only its replay remains), hand off to /show/<slug>. Pauses
   // while the tab is hidden and catches up on return, so a waitroom left open
   // in a background tab is free — and still hands off the moment it's refocused.
   const checkStatus = useCallback(async () => {
@@ -38,7 +39,7 @@ export default function WaitroomClient({
       return;
     }
     if (next.status !== "scheduled") {
-      router.replace(`/s/${next.slug}`);
+      router.replace(viewerShowPath(next.slug));
     } else {
       setShow(next);
     }

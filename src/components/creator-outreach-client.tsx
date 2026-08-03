@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   OUTREACH_STATUSES,
   OUTREACH_STATUS_LABELS,
@@ -541,7 +542,7 @@ function ProspectRow({
 
             <label className="flex flex-col gap-1.5">
               <span className="micro text-muted-foreground">Body</span>
-              <textarea
+              <Textarea
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
                 onBlur={() => {
@@ -551,7 +552,7 @@ function ProspectRow({
                 }}
                 rows={9}
                 placeholder="Hit Draft to have a first version written for you."
-                className="w-full rounded-2xl border border-input bg-transparent px-4 py-3 text-sm leading-relaxed outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                className="text-sm leading-relaxed"
               />
             </label>
 
@@ -561,7 +562,7 @@ function ProspectRow({
                 <select
                   value={prospect.status}
                   onChange={(event) => onPatch({ status: event.target.value })}
-                  className="rounded-full border border-input bg-transparent px-3 py-1.5 text-sm outline-none focus-visible:border-ring"
+                  className="rounded-none border border-input bg-transparent px-3 py-1.5 text-sm outline-none focus-visible:border-ring"
                 >
                   {OUTREACH_STATUSES.map((status) => (
                     <option key={status} value={status}>

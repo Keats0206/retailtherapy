@@ -8,8 +8,8 @@ import type { Challenge } from "@/lib/db";
 import { toDiscoveryShow, type DiscoveryShow } from "@/lib/shows";
 
 /**
- * Challenges are brand-sponsored launch events: a budget, a clock, and a store
- * ("15 minutes to spend $500 at Net-a-Porter"). A host goes live to attempt
+ * Challenges are brand-sponsored launch events: a budget, a minimum show length,
+ * and a store ("Spend $500 at Net-a-Porter"). A host goes live to attempt
  * one; the show that results carries `streams.challenge_id` back to it.
  *
  * The rows are curated (see `scripts/seed-challenges.ts`), so everything here

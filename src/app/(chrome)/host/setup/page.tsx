@@ -1,7 +1,13 @@
+import { redirect } from "next/navigation";
+
 import { getSignedInUser } from "@/lib/auth";
 import { getChallengeBySlug } from "@/lib/challenges";
-import { getLiveShowForHost } from "@/lib/shows";
-import { redirect } from "next/navigation";
+import { LOCAL_STREAM } from "@/lib/live/mode";
+import {
+  endDesignModeOrphansForHost,
+  getLiveShowForHost,
+} from "@/lib/shows";
+import { hostShowPath } from "@/lib/show-urls";
 
 import HostSetupClient from "./setup-client";
 
@@ -10,13 +16,8 @@ export const metadata = {
 };
 
 /**
- * Creator onboarding before go-live. Collects shopping intent, items, show
- * name, and socials, then hands off to /host for camera check + Go live.
- * Answers are persisted on the stream row when the show is created.
- *
- * `?challenge=<slug>` arrives from a challenge card. The event is resolved
- * here rather than trusted from the query string, so the brief shown to the
- * host is the real one and a bad slug simply falls through to a normal setup.
+ * Creator setup before go-live. Collects shopping intent and show name, then
+ * starts the show and hands off to /host/<slug> for the live studio.
  */
 export default async function HostSetupPage({
   searchParams,
@@ -30,8 +31,10 @@ export default async function HostSetupPage({
     getLiveShowForHost(user.id),
     searchParams,
   ]);
-  if (liveShow) {
-    redirect(`/host?slug=${liveShow.slug}`);
+  if (LOCAL_STREAM) {
+    await endDesignModeOrphansForHost(user.id);
+  } else if (liveShow) {
+    redirect(hostShowPath(liveShow.slug));
   }
 
   const challenge = challengeSlug
@@ -47,7 +50,6 @@ export default async function HostSetupPage({
               title: challenge.title,
               prompt: challenge.prompt,
               brandName: challenge.brandName,
-              // Already falls back to the brand domain in `toChallengeCard`.
               storeUrl: challenge.storeUrl,
               emoji: challenge.emoji,
               budget: challenge.budget,

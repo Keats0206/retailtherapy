@@ -60,7 +60,7 @@ export function LivePreviewMock({ className }: { className?: string }) {
                 // Packshots are cut-outs, so they sit *inside* the tile rather
                 // than filling it — contain, on the store's own white.
                 "relative aspect-square overflow-hidden bg-white",
-                i === 1 ? "ring-2 ring-live" : "ring-1 ring-border",
+                i === 1 ? "ring-2 ring-foreground" : "ring-1 ring-border",
               )}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -72,7 +72,7 @@ export function LivePreviewMock({ className }: { className?: string }) {
                 className="h-full w-full object-contain p-2"
               />
               {i === 1 ? (
-                <span className="micro absolute inset-x-0 bottom-0 bg-live px-1.5 py-1 text-center text-[9px] leading-none text-live-foreground">
+                <span className="micro absolute inset-x-0 bottom-0 bg-foreground px-1.5 py-1 text-center text-[9px] leading-none text-background">
                   Pinned
                 </span>
               ) : null}
@@ -102,7 +102,7 @@ export function LivePreviewMock({ className }: { className?: string }) {
 
       {/* The point of the whole illustration: a person, on camera, shopping. */}
       <div className="absolute bottom-3 right-3 flex flex-col items-center gap-1.5">
-        <span className="relative block size-20 overflow-hidden bg-black ring-2 ring-live sm:size-24">
+        <span className="relative block size-20 overflow-hidden rounded-full bg-black ring-2 ring-live sm:size-24">
           {/* Drawn portrait sits underneath as the fallback, so the bubble still
               reads as a person if the photo is missing or still loading. */}
           <HostPortrait />

@@ -258,12 +258,12 @@ export default function HeroScatterMotion() {
             variant="ghost"
             size="micro"
             className="text-muted-foreground"
-            render={<Link href="/apply" />}
+            render={<Link href="/creators" />}
             onClick={() =>
               trackEvent(AnalyticsEvent.CTA_APPLY, { area: "hero" })
             }
           >
-            Apply to host &rarr;
+            Join the creator waitlist &rarr;
           </Button>
         </motion.div>
       </motion.div>

@@ -44,9 +44,9 @@ function HeroScatterStatic() {
             variant="ghost"
             size="micro"
             className="text-muted-foreground"
-            render={<Link href="/apply" />}
+            render={<Link href="/creators" />}
           >
-            Join the host waitlist &rarr;
+            Join the creator waitlist &rarr;
           </Button>
         </div>
       </div>

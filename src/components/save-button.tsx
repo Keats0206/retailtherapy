@@ -7,6 +7,7 @@ import { Bookmark } from "lucide-react";
 import { useSaved } from "@/components/saved-provider";
 import { Button } from "@/components/ui/button";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import { slugFromViewerPath } from "@/lib/show-urls";
 import type { Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -56,7 +57,7 @@ export function SaveButton({
   // No provider (prototype trees) or nothing addressable to save.
   if (!saved || (!product?.id && !showSlug)) return null;
 
-  const source = sourceSlug ?? slugFromPath(pathname);
+  const source = sourceSlug ?? slugFromViewerPath(pathname);
 
   const isShow = Boolean(showSlug);
   const isSaved = isShow
@@ -113,10 +114,4 @@ export function SaveButton({
   if (saved.isSignedIn) return trigger;
 
   return <SignInButton mode="modal">{trigger}</SignInButton>;
-}
-
-/** "/s/abc123" → "abc123". Null anywhere else — provenance is optional. */
-function slugFromPath(pathname: string | null): string | null {
-  const match = pathname?.match(/^\/s\/([^/]+)/);
-  return match?.[1] ?? null;
 }

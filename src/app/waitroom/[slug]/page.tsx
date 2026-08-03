@@ -5,6 +5,7 @@ import { cache } from "react";
 
 import { getShowBySlug } from "@/lib/shows";
 import { toPublicShow } from "@/lib/show-public";
+import { viewerShowPath } from "@/lib/show-urls";
 
 import WaitroomClient from "./waitroom-client";
 
@@ -30,9 +31,9 @@ export default async function WaitroomPage({
   if (!show) notFound();
 
   // The waitroom is only for a show that hasn't started. Once it's live (or
-  // over, and playing back its replay), the show itself lives at /s/<slug>.
+  // over, and playing back its replay), the show itself lives at /show/<slug>.
   if (show.status !== "scheduled") {
-    redirect(`/s/${slug}`);
+    redirect(viewerShowPath(slug));
   }
 
   return <WaitroomClient initialShow={toPublicShow(show)} />;

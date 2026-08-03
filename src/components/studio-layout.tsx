@@ -1,254 +1,208 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, Plus, ShoppingBag } from "lucide-react";
+import { MessageSquare, ShoppingCart, Sparkles } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { ChatPanel } from "@/components/chat-panel";
-import { ShoppingTrail } from "@/components/shopping-trail";
-import { StudioControls } from "@/components/studio-controls";
-import { Badge } from "@/components/ui/badge";
+import { HostCart } from "@/components/host-cart";
+import {
+  StudioControls,
+  type HostPollControls,
+} from "@/components/studio-controls";
+import { useViewerJoins } from "@/hooks/use-viewer-joins";
 import type { StreamState } from "@/lib/stream-store";
-import type { Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-type PipTab = "chat" | "trail";
+type StudioTab = "chat" | "cart" | "interactions";
 
-const PIP_TABS: { id: PipTab; label: string; icon: typeof MessageSquare }[] = [
+const STUDIO_TABS: { id: StudioTab; label: string; icon: typeof MessageSquare }[] = [
   { id: "chat", label: "Chat", icon: MessageSquare },
-  { id: "trail", label: "Trail", icon: ShoppingBag },
+  { id: "cart", label: "Cart", icon: ShoppingCart },
+  { id: "interactions", label: "Interactions", icon: Sparkles },
 ];
+
+function HostStudioChat({
+  variant,
+  onOpenInteractions,
+}: {
+  variant: "rail" | "pip";
+  onOpenInteractions?: () => void;
+}) {
+  const joins = useViewerJoins();
+  return (
+    <ChatPanel
+      variant={variant === "pip" ? "pip" : "rail"}
+      className="min-h-0 flex-1"
+      extraLines={joins}
+      onOpenInteractions={onOpenInteractions}
+    />
+  );
+}
 
 export function StudioRail({
   stream,
+  poll,
   chat,
-  channel3Configured = true,
-  onResolveProduct,
   chatCount = 0,
   variant = "rail",
   className,
+  setup,
 }: {
   stream: StreamState;
+  poll?: HostPollControls;
   chat?: React.ReactNode;
-  channel3Configured?: boolean;
-  onResolveProduct?: (url: string) => Promise<Product>;
   chatCount?: number;
   variant?: "rail" | "pip";
   className?: string;
+  /** Pre-share checklist — sits above the tabs until the host is fully set up. */
+  setup?: React.ReactNode;
 }) {
-  const {
-    pinned,
-    verse,
-    trail,
-    pin,
-    unpin,
-    endInteraction,
-    setNote,
-    setFeatured,
-    votesFor,
-    votersFor,
-    verseVotesFor,
-    startVerse,
-  } = stream;
-  const [pipTab, setPipTab] = useState<PipTab>("chat");
+  const { verse, trail, endInteraction, verseVotesFor } = stream;
+  const [tab, setTab] = useState<StudioTab>("chat");
   const isPip = variant === "pip";
 
   const chatPanel =
     chat ?? (
-      <ChatPanel
+      <HostStudioChat
         variant={isPip ? "pip" : "rail"}
-        className="min-h-0 flex-1"
+        onOpenInteractions={poll ? () => setTab("interactions") : undefined}
       />
     );
 
   const controls = (
     <StudioControls
-      pinned={pinned}
       verse={verse}
-      votes={pinned ? votesFor(pinned.id) : undefined}
-      voters={pinned ? votersFor(pinned.id) : undefined}
       verseVotes={verse ? verseVotesFor(verse.id) : undefined}
-      onPin={pin}
-      onUnpin={unpin}
+      poll={poll}
       onEndInteraction={endInteraction}
-      onStartVerse={startVerse}
-      onNote={setNote}
-      onSetFeatured={setFeatured}
-      onResolve={onResolveProduct}
-      channel3Configured={channel3Configured}
       variant={variant}
     />
   );
+
+  const activeInteractionCount = (poll?.poll ? 1 : 0) + (verse ? 1 : 0);
+  const tabIndicatorId = isPip ? "pip-tab-indicator" : "rail-tab-indicator";
 
   return (
     <aside
       className={cn(
         isPip
           ? "flex min-h-0 flex-1 flex-col overflow-hidden"
-          : "studio-rail flex min-h-0 w-full shrink-0 flex-col lg:w-80 xl:w-96",
+          : "studio-rail flex min-h-0 w-full shrink-0 flex-col lg:h-full lg:w-80 xl:w-96",
         className,
       )}
     >
-      {isPip ? (
-        <>
-          <nav
-            className="pip-studio-tabs flex shrink-0 border-b border-border/60"
-            aria-label="Studio panels"
-          >
-            {PIP_TABS.map(({ id, label, icon: Icon }) => {
-              const count =
-                id === "trail"
-                  ? trail.length
-                  : id === "chat"
-                    ? chatCount
-                    : 0;
-              const active = pipTab === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setPipTab(id)}
-                  aria-current={active ? "page" : undefined}
+      {setup ? (
+        <div className="shrink-0 border-b border-border/60 px-4 py-3">
+          {setup}
+        </div>
+      ) : null}
+
+      <nav
+        className="pip-studio-tabs flex shrink-0 border-b border-border/60"
+        aria-label="Studio panels"
+      >
+        {STUDIO_TABS.map(({ id, label, icon: Icon }) => {
+          const count =
+            id === "cart"
+              ? trail.length
+              : id === "chat"
+                ? chatCount
+                : id === "interactions"
+                  ? activeInteractionCount
+                  : 0;
+          const active = tab === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTab(id)}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "relative flex flex-1 items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors",
+                active
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground/80",
+              )}
+            >
+              <Icon className="size-3.5 shrink-0" />
+              <span>{label}</span>
+              {count > 0 ? (
+                <span
                   className={cn(
-                    "relative flex flex-1 items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors",
+                    "min-w-5 rounded-full px-1.5 py-0.5 text-center text-xs font-semibold tabular-nums leading-none",
                     active
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground/80",
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-muted-foreground",
                   )}
                 >
-                  <Icon className="size-3.5 shrink-0" />
-                  <span>{label}</span>
-                  {count > 0 && (
-                    <span
-                      className={cn(
-                        "min-w-5 rounded-full px-1.5 py-0.5 text-center text-xs font-semibold tabular-nums leading-none",
-                        active
-                          ? "bg-foreground text-background"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {count}
-                    </span>
-                  )}
-                  {active && (
-                    <motion.span
-                      layoutId="pip-tab-indicator"
-                      className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-live"
-                      transition={{ type: "spring", stiffness: 500, damping: 40 }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </nav>
+                  {count}
+                </span>
+              ) : null}
+              {active ? (
+                <motion.span
+                  layoutId={tabIndicatorId}
+                  className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-live"
+                  transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                />
+              ) : null}
+            </button>
+          );
+        })}
+      </nav>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={pipTab}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.15 }}
-                className="flex min-h-0 flex-1 flex-col overflow-hidden"
-              >
-                {pipTab === "chat" ? (
-                  chatPanel
-                ) : (
-                  <>
-                    <div className="max-h-[45%] shrink-0 overflow-y-auto border-b border-border/60">
-                      {controls}
-                    </div>
-                    <ShoppingTrail
-                      products={trail}
-                      pinnedId={pinned?.id ?? null}
-                      onSelect={pin}
-                      votesFor={votesFor}
-                      votersFor={votersFor}
-                      size="comfortable"
-                      variant="pip"
-                      className="min-h-0 flex-1"
-                    />
-                  </>
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="flex min-h-0 flex-[3] flex-col overflow-hidden border-b border-border/60">
-            <div className="flex shrink-0 items-center gap-1.5 border-b border-border/60 px-4 py-2.5">
-              <Plus className="size-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">Add</span>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">{controls}</div>
-          </div>
-
-          <div className="flex min-h-0 flex-[2] flex-col overflow-hidden">
-            <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-4 py-2.5">
-              <div className="flex items-center gap-1.5">
-                <MessageSquare className="size-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-foreground">Chat</span>
-              </div>
-              {chatCount > 0 && (
-                <Badge variant="secondary" className="tabular-nums">
-                  {chatCount}
-                </Badge>
-              )}
-            </div>
-            {chatPanel}
-          </div>
-        </>
-      )}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={tab}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+            className="flex min-h-0 flex-1 flex-col overflow-hidden"
+          >
+            {tab === "chat" ? (
+              chatPanel
+            ) : tab === "cart" ? (
+              <HostCart stream={stream} variant={isPip ? "pip" : "rail"} />
+            ) : (
+              <div className="min-h-0 flex-1 overflow-y-auto">{controls}</div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </aside>
   );
 }
 
 /**
- * The host's studio while live. Screen share fills the main stage with the
- * shopping trail below (like YouTube comments), and a control rail on the right.
+ * The host's studio while live. Screen share fills the stage; tabbed rail on the right.
  */
 export function StudioLayout({
   stream,
+  poll,
   stage,
-  chat,
-  channel3Configured = true,
-  onResolveProduct,
   chatCount = 0,
+  setup,
 }: {
   stream: StreamState;
+  poll?: HostPollControls;
   stage: React.ReactNode;
-  chat?: React.ReactNode;
-  channel3Configured?: boolean;
-  onResolveProduct?: (url: string) => Promise<Product>;
   chatCount?: number;
+  setup?: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="relative min-h-0 flex-1">{stage}</div>
-
-        <div className="flex min-h-0 max-h-72 shrink-0 flex-col border-t border-border bg-background lg:max-h-80">
-          <ShoppingTrail
-            products={stream.trail}
-            pinnedId={stream.pinned?.id ?? null}
-            onSelect={stream.pin}
-            votesFor={stream.votesFor}
-            votersFor={stream.votersFor}
-            variant="feed"
-            className="min-h-0 flex-1"
-          />
-        </div>
+    <div className="flex min-h-0 flex-1 flex-col lg:h-full lg:flex-row">
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+        {stage}
       </div>
 
       <StudioRail
         stream={stream}
-        chat={chat}
-        channel3Configured={channel3Configured}
-        onResolveProduct={onResolveProduct}
+        poll={poll}
         chatCount={chatCount}
         variant="rail"
+        setup={setup}
       />
     </div>
   );

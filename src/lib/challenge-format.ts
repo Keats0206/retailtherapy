@@ -12,16 +12,16 @@ export function formatBudget(amount: number, currency = "usd"): string {
   }).format(amount);
 }
 
-/** "15 min" / "1 hr" — the clock half of the format. */
+/** "30 min minimum" / "1 hr minimum" — how long the show has to run. */
 export function formatDuration(seconds: number | null): string | null {
   if (!seconds) return null;
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return `${minutes} min minimum`;
   const hours = minutes / 60;
-  return `${Number.isInteger(hours) ? hours : hours.toFixed(1)} hr`;
+  return `${Number.isInteger(hours) ? hours : hours.toFixed(1)} hr minimum`;
 }
 
-/** The one-line format summary: "15 min · $500 · Net-a-Porter". */
+/** The one-line format summary: "30 min minimum · $500 · Net-a-Porter". */
 export function formatBrief(challenge: {
   durationSeconds: number | null;
   budget: number;

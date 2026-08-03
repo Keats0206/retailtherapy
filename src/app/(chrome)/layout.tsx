@@ -29,6 +29,11 @@ export default function ChromeLayout({
           frontrow
         </Link>
         <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="micro"
+            render={<Link href="/creators">Join as a creator</Link>}
+          />
           <Show when="signed-out">
             <SignInButton mode="modal">
               <Button variant="ghost" size="micro">
@@ -49,7 +54,7 @@ export default function ChromeLayout({
       </header>
       {/* The body is `overflow-hidden` so /watch can pin itself to the viewport,
           so ordinary pages need to scroll inside this container instead. */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div data-chrome-scroll className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {children}
         <div data-site-chrome className="contents">
           <SiteFooter />

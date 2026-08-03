@@ -1,125 +1,48 @@
 "use client";
 
-import { useState } from "react";
-import { Check, Link2, Sparkles, Swords } from "lucide-react";
+import { Check } from "lucide-react";
 
 import { AudienceVerseVotes } from "@/components/audience-verse-votes";
-import { AudienceVotes } from "@/components/audience-votes";
+import { HostInteractionLauncher } from "@/components/host-interaction-launcher";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { formatPrice, normalizeProductImageUrl } from "@/lib/format";
-import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
-import { readResponseJson } from "@/lib/fetch-json";
-import type { Product, VoteRecord, VoteTally } from "@/lib/types";
+import {
+  selectPollLeader,
+  selectPollShares,
+  selectPollTotal,
+  type PollInput,
+} from "@/lib/poll-store";
+import type { Poll, Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-type InteractionMode = "spotlight" | "verse";
-
-async function lookupProduct(url: string): Promise<Product> {
-  const res = await fetch("/api/products/lookup", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
-  });
-  const data = await readResponseJson<{ error?: string; product?: Product }>(
-    res,
-  );
-  if (!res.ok) throw new Error(data.error ?? "Lookup failed");
-  if (!data.product) throw new Error("Lookup failed");
-  return data.product;
-}
+export type HostPollControls = {
+  poll: Poll | null;
+  start: (input: PollInput) => void;
+  dismiss: () => void;
+  newVote: () => void;
+};
 
 export function StudioControls({
-  pinned,
   verse,
-  votes,
-  voters,
   verseVotes,
-  onPin,
-  onUnpin,
+  poll,
   onEndInteraction,
-  onStartVerse,
-  onNote,
-  onSetFeatured,
-  onResolve = lookupProduct,
-  channel3Configured = true,
   className,
   variant = "panel",
 }: {
-  pinned: Product | null;
   verse: { left: Product; right: Product; id: string } | null;
-  votes?: VoteTally;
-  voters?: VoteRecord[];
   verseVotes?: { left: number; right: number };
-  onPin: (product: Product) => void;
-  onUnpin: () => void;
+  poll?: HostPollControls;
   onEndInteraction: () => void;
-  onStartVerse: (left: Product, right: Product) => void;
-  onNote: (productId: string, note: string) => void;
-  onSetFeatured?: (productId: string, featured: boolean) => void;
-  onResolve?: (url: string) => Promise<Product>;
-  channel3Configured?: boolean;
   className?: string;
   variant?: "panel" | "rail" | "pip";
 }) {
-  const [mode, setMode] = useState<InteractionMode>("spotlight");
-  const [url, setUrl] = useState("");
-  const [leftUrl, setLeftUrl] = useState("");
-  const [rightUrl, setRightUrl] = useState("");
-  const [resolving, setResolving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const pinnedImageUrl = pinned
-    ? normalizeProductImageUrl(pinned.imageUrl)
-    : null;
   const leftImageUrl = verse
     ? normalizeProductImageUrl(verse.left.imageUrl)
     : null;
   const rightImageUrl = verse
     ? normalizeProductImageUrl(verse.right.imageUrl)
     : null;
-
-  async function resolveSpotlight(e: React.FormEvent) {
-    e.preventDefault();
-    const value = url.trim();
-    if (!value || resolving) return;
-
-    setResolving(true);
-    setError(null);
-    try {
-      onPin(await onResolve(value));
-      trackEvent(AnalyticsEvent.HOST_PRODUCT_ADD, { area: "host_studio" });
-      setUrl("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Lookup failed");
-    } finally {
-      setResolving(false);
-    }
-  }
-
-  async function resolveVerse(e: React.FormEvent) {
-    e.preventDefault();
-    const left = leftUrl.trim();
-    const right = rightUrl.trim();
-    if (!left || !right || resolving) return;
-
-    setResolving(true);
-    setError(null);
-    try {
-      const [leftProduct, rightProduct] = await Promise.all([
-        onResolve(left),
-        onResolve(right),
-      ]);
-      onStartVerse(leftProduct, rightProduct);
-      trackEvent(AnalyticsEvent.HOST_VERSE_START, { area: "host_studio" });
-      setLeftUrl("");
-      setRightUrl("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Lookup failed");
-    } finally {
-      setResolving(false);
-    }
-  }
 
   const isRail = variant === "rail" || variant === "pip";
   const isPip = variant === "pip";
@@ -128,25 +51,15 @@ export function StudioControls({
     <div
       className={cn(
         "flex flex-col",
-        isRail ? (isPip ? "gap-0 p-0 text-sm" : "gap-0 p-0") : "gap-3 rounded-xl bg-card py-4 ring-1 ring-foreground/10",
+        isRail ? (isPip ? "gap-0 p-0 text-sm" : "gap-0 p-0") : "gap-3 rounded-none bg-card py-4 ring-1 ring-foreground/10",
         className,
       )}
     >
-      {/* Active interaction — compact banner when something is on screen */}
-      {pinned && (
-        <ActiveSpotlight
-          product={pinned}
-          imageUrl={pinnedImageUrl}
-          votes={votes}
-          voters={voters}
-          onDone={onUnpin}
-          onNote={onNote}
-          onSetFeatured={onSetFeatured}
-          isRail={isRail}
-        />
-      )}
+      {poll?.poll ? (
+        <ActivePoll poll={poll.poll} onDismiss={poll.dismiss} onNewVote={poll.newVote} isRail={isRail} />
+      ) : null}
 
-      {verse && (
+      {verse ? (
         <ActiveVerse
           verse={verse}
           leftImageUrl={leftImageUrl}
@@ -155,138 +68,34 @@ export function StudioControls({
           onEnd={onEndInteraction}
           isRail={isRail}
         />
-      )}
+      ) : null}
 
-      {/* Add form — always available so the host can keep building the trail */}
-      <div className={cn(isRail && (isPip ? "p-3" : "p-4"))}>
-        <div className="mb-4">
-          <h2 className="text-sm font-semibold text-foreground">
-            Add to trail
-          </h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Paste a product link — it joins the trail and goes on screen.
-          </p>
-        </div>
-
-        <div className="mb-4 flex gap-1 rounded-lg border border-border/60 p-1">
-          {(
-            [
-              { id: "spotlight" as const, label: "Spotlight", icon: Sparkles },
-              { id: "verse" as const, label: "Verses", icon: Swords },
-            ] as const
-          ).map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => {
-                setMode(id);
-                trackEvent(AnalyticsEvent.HOST_MODE_SWITCH, {
-                  area: "host_studio",
-                  mode: id,
-                });
-              }}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-all",
-                mode === id
-                  ? "bg-foreground text-background shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Icon className="size-3.5" />
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {!channel3Configured ? (
-          <p className="rounded-lg border border-dashed border-border px-3 py-4 text-sm leading-relaxed text-muted-foreground">
-            Product lookup is temporarily unavailable. Try again later or paste
-            links manually.
-          </p>
-        ) : mode === "spotlight" ? (
-          <form onSubmit={resolveSpotlight} className="flex flex-col gap-3">
-            <div className="relative">
-              <Link2 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="product-url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="Paste a product URL…"
-                disabled={resolving}
-                aria-label="Product URL"
-                className="h-11 pl-10"
-              />
-            </div>
-            <Button
-              type="submit"
-              className="h-11 w-full bg-foreground text-background hover:bg-foreground/90"
-              disabled={resolving || !url.trim()}
-            >
-              {resolving ? "Resolving…" : "Add to trail"}
-            </Button>
-          </form>
-        ) : (
-          <form onSubmit={resolveVerse} className="flex flex-col gap-3">
-            <Input
-              id="verse-left-url"
-              value={leftUrl}
-              onChange={(e) => setLeftUrl(e.target.value)}
-              placeholder="Left product URL…"
-              disabled={resolving}
-              aria-label="Left product URL"
-              className="h-11"
-            />
-            <Input
-              id="verse-right-url"
-              value={rightUrl}
-              onChange={(e) => setRightUrl(e.target.value)}
-              placeholder="Right product URL…"
-              disabled={resolving}
-              aria-label="Right product URL"
-              className="h-11"
-            />
-            <Button
-              type="submit"
-              className="h-11 w-full bg-foreground text-background hover:bg-foreground/90"
-              disabled={resolving || !leftUrl.trim() || !rightUrl.trim()}
-            >
-              {resolving ? "Resolving…" : "Start verse"}
-            </Button>
-          </form>
-        )}
-
-        {error && (
-          <p
-            className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
-            role="alert"
-          >
-            {error}
-          </p>
-        )}
-      </div>
+      {!verse && !poll?.poll && poll?.start && isRail ? (
+        <HostInteractionLauncher
+          onLaunch={poll.start}
+          variant={isPip ? "pip" : "rail"}
+        />
+      ) : null}
     </div>
   );
 }
 
-function ActiveSpotlight({
-  product,
-  imageUrl,
-  votes,
-  voters,
-  onDone,
-  onNote,
-  onSetFeatured,
+function ActivePoll({
+  poll,
+  onDismiss,
+  onNewVote,
   isRail,
 }: {
-  product: Product;
-  imageUrl: string | null;
-  votes?: VoteTally;
-  voters?: VoteRecord[];
-  onDone: () => void;
-  onNote: (productId: string, note: string) => void;
-  onSetFeatured?: (productId: string, featured: boolean) => void;
+  poll: Poll;
+  onDismiss: () => void;
+  onNewVote: () => void;
   isRail: boolean;
 }) {
+  const open = poll.status === "open";
+  const total = selectPollTotal(poll);
+  const shares = selectPollShares(poll);
+  const leader = poll.status === "closed" ? selectPollLeader(poll) : null;
+
   return (
     <div
       className={cn(
@@ -294,70 +103,58 @@ function ActiveSpotlight({
         isRail ? "p-4" : "px-4 pb-4",
       )}
     >
-      <div className="mb-3 flex items-center justify-between">
-        <span className="micro text-live">On screen now</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onDone}
-          className="h-7 gap-1 px-2 text-xs text-muted-foreground"
-        >
-          <Check className="size-3.5" />
-          Done
-        </Button>
-      </div>
-
-      <div className="flex gap-3 rounded-xl bg-muted/50 p-3">
-        {imageUrl && (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={imageUrl}
-            alt={product.name}
-            decoding="async"
-            className="size-16 shrink-0 rounded-lg bg-muted object-cover"
-          />
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium text-foreground" title={product.name}>
-            {product.name}
-          </p>
-          <p className="mt-0.5 text-sm tabular-nums text-muted-foreground">
-            {formatPrice(product.price, product.currency)}
-          </p>
-          {product.retailer && (
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {product.retailer}
-            </p>
-          )}
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <span className="micro text-live">
+            {open ? "Vote live" : "Vote closed"}
+          </span>
+          <p className="mt-0.5 text-sm font-medium">{poll.question}</p>
+        </div>
+        <div className="flex shrink-0 gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onDismiss}
+            className="h-7 px-2 text-xs text-muted-foreground"
+          >
+            Dismiss
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onNewVote}
+            className="h-7 px-2 text-xs"
+          >
+            New vote
+          </Button>
         </div>
       </div>
 
-      <Input
-        value={product.note}
-        onChange={(e) => onNote(product.id, e.target.value)}
-        placeholder="Add a note for viewers…"
-        aria-label="Note about this product"
-        className="mt-3 h-10"
-      />
+      <div className="flex flex-col gap-1.5">
+        {poll.options.map((option) => (
+          <div
+            key={option.id}
+            className={cn(
+              "flex items-center gap-2 rounded-none bg-muted/50 px-2.5 py-2",
+              leader === option.id && "ring-1 ring-live/40",
+            )}
+          >
+            <span className="text-base leading-none">{option.emoji}</span>
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">
+              {option.label}
+            </span>
+            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+              {shares[option.id]}%
+            </span>
+          </div>
+        ))}
+      </div>
 
-      {onSetFeatured && (
-        <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={Boolean(product.featured)}
-            onChange={(e) => onSetFeatured(product.id, e.target.checked)}
-            className="size-4 rounded border-border accent-live"
-          />
-          <span className="text-muted-foreground">
-            Feature at top of replay
-            {product.featured ? " (sponsored placement)" : ""}
-          </span>
-        </label>
-      )}
-
-      {votes && (
-        <AudienceVotes votes={votes} voters={voters} className="mt-3" />
-      )}
+      <p className="micro mt-2 text-muted-foreground">
+        {open
+          ? `${total} ${total === 1 ? "vote" : "votes"} so far`
+          : `Final · ${total} ${total === 1 ? "vote" : "votes"}`}
+      </p>
     </div>
   );
 }
@@ -402,7 +199,7 @@ function ActiveVerse({
           { product: verse.left, imageUrl: leftImageUrl, label: "A" },
           { product: verse.right, imageUrl: rightImageUrl, label: "B" },
         ].map(({ product, imageUrl, label }) => (
-          <div key={product.id} className="min-w-0 rounded-xl bg-muted/50 p-2">
+          <div key={product.id} className="min-w-0 rounded-none bg-muted/50 p-2">
             {imageUrl && (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
@@ -410,11 +207,14 @@ function ActiveVerse({
                 alt={product.name}
                 loading="lazy"
                 decoding="async"
-                className="aspect-square w-full rounded-lg bg-muted object-cover"
+                className="aspect-square w-full rounded-none bg-muted object-cover"
               />
             )}
             <p className="micro mt-1.5 text-muted-foreground">{label}</p>
             <p className="truncate text-xs font-medium">{product.name}</p>
+            <p className="text-xs tabular-nums text-muted-foreground">
+              {formatPrice(product.price, product.currency)}
+            </p>
           </div>
         ))}
       </div>

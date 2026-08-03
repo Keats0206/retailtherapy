@@ -1,14 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { useTracks, VideoTrack } from "@/lib/live";
 import { Track, type Room } from "livekit-client";
 
 import { EndShowDialog } from "@/components/end-show-dialog";
 import { FaceBubble } from "@/components/face-bubble";
 import { HostControlBar } from "@/components/host-control-bar";
-import { PollComposer } from "@/components/poll-composer";
-import { PollLaunchButton, PollOverlay } from "@/components/poll-overlay";
 import { StudioRail } from "@/components/studio-layout";
 import {
   PIP_CAMERA_BUBBLE,
@@ -17,6 +14,7 @@ import {
   VideoPlaceholder,
 } from "@/components/video-placeholder";
 import { ViewerCount } from "@/components/viewer-count";
+import { ViewerStageOverlays } from "@/components/viewer-stage-overlays";
 import { usePollState } from "@/lib/poll-state";
 import type { StreamState } from "@/lib/stream-store";
 import { cn } from "@/lib/utils";
@@ -24,9 +22,9 @@ import { cn } from "@/lib/utils";
 export function HostFloatingStudio({
   room,
   stream,
+  poll,
   sharing,
   chatCount,
-  channel3Configured,
   onEndShow,
   pipSupported,
   endDialogOpen,
@@ -38,9 +36,9 @@ export function HostFloatingStudio({
 }: {
   room: Room;
   stream: StreamState;
+  poll: ReturnType<typeof usePollState>;
   sharing: boolean;
   chatCount: number;
-  channel3Configured: boolean;
   onEndShow: () => void;
   pipSupported: boolean;
   endDialogOpen: boolean;
@@ -50,8 +48,6 @@ export function HostFloatingStudio({
   endingStep: number;
   endError: string | null;
 }) {
-  const [pollComposerOpen, setPollComposerOpen] = useState(false);
-  const poll = usePollState({ isHost: true });
   const tracks = useTracks(
     [Track.Source.ScreenShare, Track.Source.Camera],
     { room, onlySubscribed: false },
@@ -64,9 +60,7 @@ export function HostFloatingStudio({
     <div className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-background">
       <div className="relative shrink-0 border-b border-border/60 bg-black">
         <VideoFrame className={PIP_PREVIEW}>
-          {!share ? (
-            <VideoPlaceholder>Share your screen to start</VideoPlaceholder>
-          ) : (
+          {share ? (
             <div className="relative h-full w-full">
               <VideoTrack
                 trackRef={share}
@@ -76,12 +70,20 @@ export function HostFloatingStudio({
                 <FaceBubble
                   trackRef={camera}
                   className={PIP_CAMERA_BUBBLE}
-                  // The PiP bubble is tiny; a softer punch-in keeps the head
-                  // readable instead of filling it with forehead.
                   zoom={1.2}
                 />
               )}
+              <ViewerStageOverlays
+                stream={stream}
+                poll={poll}
+                role="creator"
+                size="compact"
+              />
             </div>
+          ) : camera ? (
+            <VideoTrack trackRef={camera} className="h-full w-full object-cover" />
+          ) : (
+            <VideoPlaceholder>Waiting for the host to start…</VideoPlaceholder>
           )}
         </VideoFrame>
 
@@ -95,7 +97,6 @@ export function HostFloatingStudio({
           </div>
 
           <div className="pointer-events-auto shrink-0 flex items-center gap-1">
-            <PollLaunchButton onClick={() => setPollComposerOpen(true)} />
             <HostControlBar
               room={room}
               sharing={sharing}
@@ -105,35 +106,14 @@ export function HostFloatingStudio({
             />
           </div>
         </div>
-
-        {poll.poll && (
-          <div className="pointer-events-auto absolute inset-x-2 bottom-2 z-10">
-            <PollOverlay
-              poll={poll.poll}
-              myVote={poll.myVote}
-              role="creator"
-              onDismiss={poll.dismiss}
-              onNewVote={() => {
-                poll.dismiss();
-                setPollComposerOpen(true);
-              }}
-            />
-          </div>
-        )}
       </div>
 
       <StudioRail
         stream={stream}
-        channel3Configured={channel3Configured}
+        poll={poll}
         chatCount={chatCount}
         variant="pip"
         className={cn("min-h-0 flex-1")}
-      />
-
-      <PollComposer
-        open={pollComposerOpen}
-        onOpenChange={setPollComposerOpen}
-        onLaunch={poll.start}
       />
 
       <EndShowDialog

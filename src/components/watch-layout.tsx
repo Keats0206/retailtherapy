@@ -1,11 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
 import { ArrowLeft } from "lucide-react";
 
-import { CurrentProduct } from "@/components/current-product";
-import { PollOverlay } from "@/components/poll-overlay";
+import { ViewerStageOverlays } from "@/components/viewer-stage-overlays";
 import { ReactionBar, ReactionOverlay } from "@/components/reaction-bar";
 import { ShoppingTrail } from "@/components/shopping-trail";
 import { VerseProduct } from "@/components/verse-product";
@@ -59,11 +57,6 @@ export function WatchLayout({
   const poll = usePollState({ isHost: false });
   const { react } = useReactionState({ isHost: false });
 
-  const pinnedVotes = useMemo(
-    () => (pinned ? votesFor(pinned.id) : { buy: 0, skip: 0 }),
-    [pinned, votesFor],
-  );
-
   return (
     <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
       {/* Main column: video + trail below */}
@@ -108,29 +101,10 @@ export function WatchLayout({
             </div>
           </div>
 
-          {poll.poll && (
-            <PollOverlay
-              poll={poll.poll}
-              myVote={poll.myVote}
-              role="viewer"
-              onVote={poll.vote}
-            />
-          )}
+          <ViewerStageOverlays stream={stream} poll={poll} role="viewer" />
 
           {overlay}
         </div>
-
-        {/* Pinned product hero — shown when host spotlights an item */}
-        {pinned && !verse && (
-          <div className="shrink-0 border-t border-border bg-background">
-            <CurrentProduct
-              product={pinned}
-              votes={pinnedVotes}
-              myVote={myVotes[pinned.id]}
-              onVote={(choice) => vote(pinned.id, choice)}
-            />
-          </div>
-        )}
 
         {/* Verse voting banner — shown above trail when a verse is active */}
         {verse && (

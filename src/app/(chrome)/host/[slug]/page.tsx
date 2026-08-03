@@ -1,13 +1,15 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import { getSignedInUser } from "@/lib/auth";
 import { getHostFeedback } from "@/lib/host-feedback";
 import { buildEndedRecap } from "@/lib/show-recap";
+import { getRecordingStatus } from "@/lib/show-public";
 import { getShowBySlug, resolveRecording, snapshotOf } from "@/lib/shows";
 
+import HostClient from "../host-client";
 import HostRecapClient from "./host-recap-client";
 
-export default async function HostRecapPage({
+export default async function HostShowPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
@@ -20,7 +22,19 @@ export default async function HostRecapPage({
   if (!show || show.hostUserId !== user.id) notFound();
 
   if (show.status === "live") {
-    redirect("/host");
+    const hostName =
+      user.username ??
+      [user.firstName, user.lastName].filter(Boolean).join(" ") ??
+      null;
+
+    return (
+      <HostClient
+        hostName={hostName}
+        showSlug={slug}
+        resumeSlug={slug}
+        liveShowTitle={show.title}
+      />
+    );
   }
 
   if (show.status !== "ended") notFound();
@@ -39,6 +53,8 @@ export default async function HostRecapPage({
     peakViewers: snapshot.stats?.peakViewers ?? 0,
     chatCount: snapshot.stats?.chatCount ?? 0,
     muxPlaybackId: show.muxPlaybackId,
+    muxDurationSeconds: show.muxDurationSeconds,
+    recordingStatus: getRecordingStatus(show),
   });
 
   return (

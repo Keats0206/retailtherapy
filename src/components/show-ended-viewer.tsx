@@ -16,7 +16,9 @@ import {
   normalizeProductImageUrl,
 } from "@/lib/format";
 import type { EndedShowRecap } from "@/lib/show-recap";
+import type { RecordingStatus } from "@/lib/show-public";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import { viewerShowPath } from "@/lib/show-urls";
 import { sortTrailForReplay, TRAIL_SORTS, type TrailSortId } from "@/lib/trail-sort";
 import type { Product, VoteRecord, VoteTally } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -64,7 +66,7 @@ export function ShowEndedViewer({
   polling?: boolean;
   onRecordingReady?: () => void | Promise<void>;
 }) {
-  const sharePath = `/s/${recap.slug}`;
+  const sharePath = viewerShowPath(recap.slug);
   const [copied, setCopied] = useState(false);
   const [sort, setSort] = useState<SortId>("order");
 
@@ -168,11 +170,12 @@ export function ShowEndedViewer({
                   playbackId={recap.muxPlaybackId}
                   className="h-full w-full"
                   streamType="on-demand"
+                  preload="auto"
                   accentColor="#ffffff"
                   metadata={{ video_title: recap.title }}
                 />
               ) : (
-                <RecordingProcessing />
+                <RecordingState status={recap.recordingStatus} />
               )}
             </div>
           </div>
@@ -294,8 +297,37 @@ export function ShowEndedViewer({
   );
 }
 
-/** Placeholder while Mux packages the recording. */
-function RecordingProcessing() {
+/** Placeholder while Mux packages the recording, or when none exists. */
+function RecordingState({ status }: { status: RecordingStatus }) {
+  if (status === "unavailable") {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-white/50">
+        <span className="flex size-12 items-center justify-center rounded-full bg-white/10">
+          <Play className="size-5 translate-x-px" />
+        </span>
+        <p className="micro">No recording for this show</p>
+        <p className="text-xs text-white/35">
+          The shopping trail is still here — only the video wasn&apos;t captured.
+        </p>
+      </div>
+    );
+  }
+
+  if (status === "failed") {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-white/50">
+        <span className="flex size-12 items-center justify-center rounded-full bg-white/10">
+          <Play className="size-5 translate-x-px" />
+        </span>
+        <p className="micro">Recording unavailable</p>
+        <p className="text-xs text-white/35">
+          Packaging took too long or failed. The product trail below is still
+          shoppable.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 text-white/50">
       <span className="flex size-12 items-center justify-center rounded-full bg-white/10">

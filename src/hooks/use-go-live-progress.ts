@@ -3,9 +3,9 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 /**
- * The two go-live steps nothing else can observe: whether a store window was
- * opened, and whether the share link was copied. Camera, live and screen-share
- * all have real signals; these two only exist as "the host pressed the button".
+ * The go-live step nothing else can observe: whether a store window was opened.
+ * Camera, live and screen-share all have real signals; this one only exists as
+ * "the host pressed the button".
  *
  * Kept in a module store rather than component state because the host crosses a
  * tree boundary mid-flow — the pre-show screen unmounts and the LiveKit studio
@@ -18,10 +18,9 @@ const STORAGE_KEY = "frontrow:go-live-progress";
 
 export type GoLiveProgressState = {
   storeOpened: boolean;
-  linkShared: boolean;
 };
 
-const EMPTY: GoLiveProgressState = { storeOpened: false, linkShared: false };
+const EMPTY: GoLiveProgressState = { storeOpened: false };
 
 let state: GoLiveProgressState | null = null;
 const listeners = new Set<() => void>();
@@ -34,7 +33,6 @@ function read(): GoLiveProgressState {
     const parsed = raw ? (JSON.parse(raw) as Partial<GoLiveProgressState>) : null;
     state = {
       storeOpened: Boolean(parsed?.storeOpened),
-      linkShared: Boolean(parsed?.linkShared),
     };
   } catch {
     state = EMPTY;
@@ -67,12 +65,7 @@ export function useGoLiveProgress() {
     write({ ...read(), storeOpened: true });
   }, []);
 
-  const markLinkShared = useCallback(() => {
-    if (read().linkShared) return;
-    write({ ...read(), linkShared: true });
-  }, []);
-
   const reset = useCallback(() => write(EMPTY), []);
 
-  return { ...value, markStoreOpened, markLinkShared, reset };
+  return { ...value, markStoreOpened, reset };
 }

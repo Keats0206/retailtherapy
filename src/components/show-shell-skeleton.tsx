@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 function Pulse({ className }: { className?: string }) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-muted/80", className)}
+      className={cn("animate-pulse rounded-none bg-muted/80", className)}
       aria-hidden
     />
   );
@@ -36,12 +36,12 @@ function TrailStripSkeleton() {
     <div className="flex min-h-0 max-h-72 shrink-0 flex-col border-t border-border bg-background lg:max-h-80">
       <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-4 py-2.5">
         <Pulse className="h-4 w-28" />
-        <Pulse className="h-5 w-8 rounded-full" />
+        <Pulse className="h-5 w-8 rounded-none" />
       </div>
       <div className="flex flex-col gap-3 p-4">
         {[0, 1, 2].map((i) => (
           <div key={i} className="flex items-center gap-3">
-            <Pulse className="size-12 shrink-0 rounded-lg" />
+            <Pulse className="size-12 shrink-0 rounded-none" />
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <Pulse className="h-3.5 w-3/5" />
               <Pulse className="h-3 w-1/4" />
@@ -74,16 +74,16 @@ function RailSkeleton({ host }: { host?: boolean }) {
           {host ? (
             <>
               <div className="flex gap-2">
-                <Pulse className="h-8 w-20 rounded-full" />
-                <Pulse className="h-8 w-20 rounded-full" />
+                <Pulse className="h-8 w-20 rounded-none" />
+                <Pulse className="h-8 w-20 rounded-none" />
               </div>
-              <Pulse className="h-10 w-full rounded-lg" />
-              <Pulse className="h-11 w-full rounded-lg" />
+              <Pulse className="h-10 w-full rounded-none" />
+              <Pulse className="h-11 w-full rounded-none" />
             </>
           ) : (
             <>
-              <Pulse className="h-24 w-full rounded-lg" />
-              <Pulse className="h-10 w-full rounded-lg" />
+              <Pulse className="h-24 w-full rounded-none" />
+              <Pulse className="h-10 w-full rounded-none" />
             </>
           )}
         </div>
@@ -102,13 +102,13 @@ function RailSkeleton({ host }: { host?: boolean }) {
         <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
           {[0, 1, 2].map((i) => (
             <div key={i} className="flex gap-2">
-              <Pulse className="size-6 shrink-0 rounded-full" />
-              <Pulse className="h-8 flex-1 rounded-lg" />
+              <Pulse className="size-6 shrink-0 rounded-none" />
+              <Pulse className="h-8 flex-1 rounded-none" />
             </div>
           ))}
           <div className="mt-auto flex gap-2 pt-2">
-            <Pulse className="h-10 flex-1 rounded-lg" />
-            <Pulse className="size-10 shrink-0 rounded-full" />
+            <Pulse className="h-10 flex-1 rounded-none" />
+            <Pulse className="size-10 shrink-0 rounded-none" />
           </div>
         </div>
       </div>
@@ -132,10 +132,10 @@ function StageSkeleton({
     >
       {statusLabel ? <ShellStatus label={statusLabel} /> : null}
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2.5">
-        <Pulse className="size-8 rounded-full bg-white/10" />
+        <Pulse className="size-8 rounded-none bg-white/10" />
         <div className="flex items-center gap-2">
-          <Pulse className="h-6 w-16 rounded-full bg-white/10" />
-          <Pulse className="h-6 w-20 rounded-full bg-white/10" />
+          <Pulse className="h-6 w-16 rounded-none bg-white/10" />
+          <Pulse className="h-6 w-20 rounded-none bg-white/10" />
         </div>
       </div>
     </div>

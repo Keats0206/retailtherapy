@@ -1,7 +1,5 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,18 +9,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Progress,
-  ProgressIndicator,
-  ProgressTrack,
-  ProgressValue,
-} from "@/components/ui/progress";
+import { ShowWrapUpSteps } from "@/components/show-wrap-up-steps";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 
 const ENDING_STEPS = [
-  "Stopping broadcast",
-  "Saving shopping trail",
-  "Packaging recording",
+  { id: "broadcast", label: "Broadcast stopped" },
+  { id: "trail", label: "Shopping trail saved" },
+  { id: "recording", label: "Recording packaged", pending: "Packaging recording" },
 ] as const;
 
 export function EndShowDialog({
@@ -42,9 +35,11 @@ export function EndShowDialog({
   endingStep: number;
   error?: string | null;
 }) {
-  const progress = ending
-    ? Math.round((endingStep / ENDING_STEPS.length) * 100)
-    : 0;
+  const steps = ENDING_STEPS.map((step, i) => ({
+    ...step,
+    done: i < endingStep,
+    active: i === endingStep,
+  }));
 
   return (
     <Dialog
@@ -53,55 +48,18 @@ export function EndShowDialog({
         if (!ending) onOpenChange(next);
       }}
     >
-      <DialogContent showCloseButton={!ending}>
+      <DialogContent showCloseButton={!ending} className="rounded-none">
         {ending ? (
           <>
             <DialogHeader>
-              <DialogTitle>Wrapping up your show</DialogTitle>
+              <DialogTitle>Ending your show</DialogTitle>
               <DialogDescription>
                 Hang tight — we&rsquo;re saving everything viewers will see on
                 the recap page.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="flex flex-col gap-4 py-2">
-              <Progress value={progress} className="w-full">
-                <ProgressTrack className="w-full">
-                  <ProgressIndicator />
-                </ProgressTrack>
-                <ProgressValue />
-              </Progress>
-
-              <ul className="flex flex-col gap-2">
-                {ENDING_STEPS.map((label, i) => {
-                  const done = i < endingStep;
-                  const active = i === endingStep;
-                  return (
-                    <li
-                      key={label}
-                      className="flex items-center gap-2 text-sm text-muted-foreground"
-                    >
-                      {done ? (
-                        <span className="size-4 rounded-full bg-primary/15 text-center text-xs leading-4 text-primary">
-                          ✓
-                        </span>
-                      ) : active ? (
-                        <Loader2 className="size-4 animate-spin text-foreground" />
-                      ) : (
-                        <span className="size-4 rounded-full border border-border" />
-                      )}
-                      <span
-                        className={
-                          done || active ? "text-foreground" : undefined
-                        }
-                      >
-                        {label}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+            <ShowWrapUpSteps steps={steps} className="py-2" />
           </>
         ) : (
           <>
@@ -119,7 +77,7 @@ export function EndShowDialog({
               </p>
             ) : null}
 
-            <DialogFooter>
+            <DialogFooter className="rounded-none">
               <Button
                 type="button"
                 variant="outline"
