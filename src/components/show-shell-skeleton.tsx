@@ -1,4 +1,4 @@
-import { Loader2, MessageSquare, Plus } from "lucide-react";
+import { Loader2, MessageSquare, Plus, ShoppingCart } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -50,6 +50,36 @@ function TrailStripSkeleton() {
         ))}
       </div>
     </div>
+  );
+}
+
+function WatchRailSkeleton() {
+  return (
+    <aside className="studio-rail flex min-h-0 w-full shrink-0 flex-col border-border max-lg:h-72 max-lg:shrink-0 max-lg:border-t lg:w-80 lg:border-l xl:w-96">
+      <div className="flex shrink-0 border-b border-border/60">
+        {[MessageSquare, ShoppingCart].map((Icon, i) => (
+          <div
+            key={i}
+            className="flex flex-1 items-center justify-center gap-1.5 px-3 py-2"
+          >
+            <Icon className="size-3.5 text-muted-foreground/50" aria-hidden />
+            <Pulse className="h-3 w-10" />
+          </div>
+        ))}
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="flex gap-2">
+            <Pulse className="size-6 shrink-0 rounded-none" />
+            <Pulse className="h-8 flex-1 rounded-none" />
+          </div>
+        ))}
+        <div className="mt-auto flex gap-2 pt-2">
+          <Pulse className="h-10 flex-1 rounded-none" />
+          <Pulse className="size-10 shrink-0 rounded-none" />
+        </div>
+      </div>
+    </aside>
   );
 }
 
@@ -195,9 +225,8 @@ export function WatchShellSkeleton({
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <StageSkeleton statusLabel={statusLabel} />
-          <TrailStripSkeleton />
         </div>
-        <RailSkeleton />
+        <WatchRailSkeleton />
       </div>
     </main>
   );

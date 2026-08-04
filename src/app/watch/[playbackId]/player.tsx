@@ -18,7 +18,6 @@ import {
   VideoFrame,
   VideoPlaceholder,
 } from "@/components/video-placeholder";
-import { ViewerCount } from "@/components/viewer-count";
 import { WatchLayout } from "@/components/watch-layout";
 import { readResponseJson } from "@/lib/fetch-json";
 import { useStreamState } from "@/lib/stream-state";
@@ -102,7 +101,6 @@ function Watch() {
     <WatchLayout
       stream={stream}
       stage={<Stage />}
-      viewers={<ViewerCount />}
       chat={<ChatPanel variant="rail" className="min-h-0 flex-1" />}
     />
   );

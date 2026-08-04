@@ -18,7 +18,6 @@ import {
   CAMERA_BUBBLE,
   VideoPlaceholder,
 } from "@/components/video-placeholder";
-import { ViewerCount } from "@/components/viewer-count";
 import { WatchLayout } from "@/components/watch-layout";
 import type { PublicShow } from "@/lib/show-public";
 import { useShowStatusListener } from "@/lib/show-status-state";
@@ -125,7 +124,6 @@ function LiveWatch({ onShowEnded }: { onShowEnded: () => void }) {
       <WatchLayout
         stream={stream}
         stage={<Stage />}
-        viewers={<ViewerCount />}
         chat={chat}
       />
     </main>

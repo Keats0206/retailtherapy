@@ -23,7 +23,6 @@ import {
   VideoFrame,
   VideoPlaceholder,
 } from "@/components/video-placeholder";
-import { ViewerCount } from "@/components/viewer-count";
 import { WatchLayout } from "@/components/watch-layout";
 import { useVisiblePoll } from "@/hooks/use-visible-poll";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
@@ -208,7 +207,6 @@ function Watch({ initialSnapshot }: { initialSnapshot: StreamSnapshot }) {
       <WatchLayout
         stream={stream}
         stage={<Stage />}
-        viewers={<ViewerCount />}
         chat={<ChatPanel variant="rail" className="min-h-0 flex-1" />}
       />
     </main>
