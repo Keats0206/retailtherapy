@@ -54,11 +54,12 @@ export async function createMuxLiveStream(): Promise<{
 }> {
   const stream = await getMux().video.liveStreams.create({
     playback_policies: ["public"],
-    generated_subtitles: [{ language_code: "en", name: "English (auto)" }],
     new_asset_settings: {
       playback_policies: ["public"],
       max_resolution_tier: "1080p",
     },
+    // Mux rejects generated_subtitles on the live stream when latency_mode is
+    // "low". Captions are requested on the VOD asset after the show ends.
     latency_mode: "low",
     // A dropped egress has this long to reconnect before Mux calls the stream
     // over and cuts the asset.
@@ -150,6 +151,30 @@ export async function unwrapMuxWebhook(body: string, headers: Headers) {
   });
 
   return getMux().webhooks.unwrap(body, headerRecord, secret);
+}
+
+/**
+ * Kick off VOD subtitle generation for a finished live recording.
+ * Fires video.asset.track.ready when done; see the Mux webhook handler.
+ */
+export async function requestMuxAssetSubtitles(assetId: string): Promise<void> {
+  const mux = getMux();
+  const asset = await mux.video.assets.retrieve(assetId);
+  const tracks = asset.tracks ?? [];
+
+  const hasSubtitles = tracks.some(
+    (track) => track.type === "text" && track.text_type === "subtitles",
+  );
+  if (hasSubtitles) return;
+
+  const audioTrack = tracks.find(
+    (track) => track.type === "audio" && track.status === "ready" && track.id,
+  );
+  if (!audioTrack?.id) return;
+
+  await mux.video.assets.generateSubtitles(assetId, audioTrack.id, {
+    generated_subtitles: [{ language_code: "en", name: "English (auto)" }],
+  });
 }
 
 /** Fetch auto-generated captions as plain text from a Mux text track. */

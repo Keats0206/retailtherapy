@@ -15,6 +15,7 @@ import {
   createMuxLiveStream,
   deleteMuxAsset,
   deleteMuxLiveStream,
+  requestMuxAssetSubtitles,
   resolveMuxRecording,
   type RecordingBackfill,
 } from "@/lib/mux";
@@ -865,5 +866,7 @@ export async function resolveRecording(show: Show): Promise<Show> {
   }
   if (!recording) return show;
 
-  return backfillRecording(show, recording);
+  const updated = await backfillRecording(show, recording);
+  void requestMuxAssetSubtitles(recording.assetId).catch(() => {});
+  return updated;
 }

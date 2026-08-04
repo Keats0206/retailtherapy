@@ -31,6 +31,7 @@ export function SaveButton({
   showSlug,
   sourceSlug,
   variant = "inline",
+  surface = "default",
   area,
   className,
 }: {
@@ -47,6 +48,8 @@ export function SaveButton({
    */
   sourceSlug?: string | null;
   variant?: "inline" | "overlay";
+  /** Dark video overlay surfaces inherit white text — outline buttons break. */
+  surface?: "default" | "cinema";
   /** Analytics context — "watch", "replay", "browse". */
   area?: string;
   className?: string;
@@ -65,11 +68,20 @@ export function SaveButton({
     : saved.savedItemIds.has(product!.id);
 
   const label = isSaved ? "Saved" : "Save";
+  const onCinema = surface === "cinema" || variant === "overlay";
+  const buttonVariant =
+    variant === "overlay"
+      ? "cinema"
+      : onCinema
+        ? isSaved
+          ? "cinema"
+          : "cinema-ghost"
+        : "outline";
 
   const trigger = (
     <Button
       type="button"
-      variant={variant === "overlay" ? "cinema" : "outline"}
+      variant={buttonVariant}
       size={variant === "overlay" ? "icon-xs" : "micro"}
       aria-pressed={isSaved}
       aria-label={isShow ? `${label} show` : label}
@@ -79,7 +91,7 @@ export function SaveButton({
         // Button base is already rounded-none, so there's nothing to override.
         // Only the fill distinguishes saved from not — the icon and position
         // stay put so the button doesn't jump under the cursor on toggle.
-        isSaved && variant === "inline" && "border-foreground/30",
+        isSaved && variant === "inline" && surface === "default" && "border-foreground/30",
         className,
       )}
       onClick={(event) => {

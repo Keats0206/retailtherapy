@@ -2,6 +2,7 @@ import {
   extractRecordingFromAsset,
   fetchMuxCaptionText,
   getMux,
+  requestMuxAssetSubtitles,
   unwrapMuxWebhook,
 } from "@/lib/mux";
 import { indexShowForSearch } from "@/lib/show-search";
@@ -73,6 +74,7 @@ async function handleAssetReady(
   if (!show) return;
 
   await backfillRecording(show, recording);
+  void requestMuxAssetSubtitles(assetId).catch(() => {});
 }
 
 async function handleTrackReady(track: {

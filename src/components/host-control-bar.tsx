@@ -61,28 +61,33 @@ export function HostControlBar({
         variant={variant}
       />
 
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              type="button"
-              aria-label="End show"
-              onClick={onEndShow}
-              className={cn(
-                buttonVariants({ variant: "outline", size: "icon" }),
-                isOverlay
-                  ? "size-8 rounded-none border-destructive/50 bg-black/50 text-destructive backdrop-blur-sm hover:bg-destructive hover:text-destructive-foreground"
-                  : isPip
-                    ? "ml-0.5 size-9 rounded-none border-destructive/50 bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                    : "ml-1 size-10 rounded-none border-destructive/50 bg-black/40 text-destructive hover:bg-destructive hover:text-destructive-foreground",
-              )}
-            >
-              <Square className={isOverlay ? "size-3 fill-current" : isPip ? "size-4 fill-current" : "fill-current"} />
-            </Button>
-          }
-        />
-        <TooltipContent>End show</TooltipContent>
-      </Tooltip>
+      {variant !== "stage" ? (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                type="button"
+                aria-label="End show"
+                onClick={onEndShow}
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "icon" }),
+                  "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90",
+                  isOverlay
+                    ? "size-8 rounded-full backdrop-blur-sm"
+                    : "ml-0.5 size-9 rounded-full",
+                )}
+              >
+                <Square
+                  className={
+                    isOverlay ? "size-3 fill-current" : "size-4 fill-current"
+                  }
+                />
+              </Button>
+            }
+          />
+          <TooltipContent>End show</TooltipContent>
+        </Tooltip>
+      ) : null}
     </div>
   );
 }

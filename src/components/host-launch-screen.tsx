@@ -17,7 +17,6 @@ import {
   PostLiveSteps,
   type PostLiveProgress,
 } from "@/components/go-live-steps";
-import { ShareShowLinkButton } from "@/components/share-show-link-button";
 import {
   StoreIdeasMenu,
   StoreLauncher,
@@ -156,7 +155,6 @@ function ShareScreenAction({
 
 /** Setup checklist for the studio rail — open a store, then share that window. */
 export function HostLiveSetupSteps({
-  slug,
   room,
   sharing,
   pipSupported,
@@ -164,7 +162,6 @@ export function HostLiveSetupSteps({
   progress,
   onStoreOpened,
 }: {
-  slug: string;
   room: Room;
   sharing: boolean;
   pipSupported: boolean;
@@ -173,32 +170,29 @@ export function HostLiveSetupSteps({
   onStoreOpened: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-3">
-      <PostLiveSteps
-        progress={progress}
-        actions={{
-          store: (
-            <div className="flex flex-col gap-2">
-              <StoreLauncher
-                challengeStore={challengeStore}
-                onOpened={onStoreOpened}
-              />
-              {challengeStore ? (
-                <StoreIdeasMenu onOpened={onStoreOpened} placement="down" />
-              ) : null}
-            </div>
-          ),
-          share: (
-            <ShareScreenAction
-              room={room}
-              sharing={sharing}
-              pipSupported={pipSupported}
+    <PostLiveSteps
+      progress={progress}
+      actions={{
+        store: (
+          <div className="flex flex-col gap-2">
+            <StoreLauncher
+              challengeStore={challengeStore}
+              onOpened={onStoreOpened}
             />
-          ),
-        }}
-      />
-      <ShareShowLinkButton slug={slug} size="sm" className="w-fit" />
-    </div>
+            {challengeStore ? (
+              <StoreIdeasMenu onOpened={onStoreOpened} placement="down" />
+            ) : null}
+          </div>
+        ),
+        share: (
+          <ShareScreenAction
+            room={room}
+            sharing={sharing}
+            pipSupported={pipSupported}
+          />
+        ),
+      }}
+    />
   );
 }
 

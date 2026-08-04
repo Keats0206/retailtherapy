@@ -99,6 +99,7 @@ export function PinnedProductOverlay({
           <SaveButton
             product={product}
             area={role === "viewer" ? "watch" : "host_studio"}
+            surface="cinema"
             className={compact ? "h-7" : "h-8"}
           />
           {role === "creator" && onDismiss ? (
@@ -150,7 +151,7 @@ export function PinnedProductOverlay({
             </Button>
           </div>
         ) : role === "creator" ? (
-          <p className={cn("shrink-0 text-white/60", compact ? "text-[10px]" : "micro")}>
+          <p className={cn("shrink-0 text-white/80", compact ? "text-[10px]" : "micro")}>
             {total} {total === 1 ? "vote" : "votes"}
             {total > 0 ? ` · ${buyPct}% buy` : ""}
           </p>

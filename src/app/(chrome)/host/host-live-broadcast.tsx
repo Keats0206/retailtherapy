@@ -20,6 +20,7 @@ import { LOCAL_STREAM } from "@/lib/live/mode";
 
 
 import { EndShowDialog } from "@/components/end-show-dialog";
+import { ShareShowLinkButton } from "@/components/share-show-link-button";
 import { FaceBubble } from "@/components/face-bubble";
 import { HostControlBar } from "@/components/host-control-bar";
 import { HostLiveSetupSteps } from "@/components/host-launch-screen";
@@ -33,11 +34,6 @@ import {
   POST_LIVE_STEPS,
   type PostLiveProgress,
 } from "@/components/go-live-steps";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useAutoPip } from "@/hooks/use-auto-pip";
 import { useDocumentPiP } from "@/hooks/use-document-pip";
 import { useGoLiveProgress } from "@/hooks/use-go-live-progress";
@@ -465,7 +461,6 @@ function BroadcastStudio({
           setup={
             !setupDone ? (
               <HostLiveSetupSteps
-                slug={session.slug}
                 room={room}
                 sharing={sharing}
                 pipSupported={pipSupported}
@@ -477,6 +472,7 @@ function BroadcastStudio({
           }
           stage={
             <HostStage
+              slug={session.slug}
               room={room}
               stream={stream}
               poll={poll}
@@ -504,6 +500,7 @@ function BroadcastStudio({
 }
 
 function HostStage({
+  slug,
   room,
   stream,
   poll,
@@ -511,6 +508,7 @@ function HostStage({
   onEndShow,
   pipSupported,
 }: {
+  slug: string;
   room: ReturnType<typeof useRoomContext>;
   stream: StreamState;
   poll: ReturnType<typeof usePollState>;
@@ -552,23 +550,20 @@ function HostStage({
         </div>
 
         <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-2">
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onEndShow}
-                  aria-label="End show"
-                  className="size-9 rounded-none border border-destructive/50 bg-black/50 text-destructive backdrop-blur-sm hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <Square className="size-4 fill-current" />
-                </Button>
-              }
-            />
-            <TooltipContent>End show</TooltipContent>
-          </Tooltip>
+          <ShareShowLinkButton slug={slug} compact />
         </div>
+      </div>
+
+      <div className="pointer-events-none absolute bottom-4 left-4 z-10">
+        <Button
+          type="button"
+          onClick={onEndShow}
+          aria-label="Exit show"
+          className="pointer-events-auto h-9 gap-1.5 rounded-full border-transparent bg-black/80 px-3 text-xs font-medium text-white backdrop-blur-sm hover:bg-black/90"
+        >
+          <Square className="size-3.5 fill-current" />
+          Exit show
+        </Button>
       </div>
 
       <ViewerStageOverlays stream={stream} poll={poll} role="creator" />
