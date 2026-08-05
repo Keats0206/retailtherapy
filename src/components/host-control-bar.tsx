@@ -23,7 +23,7 @@ export function HostControlBar({
 }: {
   room?: Room;
   sharing: boolean;
-  onEndShow: () => void;
+  onEndShow?: () => void;
   pipSupported?: boolean;
   variant?: "stage" | "pip" | "pip-overlay";
 }) {
@@ -61,7 +61,7 @@ export function HostControlBar({
         variant={variant}
       />
 
-      {variant !== "stage" ? (
+      {variant === "pip" && onEndShow ? (
         <Tooltip>
           <TooltipTrigger
             render={
