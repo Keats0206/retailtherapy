@@ -112,12 +112,3 @@ function userEmails(user: User): string[] {
     .map((entry) => entry.emailAddress.trim().toLowerCase())
     .filter(Boolean);
 }
-
-function primaryEmail(user: User): string | null {
-  const email =
-    user.emailAddresses.find(
-      (entry) => entry.id === user.primaryEmailAddressId,
-    )?.emailAddress ?? user.emailAddresses[0]?.emailAddress;
-
-  return email?.toLowerCase() ?? null;
-}
