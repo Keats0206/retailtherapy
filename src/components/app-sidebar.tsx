@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Bookmark,
+  Calendar,
   Clapperboard,
   Home,
   Radio,
@@ -33,6 +34,11 @@ const NAV_ITEMS: NavItem[] = [
     href: "/home#live",
     label: "Live",
     icon: Radio,
+  },
+  {
+    href: "/home#upcoming",
+    label: "Upcoming",
+    icon: Calendar,
   },
   {
     href: "/home#challenges",

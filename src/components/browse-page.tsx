@@ -33,12 +33,14 @@ export type HostShow = {
 export function BrowsePage({
   challenges = [],
   liveShows,
+  upcomingShows = [],
   pastShows = [],
   isAdmin = false,
   hostShows = [],
 }: {
   challenges?: Challenge[];
   liveShows: DiscoveryShow[];
+  upcomingShows?: DiscoveryShow[];
   pastShows?: DiscoveryShow[];
   isAdmin?: boolean;
   hostShows?: HostShow[];
@@ -68,6 +70,30 @@ export function BrowsePage({
           </div>
         </Section>
       ) : null}
+
+      <Section
+        id="upcoming"
+        title="Upcoming shows"
+        description="Scheduled shows you can wait for — you'll land in the waitroom until the host goes live."
+      >
+        {upcomingShows.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {upcomingShows.map((show) => (
+              <ShowCard
+                key={show.slug}
+                show={show}
+                variant="upcoming"
+                area="home"
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="soft-panel p-6 text-sm leading-relaxed text-muted-foreground">
+            No shows scheduled yet. When hosts schedule ahead, they&rsquo;ll
+            show up here.
+          </p>
+        )}
+      </Section>
 
       <ChallengesSection challenges={challenges} />
 
