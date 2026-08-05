@@ -1,0 +1,6 @@
+# Ahrefs export handoff — frontrow creator keywords (US)
+
+Paste this comma-separated list into Ahrefs Keyword Explorer → Overview → export CSV.
+Share the export as `ahrefs_keyword_data.csv` to replace empty volume/KD fields.
+
+live shopping,live selling,livestream shopping,shoppable livestream,live shopping app,live selling app,live shopping creator,live selling creator,livestream selling,live shopping host,live stream shopping,live shopping affiliate,influencer live shopping,social live shopping,live commerce,livestream commerce,video commerce,social commerce,social selling,shoppable video,live selling commission,creator monetization,creator economy,content creator,influencer marketing,influencer livestream,brand deals,get paid livestream,livestream monetization,creator affiliate,make money livestream,influencer commerce,creator livestream,stream monetization,creator platform,affiliate marketing,affiliate commission,affiliate livestream,TikTok affiliate,Amazon affiliate,influencer program,Amazon influencer,creator commissions,commission rate,live shopping platform,live commerce platform,live selling platform,video commerce platform,live shopping tools,live commerce tools,livestream platform,TikTok Shop,TikTok Live,Amazon Live,Amazon Live Creator,YouTube Shopping,Instagram Live,Whatnot,eBay Live,TalkShopLive
