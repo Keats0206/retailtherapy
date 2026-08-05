@@ -44,6 +44,7 @@ export default async function AppHomePage() {
         title: show.title,
         status: show.status,
         startedAt: show.startedAt?.toISOString() ?? null,
+        scheduledFor: show.scheduledFor?.toISOString() ?? null,
       }))}
     />
   );

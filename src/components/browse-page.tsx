@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Clapperboard, Radio } from "lucide-react";
+import { ChevronRight, Clapperboard, CalendarClock, Radio } from "lucide-react";
 
 import { ChallengesSection } from "@/components/challenges-section";
 import { LivePreviewMock } from "@/components/live-preview-mock";
@@ -9,13 +9,13 @@ import { DeleteShowButton } from "@/components/delete-show-button";
 import { EndLiveShowButton } from "@/components/end-live-show-button";
 import { ShowCard } from "@/components/show-card";
 import { Badge } from "@/components/ui/badge";
-import { HostCtaButton } from "@/components/host-cta-button";
+import { HostCtaButton, ScheduleShowButton } from "@/components/host-cta-button";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { ChallengeCard as Challenge } from "@/lib/challenges";
 import type { DiscoveryShow } from "@/lib/shows";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
-import { hostShowPath, viewerShowPath } from "@/lib/show-urls";
+import { hostShowPath, viewerShowPath, waitroomShowPath } from "@/lib/show-urls";
 import { cn } from "@/lib/utils";
 
 /** One of the signed-in user's own shows, serialized for the client. */
@@ -25,6 +25,7 @@ export type HostShow = {
   title: string;
   status: "scheduled" | "live" | "ended";
   startedAt: string | null;
+  scheduledFor: string | null;
 };
 
 /**
@@ -49,7 +50,8 @@ export function BrowsePage({
   hostShows?: HostShow[];
 }) {
   const yourLiveShows = hostShows.filter((show) => show.status === "live");
-  const yourPastShows = hostShows.filter((show) => show.status !== "live");
+  const yourScheduledShows = hostShows.filter((show) => show.status === "scheduled");
+  const yourPastShows = hostShows.filter((show) => show.status === "ended");
 
   return (
     <main className="flex w-full flex-1 flex-col gap-10 px-4 py-6 sm:px-6 lg:gap-14 lg:py-10">
@@ -108,6 +110,17 @@ export function BrowsePage({
                 <h3 className="micro text-muted-foreground">Live now</h3>
                 <div className="flex flex-col gap-2.5">
                   {yourLiveShows.map((show) => (
+                    <HostShowRow key={show.id} show={show} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {yourScheduledShows.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                <h3 className="micro text-muted-foreground">Scheduled</h3>
+                <div className="flex flex-col gap-2.5">
+                  {yourScheduledShows.map((show) => (
                     <HostShowRow key={show.id} show={show} />
                   ))}
                 </div>
@@ -181,6 +194,7 @@ function PageHeader({
 
         <div className="flex flex-wrap items-center gap-2">
           <HostCtaButton size="sm" canHost={canHost} area="home" />
+          <ScheduleShowButton size="sm" canHost={canHost} area="home" />
           <Button
             variant="ghost"
             size="sm"
@@ -235,26 +249,50 @@ function HostCallout({ canHost }: { canHost: boolean }) {
           the room decide what&rsquo;s worth buying.
         </p>
       </div>
-      <HostCtaButton size="micro" className="w-fit" canHost={canHost} area="home" />
+      <div className="flex flex-wrap items-center gap-2">
+        <HostCtaButton size="micro" className="w-fit" canHost={canHost} area="home" />
+        <ScheduleShowButton
+          size="micro"
+          variant="ghost"
+          className="w-fit"
+          canHost={canHost}
+          area="home"
+        />
+      </div>
     </section>
   );
 }
 
 function HostShowRow({ show }: { show: HostShow }) {
   const isLive = show.status === "live";
+  const isScheduled = show.status === "scheduled";
   const statusLabel = isLive
     ? "Live"
-    : show.status === "ended"
-      ? "Ended"
-      : "Scheduled";
-  const actionLabel = isLive ? "Open studio" : "View recap";
+    : isScheduled
+      ? "Scheduled"
+      : "Ended";
+  const actionLabel = isLive
+    ? "Open studio"
+    : isScheduled
+      ? "Manage"
+      : "View recap";
   const href = hostShowPath(show.slug);
-  const dateLabel = show.startedAt
-    ? new Date(show.startedAt).toLocaleDateString(undefined, {
+  const dateLabel = isScheduled && show.scheduledFor
+    ? new Date(show.scheduledFor).toLocaleString(undefined, {
         month: "short",
         day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
       })
-    : null;
+    : show.startedAt
+      ? new Date(show.startedAt).toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+        })
+      : null;
+  const pathLabel = isScheduled
+    ? waitroomShowPath(show.slug)
+    : viewerShowPath(show.slug);
 
   return (
     <Card className="py-0 ring-foreground/8 transition-all hover:-translate-y-px hover:ring-foreground/20">
@@ -266,7 +304,9 @@ function HostShowRow({ show }: { show: HostShow }) {
             trackEvent(
               isLive
                 ? AnalyticsEvent.HOST_OPEN_STUDIO
-                : AnalyticsEvent.HOST_VIEW_RECAP,
+                : isScheduled
+                  ? AnalyticsEvent.HOST_MANAGE_SCHEDULED
+                  : AnalyticsEvent.HOST_VIEW_RECAP,
               { area: "home" },
             )
           }
@@ -281,6 +321,8 @@ function HostShowRow({ show }: { show: HostShow }) {
           >
             {isLive ? (
               <Radio className="size-5" />
+            ) : isScheduled ? (
+              <CalendarClock className="size-5" />
             ) : (
               <Clapperboard className="size-5" />
             )}
@@ -302,7 +344,7 @@ function HostShowRow({ show }: { show: HostShow }) {
               )}
             </div>
             <p className="truncate text-sm text-muted-foreground">
-              {viewerShowPath(show.slug)}
+              {pathLabel}
               {dateLabel ? ` · ${dateLabel}` : null}
             </p>
           </div>

@@ -16,6 +16,13 @@ export type CreatedShowSession = {
   snapshot?: StreamSnapshot;
 };
 
+export type ScheduledShowResult = {
+  slug: string;
+  title: string;
+  scheduledFor: string;
+  scheduled: true;
+};
+
 const PENDING_LIVE_KEY = "frontrow:pending-live";
 
 /** Create a show from a completed setup draft and return LiveKit credentials. */
@@ -67,6 +74,78 @@ export async function createLiveShow(
     token: data.token,
     url: data.url,
     snapshot: data.snapshot,
+  };
+}
+
+/** Schedule a show for a future time — no LiveKit session yet. */
+export async function scheduleShow(
+  draft: ShowSetupDraft,
+  title: string,
+  scheduledFor: Date,
+): Promise<ScheduledShowResult> {
+  const normalized =
+    !draft.showName.trim() && !draft.nameTouched
+      ? { ...draft, showName: suggestShowName(draft) }
+      : draft;
+  writeShowSetupDraft(normalized);
+
+  const setup = draftToSetup(normalized);
+  const res = await fetch("/api/shows", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: title.trim() || normalized.showName.trim() || "Untitled show",
+      setup: setup ?? undefined,
+      challengeSlug: normalized.challengeSlug ?? undefined,
+      scheduledFor: scheduledFor.toISOString(),
+    }),
+  });
+
+  const data = await readResponseJson<{
+    error?: string;
+    slug: string;
+    title: string;
+    scheduledFor: string;
+    scheduled?: boolean;
+  }>(res);
+
+  if (!res.ok) {
+    throw new Error(data.error ?? "Failed to schedule show");
+  }
+
+  return {
+    slug: data.slug,
+    title: data.title,
+    scheduledFor: data.scheduledFor,
+    scheduled: true,
+  };
+}
+
+/** Go live from a previously scheduled show. */
+export async function startScheduledShow(
+  slug: string,
+): Promise<CreatedShowSession> {
+  const res = await fetch(`/api/shows/${slug}/start`, { method: "POST" });
+
+  const data = await readResponseJson<{
+    error?: string;
+    slug: string;
+    title: string;
+    room: string;
+    token: string;
+    url: string;
+  }>(res);
+
+  if (!res.ok) {
+    throw new Error(data.error ?? "Failed to start show");
+  }
+
+  return {
+    slug: data.slug,
+    title: data.title,
+    room: data.room,
+    token: data.token,
+    url: data.url,
   };
 }
 

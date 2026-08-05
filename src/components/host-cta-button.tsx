@@ -49,3 +49,37 @@ export function HostCtaButton({
     </Button>
   );
 }
+
+type ScheduleShowButtonProps = Omit<ComponentProps<typeof Button>, "render"> & {
+  canHost: boolean;
+  area: string;
+};
+
+export function ScheduleShowButton({
+  canHost,
+  area,
+  className,
+  onClick,
+  ...props
+}: ScheduleShowButtonProps) {
+  const destination = canHost ? "/host/schedule" : "/creators";
+  const label = canHost ? "Schedule show" : "Apply to host";
+
+  return (
+    <Button
+      {...props}
+      variant={props.variant ?? "outline"}
+      className={cn(className)}
+      render={<Link href={destination} />}
+      onClick={(event) => {
+        trackEvent(
+          canHost ? AnalyticsEvent.CTA_SCHEDULE_SHOW : AnalyticsEvent.CTA_APPLY,
+          { area },
+        );
+        onClick?.(event);
+      }}
+    >
+      {label}
+    </Button>
+  );
+}

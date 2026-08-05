@@ -1,4 +1,4 @@
-import { getHostUser } from "@/lib/auth";
+import { getApprovedHostUser } from "@/lib/auth";
 import { createAccessToken, getLiveKitConfig } from "@/lib/livekit";
 import {
   checkRateLimit,
@@ -13,9 +13,12 @@ export async function POST(
   _request: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
-  const host = await getHostUser();
+  const host = await getApprovedHostUser();
   if (!host) {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json(
+      { error: "Hosting not approved", code: "hosting_not_approved" },
+      { status: 403 },
+    );
   }
 
   const ip = clientIp(_request);
