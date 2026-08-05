@@ -858,9 +858,16 @@ async function removeShow(show: Show): Promise<Show> {
     await deleteMuxAsset(show.muxAssetId);
   }
 
-  await db.delete(streams).where(eq(streams.id, show.id));
+  const [deleted] = await db
+    .delete(streams)
+    .where(eq(streams.id, show.id))
+    .returning();
 
-  return show;
+  if (!deleted) {
+    throw new Error("Show not found");
+  }
+
+  return deleted;
 }
 
 /**

@@ -3,7 +3,10 @@ import { notFound } from "next/navigation";
 
 import { AdminAccessDenied } from "@/components/admin-access-denied";
 import { AdminCloseAllButton } from "@/components/admin-close-all-button";
-import { DeleteShowButton } from "@/components/delete-show-button";
+import {
+  AdminPastShows,
+  type AdminPastShow,
+} from "@/components/admin-past-shows";
 import { EndLiveShowButton } from "@/components/end-live-show-button";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -26,14 +29,18 @@ function formatShowDate(date: Date): string {
   });
 }
 
-function formatRanFor(startedAt: Date | null, endedAt: Date | null): string | null {
-  if (!startedAt || !endedAt) return null;
-  const minutes = Math.round((endedAt.getTime() - startedAt.getTime()) / 60_000);
-  if (minutes < 1) return "Ran under a minute";
-  if (minutes < 60) return `Ran ${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-  return remainder > 0 ? `Ran ${hours}h ${remainder}m` : `Ran ${hours}h`;
+function toAdminPastShow(show: Awaited<
+  ReturnType<typeof listPastShowsForAdmin>
+>[number]): AdminPastShow {
+  return {
+    id: show.id,
+    slug: show.slug,
+    title: show.title,
+    hostName: show.hostName,
+    endedAt: show.endedAt?.toISOString() ?? null,
+    startedAt: show.startedAt?.toISOString() ?? null,
+    hasRecap: !!show.muxPlaybackId,
+  };
 }
 
 function formatDuration(startedAt: Date): string {
@@ -181,51 +188,7 @@ export default async function AdminPage() {
         </div>
 
         {pastShows.length > 0 ? (
-          <div className="flex flex-col gap-3">
-            {pastShows.map((show) => {
-              const ranFor = formatRanFor(show.startedAt, show.endedAt);
-              return (
-                <Card
-                  key={show.id}
-                  className="py-0 ring-foreground/8 transition-colors hover:ring-foreground/15"
-                >
-                  <div className="flex items-center gap-3 px-4 py-3.5">
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-base font-normal">
-                          {show.title}
-                        </span>
-                        {show.muxPlaybackId ? (
-                          <Badge variant="outline" size="micro" className="shrink-0">
-                            Recap
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <p className="truncate text-sm text-muted-foreground">
-                        {viewerShowPath(show.slug)}
-                        {show.hostName ? ` · ${show.hostName}` : null}
-                        {show.endedAt ? ` · ${formatShowDate(show.endedAt)}` : null}
-                      </p>
-                      {ranFor ? (
-                        <p className="text-xs text-muted-foreground">{ranFor}</p>
-                      ) : null}
-                    </div>
-                    <Link
-                      href={viewerShowPath(show.slug)}
-                      className="shrink-0 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                    >
-                      View
-                    </Link>
-                    <DeleteShowButton
-                      slug={show.slug}
-                      title={show.title}
-                      variant="admin"
-                    />
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+          <AdminPastShows shows={pastShows.map(toAdminPastShow)} />
         ) : (
           <p className="text-sm text-muted-foreground">No past shows yet.</p>
         )}

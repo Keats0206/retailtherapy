@@ -1,5 +1,14 @@
+import { revalidatePath, revalidateTag } from "next/cache";
+
 import { getAdminUser } from "@/lib/auth";
 import { deleteShowAsAdmin, getShowBySlug } from "@/lib/shows";
+
+function invalidateShowPages() {
+  revalidatePath("/admin");
+  revalidatePath("/browse");
+  revalidatePath("/");
+  revalidateTag("list-live-shows", "max");
+}
 
 // DELETE /api/admin/shows/<slug> — remove any finished show (admin only).
 export async function DELETE(
@@ -29,6 +38,7 @@ export async function DELETE(
     if (!deleted) {
       return Response.json({ error: "Show not found" }, { status: 404 });
     }
+    invalidateShowPages();
     return Response.json({ slug: deleted.slug });
   } catch (err) {
     const message =

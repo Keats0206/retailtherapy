@@ -27,12 +27,15 @@ export function DeleteShowButton({
   title,
   disabled = false,
   variant = "host",
+  onDeleted,
 }: {
   slug: string;
   title: string;
   disabled?: boolean;
   /** Host deletes their own show; admin deletes any ended show. */
   variant?: "host" | "admin";
+  /** Called after a successful delete, before router.refresh(). */
+  onDeleted?: () => void;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -59,6 +62,7 @@ export function DeleteShowButton({
         area: isAdmin ? "admin" : "browse",
       });
       setOpen(false);
+      onDeleted?.();
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");

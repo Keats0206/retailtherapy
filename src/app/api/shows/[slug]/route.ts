@@ -1,3 +1,5 @@
+import { revalidatePath, revalidateTag } from "next/cache";
+
 import { getHostUser } from "@/lib/auth";
 import {
   deleteShow,
@@ -5,6 +7,13 @@ import {
   resolveRecording,
 } from "@/lib/shows";
 import { toPublicShow, getRecordingStatus } from "@/lib/show-public";
+
+function invalidateShowPages() {
+  revalidatePath("/admin");
+  revalidatePath("/browse");
+  revalidatePath("/");
+  revalidateTag("list-live-shows", "max");
+}
 
 // DELETE /api/shows/<slug> — remove a finished show. Host-only.
 export async function DELETE(
@@ -34,6 +43,7 @@ export async function DELETE(
     if (!deleted) {
       return Response.json({ error: "Show not found" }, { status: 404 });
     }
+    invalidateShowPages();
     return Response.json({ slug: deleted.slug });
   } catch (err) {
     const message =
