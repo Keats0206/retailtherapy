@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/user-menu";
 
 /**
- * The site header, for every route except `/watch`.
+ * The site header, for every route except `/watch` and the authenticated app
+ * shell at `/home` and `/saved`.
  *
  * Watch is deliberately outside this group: it runs full-bleed with the video
  * filling the viewport, and a persistent header would both eat vertical space
@@ -45,9 +46,8 @@ export default function ChromeLayout({
             <Button
               variant="ghost"
               size="micro"
-              render={<Link href="/saved">Saved</Link>}
+              render={<Link href="/home">Open app</Link>}
             />
-            <Button size="micro" render={<Link href="/host/setup">Go live</Link>} />
             <UserMenu />
           </Show>
         </div>
