@@ -3,6 +3,11 @@ export function viewerShowPath(slug: string): string {
   return `/show/${slug}`;
 }
 
+/** Pre-show lobby for a scheduled show that has not started yet. */
+export function waitroomShowPath(slug: string): string {
+  return `/waitroom/${slug}`;
+}
+
 /** Auth-gated host studio URL for a show. */
 export function hostShowPath(slug: string): string {
   return `/host/${slug}`;

@@ -32,8 +32,8 @@ export function ApplyPageChrome({ children }: { children: React.ReactNode }) {
               </SignUpButton>
             </Show>
             <Show when="signed-in">
-              <Button variant="ghost" size="micro" render={<Link href="/dashboard" />}>
-                Dashboard
+              <Button variant="ghost" size="micro" render={<Link href="/home" />}>
+                App
               </Button>
               <UserMenu />
             </Show>

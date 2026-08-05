@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 import { unstable_cache } from "next/cache";
-import { and, desc, eq, isNull, lt, notInArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, lt, notInArray, or, sql } from "drizzle-orm";
 
 import { db, products, streamProducts, streams } from "@/lib/db";
 import { getDiscoveryExclusions } from "@/lib/excluded-hosts";
@@ -179,6 +179,7 @@ export type DiscoveryShow = {
   /** Every product shown during the show, not just the previewed ones. */
   trailTotal: number;
   endedAt?: string | null;
+  scheduledFor?: string | null;
 };
 
 function discoveryThumbnail(label: string, tone = 18): string {
@@ -194,6 +195,7 @@ type ShowCard = {
   title: string;
   hostName: string | null;
   endedAt: Date | null;
+  scheduledFor?: Date | null;
   snapshot: unknown;
 };
 
@@ -211,6 +213,7 @@ const showCardColumns = {
   title: streams.title,
   hostName: streams.hostName,
   endedAt: streams.endedAt,
+  scheduledFor: streams.scheduledFor,
   snapshot: sql<Pick<StreamSnapshot, "active" | "trail"> | null>`
     case when ${streams.snapshot} is null then null else jsonb_build_object(
       'active', ${streams.snapshot} -> 'active',
@@ -221,7 +224,11 @@ const showCardColumns = {
 
 export function toDiscoveryShow(
   show: ShowCard,
-  opts?: { placeholderLabel?: string; includeEndedAt?: boolean },
+  opts?: {
+    placeholderLabel?: string;
+    includeEndedAt?: boolean;
+    includeScheduledFor?: boolean;
+  },
 ): DiscoveryShow {
   const snapshot = snapshotOf(show);
   const pinned =
@@ -242,6 +249,9 @@ export function toDiscoveryShow(
     trailTotal: snapshot.trail.length,
     ...(opts?.includeEndedAt
       ? { endedAt: show.endedAt?.toISOString() ?? null }
+      : {}),
+    ...(opts?.includeScheduledFor
+      ? { scheduledFor: show.scheduledFor?.toISOString() ?? null }
       : {}),
   };
 }
@@ -310,7 +320,7 @@ async function listLiveShowRows(limit: number): Promise<Show[]> {
 }
 
 function discoveryWhere(
-  status: "live" | "ended",
+  status: "live" | "ended" | "scheduled",
   excluded: DiscoveryExclusions,
 ) {
   const filters = [eq(streams.status, status)];
@@ -349,12 +359,42 @@ function listEndedShowCards(limit: number, excluded: DiscoveryExclusions) {
     .limit(limit);
 }
 
+function listScheduledShowCards(limit: number, excluded: DiscoveryExclusions) {
+  return db
+    .select(showCardColumns)
+    .from(streams)
+    .where(discoveryWhere("scheduled", excluded))
+    .orderBy(asc(streams.scheduledFor), desc(streams.createdAt))
+    .limit(limit);
+}
+
 export async function listEndedShows(limit = 24): Promise<DiscoveryShow[]> {
   const excluded = await getDiscoveryExclusions();
   const rows = await listEndedShowCards(limit, excluded);
   return rows.map((show) =>
     toDiscoveryShow(show, { placeholderLabel: "RECAP", includeEndedAt: true }),
   );
+}
+
+const listScheduledShowsCached = unstable_cache(
+  async (limit: number) => {
+    const excluded = await getDiscoveryExclusions();
+    const rows = await listScheduledShowCards(limit, excluded);
+    return rows.map((show) =>
+      toDiscoveryShow(show, {
+        placeholderLabel: "SOON",
+        includeScheduledFor: true,
+      }),
+    );
+  },
+  ["list-scheduled-shows"],
+  { revalidate: 10 },
+);
+
+export async function listScheduledShows(
+  limit = 12,
+): Promise<DiscoveryShow[]> {
+  return listScheduledShowsCached(limit);
 }
 
 export async function listShowsForHost(hostUserId: string): Promise<Show[]> {

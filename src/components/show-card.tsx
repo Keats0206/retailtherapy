@@ -8,7 +8,7 @@ import { HostAvatar, ShowMosaic } from "@/components/show-mosaic";
 import { Badge } from "@/components/ui/badge";
 import type { DiscoveryShow } from "@/lib/shows";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
-import { viewerShowPath } from "@/lib/show-urls";
+import { viewerShowPath, waitroomShowPath } from "@/lib/show-urls";
 import { cn } from "@/lib/utils";
 
 /**
@@ -25,17 +25,29 @@ export function ShowCard({
 }: {
   show: DiscoveryShow;
   isAdmin?: boolean;
-  variant?: "live" | "past";
+  variant?: "live" | "past" | "upcoming";
   area?: string;
 }) {
   const isLive = variant === "live";
+  const isUpcoming = variant === "upcoming";
   const endedDateLabel =
-    !isLive && show.endedAt
+    variant === "past" && show.endedAt
       ? new Date(show.endedAt).toLocaleDateString(undefined, {
           month: "short",
           day: "numeric",
         })
       : null;
+  const scheduledDateLabel =
+    isUpcoming && show.scheduledFor
+      ? new Date(show.scheduledFor).toLocaleString(undefined, {
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        })
+      : isUpcoming
+        ? "Starting soon"
+        : null;
 
   // The board metaphor: what's in it, then when. Live shows lead with the
   // product on screen instead, since that's what a viewer is joining for.
@@ -45,19 +57,27 @@ export function ShowCard({
       : null;
   const meta = isLive
     ? show.pinnedProduct ?? itemLabel
-    : [itemLabel, endedDateLabel].filter(Boolean).join(" · ");
+    : isUpcoming
+      ? scheduledDateLabel
+      : [itemLabel, endedDateLabel].filter(Boolean).join(" · ");
+
+  const href = isUpcoming
+    ? waitroomShowPath(show.slug)
+    : viewerShowPath(show.slug);
 
   return (
     <div className="group relative">
       <Link
-        href={viewerShowPath(show.slug)}
+        href={href}
         className="flex w-full flex-col gap-3 bg-card p-2 text-left outline-none ring-1 ring-border transition-shadow hover:shadow-lg hover:ring-foreground focus-visible:ring-2 focus-visible:ring-ring"
         onClick={() =>
           trackEvent(
             isLive
               ? AnalyticsEvent.BROWSE_JOIN_SHOW
-              : AnalyticsEvent.BROWSE_WATCH_REPLAY,
-            { area },
+              : isUpcoming
+                ? AnalyticsEvent.BROWSE_JOIN_SHOW
+                : AnalyticsEvent.BROWSE_WATCH_REPLAY,
+            { area, variant },
           )
         }
       >
@@ -75,6 +95,14 @@ export function ShowCard({
             >
               <span className="size-1.5 animate-pulse rounded-full bg-live-foreground/80" />
               Live
+            </Badge>
+          ) : isUpcoming ? (
+            <Badge
+              variant="secondary"
+              size="micro"
+              className="absolute left-3 top-3"
+            >
+              Upcoming
             </Badge>
           ) : null}
         </div>

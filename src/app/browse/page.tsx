@@ -1,6 +1,8 @@
+import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
-/** Browse moved to `/` — this keeps older links and shares working. */
-export default function BrowseRoute() {
-  redirect("/");
+/** Legacy browse URL — send members to the app, visitors to the landing. */
+export default async function BrowseRoute() {
+  const { userId } = await auth();
+  redirect(userId ? "/home" : "/");
 }
