@@ -24,15 +24,13 @@ import {
   VideoPlaceholder,
 } from "@/components/video-placeholder";
 import { WatchLayout } from "@/components/watch-layout";
+import { useViewerToken } from "@/hooks/use-viewer-token";
 import { useVisiblePoll } from "@/hooks/use-visible-poll";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
 import { readResponseJson } from "@/lib/fetch-json";
 import type { PublicShow } from "@/lib/show-public";
 import type { StreamSnapshot } from "@/lib/stream-state";
 import { useStreamState } from "@/lib/stream-state";
-import { getVoterDisplayName } from "@/lib/voter-identity";
-
-type Connection = { token: string; url: string };
 
 const ShowEndedViewer = dynamic(
   () =>
@@ -86,41 +84,8 @@ export default function ShowPageClient({
 }
 
 function LiveViewer({ show }: { show: PublicShow }) {
-  const [conn, setConn] = useState<Connection | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { conn, error, isLoading } = useViewerToken(show.roomName);
   const [disconnected, setDisconnected] = useState(false);
-
-  useEffect(() => {
-    if (conn) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/livekit/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            room: show.roomName,
-            role: "viewer",
-            displayName: getVoterDisplayName(),
-          }),
-        });
-        const data = await readResponseJson<{
-          error?: string;
-          token: string;
-          url: string;
-        }>(res);
-        if (!res.ok) throw new Error(data.error ?? "Failed to connect");
-        if (!cancelled) setConn({ token: data.token, url: data.url });
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to connect");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [conn, show.roomName]);
 
   if (error) {
     return (
@@ -136,7 +101,7 @@ function LiveViewer({ show }: { show: PublicShow }) {
     );
   }
 
-  if (!conn) {
+  if (isLoading || !conn) {
     return (
       <WatchShellSkeleton
         statusLabel="Joining room…"
@@ -148,6 +113,7 @@ function LiveViewer({ show }: { show: PublicShow }) {
 
   return (
     <LiveRoom
+      key={conn.token}
       token={conn.token}
       serverUrl={conn.url}
       video={false}

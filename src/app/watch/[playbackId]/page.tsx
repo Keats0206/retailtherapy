@@ -1,6 +1,5 @@
 import { notFound, redirect } from "next/navigation";
 
-import { createAccessToken, getLiveKitConfig } from "@/lib/livekit";
 import { getShowByRoomName } from "@/lib/shows";
 import { viewerShowPath } from "@/lib/show-urls";
 
@@ -18,24 +17,9 @@ export default async function WatchPage({
   // Fall back for direct room access that predates the show lifecycle.
   if (!room) notFound();
 
-  let liveConnection: { token: string; url: string } | null = null;
-  try {
-    const identity = `viewer-${crypto.randomUUID().slice(0, 8)}`;
-    const token = await createAccessToken({
-      room,
-      identity,
-      name: "Viewer",
-      canPublish: false,
-    });
-    const { url } = getLiveKitConfig();
-    liveConnection = { token, url };
-  } catch {
-    // Client falls back to POST /api/livekit/token if minting fails.
-  }
-
   return (
     <main className="flex min-h-0 flex-1 flex-col">
-      <Player room={room} liveConnection={liveConnection} />
+      <Player room={room} />
     </main>
   );
 }

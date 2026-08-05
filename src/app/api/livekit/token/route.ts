@@ -1,3 +1,4 @@
+import { getViewerChatName, getSignedInUser } from "@/lib/auth";
 import { createAccessToken, getLiveKitConfig } from "@/lib/livekit";
 import {
   checkRateLimit,
@@ -10,6 +11,9 @@ import {
 //
 // Host publish tokens are only issued from POST /api/shows and
 // POST /api/shows/<slug>/resume after ownership checks — never here.
+//
+// Signed-in viewers get a stable identity and Clerk-derived display name.
+// Anonymous viewers may watch and vote; chat is gated client-side.
 export async function POST(request: Request) {
   const ip = clientIp(request);
   const limit = checkRateLimit(`livekit-token:${ip}`, {
@@ -20,7 +24,7 @@ export async function POST(request: Request) {
     return rateLimitResponse(limit.retryAfterSec ?? 60);
   }
 
-  let body: { room?: string; role?: string; displayName?: string };
+  let body: { room?: string; role?: string };
   try {
     body = await request.json();
   } catch {
@@ -39,9 +43,12 @@ export async function POST(request: Request) {
     return Response.json({ error: "Missing room" }, { status: 400 });
   }
 
-  const identity = `viewer-${crypto.randomUUID().slice(0, 8)}`;
-  const displayName =
-    body.displayName?.trim().slice(0, 32) || "Guest";
+  const user = await getSignedInUser();
+  const identity = user
+    ? `viewer-${user.id}`
+    : `viewer-${crypto.randomUUID().slice(0, 8)}`;
+  const displayName = user ? getViewerChatName(user) : "Guest";
+  const canChat = user !== null;
 
   try {
     const token = await createAccessToken({
@@ -51,7 +58,16 @@ export async function POST(request: Request) {
       canPublish: false,
     });
     const { url } = getLiveKitConfig();
-    return Response.json({ token, url, room, identity, canPublish: false });
+    return Response.json({
+      token,
+      url,
+      room,
+      identity,
+      canPublish: false,
+      canPublishData: true,
+      canChat,
+      displayName,
+    });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Failed to mint access token";

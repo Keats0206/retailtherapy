@@ -56,6 +56,17 @@ export async function getSignedInUser(): Promise<User | null> {
   return currentUser();
 }
 
+/** LiveKit chat display name for a signed-in viewer (server-derived). */
+export function getViewerChatName(user: User): string {
+  const username = clerkUsername(user);
+  if (username) return username;
+  const full = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  if (full) return full.slice(0, 32);
+  const email = primaryEmail(user);
+  if (email) return email.split("@")[0]!.slice(0, 32);
+  return "Viewer";
+}
+
 function getAdminAllowlist(): Set<string> | null {
   return parseEmailAllowlist(process.env.ADMIN_ALLOWLIST);
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Track } from "livekit-client";
 import "@livekit/components-styles";
 
@@ -19,52 +18,11 @@ import {
   VideoPlaceholder,
 } from "@/components/video-placeholder";
 import { WatchLayout } from "@/components/watch-layout";
-import { readResponseJson } from "@/lib/fetch-json";
+import { useViewerToken } from "@/hooks/use-viewer-token";
 import { useStreamState } from "@/lib/stream-state";
-import { getVoterDisplayName } from "@/lib/voter-identity";
 
-type Connection = { token: string; url: string };
-
-export default function Player({
-  room,
-  liveConnection = null,
-}: {
-  room: string;
-  liveConnection?: Connection | null;
-}) {
-  const [conn, setConn] = useState<Connection | null>(liveConnection);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (conn) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/livekit/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            room,
-            role: "viewer",
-            displayName: getVoterDisplayName(),
-          }),
-        });
-        const data = await readResponseJson<{
-          error?: string;
-          token: string;
-          url: string;
-        }>(res);
-        if (!res.ok) throw new Error(data.error ?? "Failed to connect");
-        if (!cancelled) setConn({ token: data.token, url: data.url });
-      } catch (err) {
-        if (!cancelled)
-          setError(err instanceof Error ? err.message : "Failed to connect");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [conn, room]);
+export default function Player({ room }: { room: string }) {
+  const { conn, error, isLoading } = useViewerToken(room);
 
   if (error) {
     return (
@@ -74,12 +32,13 @@ export default function Player({
     );
   }
 
-  if (!conn) {
+  if (isLoading || !conn) {
     return <WatchShellSkeleton statusLabel="Joining room…" />;
   }
 
   return (
     <LiveRoom
+      key={conn.token}
       token={conn.token}
       serverUrl={conn.url}
       video={false}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -19,11 +19,10 @@ import {
   VideoPlaceholder,
 } from "@/components/video-placeholder";
 import { WatchLayout } from "@/components/watch-layout";
+import { useViewerToken } from "@/hooks/use-viewer-token";
 import type { PublicShow } from "@/lib/show-public";
 import { useShowStatusListener } from "@/lib/show-status-state";
 import { useStreamState } from "@/lib/stream-state";
-
-type Connection = { token: string; url: string };
 
 /** HTTP fallback when the data-channel end signal is missed. */
 const FALLBACK_POLL_MS = 30_000;
@@ -35,8 +34,7 @@ export default function ShowLiveViewer({
   show: PublicShow;
   onShowEnded: (show: PublicShow) => void;
 }) {
-  const [conn, setConn] = useState<Connection | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { conn, error, isLoading } = useViewerToken(show.roomName);
 
   const refreshEnded = useCallback(async () => {
     const res = await fetch(`/api/shows/${show.slug}`);
@@ -44,29 +42,6 @@ export default function ShowLiveViewer({
     const data = (await res.json()) as PublicShow;
     if (data.status === "ended") onShowEnded(data);
   }, [onShowEnded, show.slug]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/livekit/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ room: show.roomName, role: "viewer" }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "Failed to connect");
-        if (!cancelled) setConn({ token: data.token, url: data.url });
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to connect");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [show.roomName]);
 
   useEffect(() => {
     const id = setInterval(() => void refreshEnded(), FALLBACK_POLL_MS);
@@ -87,7 +62,7 @@ export default function ShowLiveViewer({
     );
   }
 
-  if (!conn) {
+  if (isLoading || !conn) {
     return (
       <div className="micro flex flex-1 items-center justify-center bg-black text-white/40">
         Connecting…
@@ -97,6 +72,7 @@ export default function ShowLiveViewer({
 
   return (
     <LiveKitRoom
+      key={conn.token}
       token={conn.token}
       serverUrl={conn.url}
       connect

@@ -56,6 +56,8 @@ export async function createAccessToken(opts: {
   identity: string;
   name?: string;
   canPublish: boolean;
+  /** Defaults to true — viewers need data for votes; chat is gated in UI. */
+  canPublishData?: boolean;
 }): Promise<string> {
   const { apiKey, apiSecret } = getLiveKitConfig();
 
@@ -68,8 +70,7 @@ export async function createAccessToken(opts: {
     roomJoin: true,
     room: opts.room,
     canPublish: opts.canPublish,
-    // Everyone may publish data — this is what carries chat and votes.
-    canPublishData: true,
+    canPublishData: opts.canPublishData ?? true,
     canSubscribe: true,
   });
 

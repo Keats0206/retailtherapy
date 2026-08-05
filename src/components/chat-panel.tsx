@@ -1,5 +1,6 @@
 "use client";
 
+import { SignInButton, useAuth, useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat, useLocalParticipant } from "@/lib/live";
 import { MessageSquare, SendHorizontal, Sparkles } from "lucide-react";
@@ -20,6 +21,7 @@ import {
   type ChatLine,
 } from "@/lib/chat-state";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import { LOCAL_STREAM } from "@/lib/live/mode";
 import { cn } from "@/lib/utils";
 
 export type { ChatLine };
@@ -39,7 +41,9 @@ export function ChatPanel({
 }) {
   const { chatMessages, send, isSending } = useChat();
   const { localParticipant } = useLocalParticipant();
+  const { isSignedIn, isLoaded } = useAuth();
   const isHost = localParticipant.permissions?.canPublish ?? false;
+  const canSend = isHost || LOCAL_STREAM || (isLoaded && Boolean(isSignedIn));
   const history = useChatHistory({
     isHost,
     messages: isHost ? chatMessages : [],
@@ -60,6 +64,7 @@ export function ChatPanel({
       messages={messages}
       onSend={send}
       isSending={isSending}
+      canSend={canSend}
       className={className}
       variant={variant}
       onOpenInteractions={onOpenInteractions}
@@ -71,6 +76,7 @@ export function ChatPanelView({
   messages,
   onSend,
   isSending = false,
+  canSend = true,
   className,
   variant = "panel",
   onOpenInteractions,
@@ -78,10 +84,12 @@ export function ChatPanelView({
   messages: ChatLine[];
   onSend: (message: string) => void | Promise<unknown>;
   isSending?: boolean;
+  canSend?: boolean;
   className?: string;
   variant?: "panel" | "rail" | "pip";
   onOpenInteractions?: () => void;
 }) {
+  const { user } = useUser();
   const [text, setText] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const isRail = variant === "rail" || variant === "pip";
@@ -162,40 +170,44 @@ export function ChatPanelView({
         </div>
 
         <div className={cn("shrink-0 border-t border-border/60", isPip ? "p-2" : "p-3")}>
-          <form onSubmit={submit} className="flex items-center gap-2">
-            <Input
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Message or paste a link…"
-              aria-label="Chat message"
-              className="h-10 flex-1"
-            />
-            {onOpenInteractions ? (
+          {canSend ? (
+            <form onSubmit={submit} className="flex items-center gap-2">
+              <Input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Message or paste a link…"
+                aria-label="Chat message"
+                className="h-10 flex-1"
+              />
+              {onOpenInteractions ? (
+                <Button
+                  type="button"
+                  size="icon"
+                  aria-label="Launch interaction"
+                  onClick={onOpenInteractions}
+                  className="size-10 shrink-0 bg-foreground text-background hover:bg-foreground/90"
+                >
+                  <Sparkles className="size-4" />
+                </Button>
+              ) : null}
               <Button
-                type="button"
+                type="submit"
                 size="icon"
-                aria-label="Launch interaction"
-                onClick={onOpenInteractions}
-                className="size-10 shrink-0 bg-foreground text-background hover:bg-foreground/90"
+                aria-label="Send message"
+                variant={onOpenInteractions ? "outline" : "default"}
+                className={cn(
+                  "size-10 shrink-0",
+                  !onOpenInteractions &&
+                    "bg-foreground text-background hover:bg-foreground/90",
+                )}
+                disabled={isSending || !text.trim()}
               >
-                <Sparkles className="size-4" />
+                <SendHorizontal className="size-4" />
               </Button>
-            ) : null}
-            <Button
-              type="submit"
-              size="icon"
-              aria-label="Send message"
-              variant={onOpenInteractions ? "outline" : "default"}
-              className={cn(
-                "size-10 shrink-0",
-                !onOpenInteractions &&
-                  "bg-foreground text-background hover:bg-foreground/90",
-              )}
-              disabled={isSending || !text.trim()}
-            >
-              <SendHorizontal className="size-4" />
-            </Button>
-          </form>
+            </form>
+          ) : (
+            <ChatSignInPrompt variant={variant} />
+          )}
         </div>
       </div>
     );
@@ -232,25 +244,58 @@ export function ChatPanelView({
       </PanelContent>
 
       <div className="px-4 pb-1">
-        <form onSubmit={submit} className="flex w-full items-center gap-2">
-          <Input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Message or paste a link…"
-            aria-label="Chat message"
-          />
-          <Button
-            type="submit"
-            size="icon"
-            aria-label="Send message"
-            className="shrink-0"
-            disabled={isSending || !text.trim()}
-          >
-            <SendHorizontal />
-          </Button>
-        </form>
+        {canSend ? (
+          <form onSubmit={submit} className="flex w-full items-center gap-2">
+            {user?.username ? (
+              <p className="sr-only">Chatting as @{user.username}</p>
+            ) : null}
+            <Input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Message or paste a link…"
+              aria-label="Chat message"
+            />
+            <Button
+              type="submit"
+              size="icon"
+              aria-label="Send message"
+              className="shrink-0"
+              disabled={isSending || !text.trim()}
+            >
+              <SendHorizontal />
+            </Button>
+          </form>
+        ) : (
+          <ChatSignInPrompt variant={variant} />
+        )}
       </div>
     </Panel>
+  );
+}
+
+function ChatSignInPrompt({
+  variant,
+}: {
+  variant: "panel" | "rail" | "pip";
+}) {
+  const isCompact = variant === "pip";
+
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-3",
+        isCompact && "flex-col items-stretch text-center",
+      )}
+    >
+      <p className="text-sm text-muted-foreground">
+        Sign in to join the conversation
+      </p>
+      <SignInButton mode="modal">
+        <Button type="button" size={isCompact ? "sm" : "default"} className="shrink-0">
+          Sign in
+        </Button>
+      </SignInButton>
+    </div>
   );
 }
 
