@@ -46,13 +46,13 @@ export function isUserAllowlistedAsAdmin(user: User): boolean {
   const username = clerkUsername(user);
   if (username && isSuperAdminUsername(username)) return true;
 
-  const email = primaryEmail(user);
-  if (email && BUILTIN_ADMIN_EMAILS.has(email)) return true;
+  const emails = userEmails(user);
+  if (emails.some((email) => BUILTIN_ADMIN_EMAILS.has(email))) return true;
 
   const allowlist = getAdminAllowlist();
   if (!allowlist) return false;
 
-  return email !== null && allowlist.has(email);
+  return emails.some((email) => allowlist.has(email));
 }
 
 export function isSuperAdmin(user: User): boolean {
@@ -105,6 +105,12 @@ function parseEmailAllowlist(raw: string | undefined): Set<string> | null {
     .filter(Boolean);
 
   return emails.length > 0 ? new Set(emails) : null;
+}
+
+function userEmails(user: User): string[] {
+  return user.emailAddresses
+    .map((entry) => entry.emailAddress.trim().toLowerCase())
+    .filter(Boolean);
 }
 
 function primaryEmail(user: User): string | null {
