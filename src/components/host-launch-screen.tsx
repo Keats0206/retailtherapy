@@ -61,7 +61,10 @@ export type HostLaunchScreenProps = {
  */
 export function HostLaunchScreen(props: HostLaunchScreenProps) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+    <div
+      data-hide-site-chrome
+      className="fixed inset-0 z-50 flex flex-col bg-background"
+    >
       {props.liveShowSlug ? (
         <ExistingShowNotice
           slug={props.liveShowSlug}
