@@ -22,11 +22,13 @@ export function ShowCard({
   isAdmin = false,
   variant = "live",
   area = "browse",
+  layout = "grid",
 }: {
   show: DiscoveryShow;
   isAdmin?: boolean;
   variant?: "live" | "past" | "upcoming";
   area?: string;
+  layout?: "row" | "grid";
 }) {
   const isLive = variant === "live";
   const isUpcoming = variant === "upcoming";
@@ -65,11 +67,21 @@ export function ShowCard({
     ? waitroomShowPath(show.slug)
     : viewerShowPath(show.slug);
 
+  const isRow = layout === "row";
+
   return (
-    <div className="group relative">
+    <div
+      className={cn(
+        "group relative",
+        isRow && "w-[280px] shrink-0 snap-start sm:w-[300px]",
+      )}
+    >
       <Link
         href={href}
-        className="flex w-full flex-col gap-3 bg-card p-2 text-left outline-none ring-1 ring-border transition-shadow hover:shadow-lg hover:ring-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        className={cn(
+          "flex w-full flex-col gap-3 bg-card p-2 text-left outline-none ring-1 ring-border transition-shadow hover:shadow-lg hover:ring-foreground focus-visible:ring-2 focus-visible:ring-ring",
+          isRow && "h-full",
+        )}
         onClick={() =>
           trackEvent(
             isLive
@@ -113,7 +125,16 @@ export function ShowCard({
               {show.title}
             </h3>
             {meta ? (
-              <p className="truncate text-sm text-muted-foreground">{meta}</p>
+              <p
+                className={cn(
+                  "truncate text-muted-foreground",
+                  isUpcoming && isRow
+                    ? "text-sm font-medium text-foreground/80"
+                    : "text-sm",
+                )}
+              >
+                {meta}
+              </p>
             ) : null}
           </div>
           <HostAvatar name={show.host} />

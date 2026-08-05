@@ -4,22 +4,19 @@ import { redirect } from "next/navigation";
 
 import { BrowsePage } from "@/components/browse-page";
 import { isAdmin } from "@/lib/auth";
-import { listChallenges } from "@/lib/challenges";
 import { listEndedShows, listLiveShows, listScheduledShows, listShowsForHost } from "@/lib/shows";
 
 export const metadata: Metadata = {
   title: "Home · frontrow",
-  description:
-    "Live and upcoming shows, brand challenges, your host dashboard, and every recap.",
+  description: "Live and upcoming shows, past recaps, and your saved picks.",
 };
 
 export default async function AppHomePage() {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
-  const [challenges, liveShows, upcomingShows, pastShows, admin, hostShows] =
+  const [liveShows, upcomingShows, pastShows, admin, hostShows] =
     await Promise.all([
-      listChallenges(),
       listLiveShows(),
       listScheduledShows(),
       listEndedShows(),
@@ -29,7 +26,6 @@ export default async function AppHomePage() {
 
   return (
     <BrowsePage
-      challenges={challenges}
       liveShows={liveShows}
       upcomingShows={upcomingShows}
       pastShows={pastShows}
