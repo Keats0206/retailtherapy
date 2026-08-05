@@ -6,6 +6,7 @@ import {
   Bookmark,
   Calendar,
   Clapperboard,
+  History,
   Home,
   Radio,
   Shield,
@@ -41,9 +42,15 @@ const NAV_ITEMS: NavItem[] = [
     icon: Calendar,
   },
   {
-    href: "/home#challenges",
+    href: "/home#past",
+    label: "Past",
+    icon: History,
+  },
+  {
+    href: "/challenges",
     label: "Challenges",
     icon: Clapperboard,
+    match: (pathname) => pathname.startsWith("/challenges"),
   },
   {
     href: "/saved",
