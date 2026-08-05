@@ -1,11 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Show, SignInButton, SignUpButton } from "@clerk/nextjs";
 import { ChevronRight, Clapperboard, Radio } from "lucide-react";
 
-import { ChallengeEventCard } from "@/components/challenge-card";
-import { ChallengeSteps } from "@/components/challenge-steps";
+import { ChallengesSection } from "@/components/challenges-section";
 import { LivePreviewMock } from "@/components/live-preview-mock";
 import { DeleteShowButton } from "@/components/delete-show-button";
 import { EndLiveShowButton } from "@/components/end-live-show-button";
@@ -29,14 +27,8 @@ export type HostShow = {
 };
 
 /**
- * The home page. There is no landing page in front of this, so it has to work
- * cold for a signed-out visitor and as a dashboard for a signed-in one: the
- * shows and challenges are identical either way, and only the calls to action
- * and the "your shows" section change.
- *
- * Everything is one scroll rather than tabs — challenges and past shows are
- * the point of the page, and hiding either behind a tab meant a visitor who
- * landed on an empty schedule saw nothing at all.
+ * Signed-in app home — the full discovery feed. Public visitors land on
+ * `/` (challenges only); everything else lives here behind auth.
  */
 export function BrowsePage({
   challenges = [],
@@ -54,19 +46,13 @@ export function BrowsePage({
   const yourLiveShows = hostShows.filter((show) => show.status === "live");
   const yourPastShows = hostShows.filter((show) => show.status !== "live");
 
-  // `listChallenges` already sorts open → upcoming → closed; the split here is
-  // only about which heading a card sits under.
-  const openChallenges = challenges.filter((entry) => entry.state === "open");
-  const upcomingChallenges = challenges.filter(
-    (entry) => entry.state === "upcoming",
-  );
-
   return (
     <main className="flex w-full flex-1 flex-col gap-10 px-4 py-6 sm:px-6 lg:gap-14 lg:py-10">
       <PageHeader liveCount={liveShows.length} />
 
       {liveShows.length > 0 ? (
         <Section
+          id="live"
           title="Live now"
           eyebrow={
             <span className="inline-flex items-center gap-1.5 text-live">
@@ -83,37 +69,7 @@ export function BrowsePage({
         </Section>
       ) : null}
 
-      <Section
-        id="challenges"
-        title="Challenges"
-        description="Brands set the budget and the brief. Hosts go live for at least 30 minutes — you vote on every pick."
-      >
-        {/* The terms of taking one on, read before the grid of them. */}
-        <ChallengeSteps />
-
-        {challenges.length === 0 ? (
-          <p className="soft-panel p-6 text-sm leading-relaxed text-muted-foreground">
-            No challenges are running right now. Check back soon — new brand
-            events drop every week.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-8">
-            {openChallenges.length > 0 ? (
-              <ChallengeGrid challenges={openChallenges} featureFirst />
-            ) : null}
-
-            {upcomingChallenges.length > 0 ? (
-              <div className="flex flex-col gap-4">
-                <h3 className="micro text-muted-foreground">Coming up</h3>
-                <ChallengeGrid
-                  challenges={upcomingChallenges}
-                  featureFirst={openChallenges.length === 0}
-                />
-              </div>
-            ) : null}
-          </div>
-        )}
-      </Section>
+      <ChallengesSection challenges={challenges} />
 
       {hostShows.length > 0 ? (
         <Section title="Your shows">
@@ -166,12 +122,7 @@ export function BrowsePage({
 }
 
 /**
- * The masthead. Signed-out visitors get the pitch and a way in; signed-in ones
- * have already had it, so they get the shortcut to going live instead.
- *
- * The mock next to the copy carries the part the words kept failing to: these
- * are *people*, live on camera, shopping a real store. Text alone read as a
- * catalogue.
+ * App home masthead — signed-in shortcuts only.
  */
 function PageHeader({ liveCount }: { liveCount: number }) {
   return (
@@ -188,62 +139,29 @@ function PageHeader({ liveCount }: { liveCount: number }) {
             Watch people shop.
           </h1>
           <p className="max-w-lg text-base leading-relaxed text-muted-foreground">
-            <Show when="signed-out">
-              Hosts go live, add links to what&rsquo;s on screen, and let the
-              room vote on what&rsquo;s worth it. No account needed to watch.
-            </Show>
-            <Show when="signed-in">
-              Take a brand challenge, jump into a room, or pick up where a past
-              show left off.
-            </Show>
+            Take a brand challenge, jump into a room, or pick up where a past
+            show left off.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Show when="signed-out">
-            <SignUpButton mode="modal">
-              <Button
-                size="sm"
-                onClick={() =>
-                  trackEvent(AnalyticsEvent.NAV_SIGN_UP, { area: "home" })
-                }
-              >
-                Get started
-              </Button>
-            </SignUpButton>
-            <SignInButton mode="modal">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  trackEvent(AnalyticsEvent.NAV_SIGN_IN, { area: "home" })
-                }
-              >
-                Sign in
-              </Button>
-            </SignInButton>
-          </Show>
-          <Show when="signed-in">
-            <Button
-              size="sm"
-              render={<Link href="/host/setup" />}
-              onClick={() =>
-                trackEvent(AnalyticsEvent.CTA_GO_LIVE, { area: "home" })
-              }
-            >
-              Go live
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              render={<Link href="/saved">Saved</Link>}
-            />
-          </Show>
+          <Button
+            size="sm"
+            render={<Link href="/host/setup" />}
+            onClick={() =>
+              trackEvent(AnalyticsEvent.CTA_GO_LIVE, { area: "home" })
+            }
+          >
+            Go live
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            render={<Link href="/saved">Saved</Link>}
+          />
         </div>
       </div>
 
-      {/* Stacked, the mock reads as an illustration of the pitch, so it follows
-          the copy rather than leading it. */}
       <LivePreviewMock />
     </header>
   );
@@ -280,34 +198,6 @@ function Section({
   );
 }
 
-/**
- * The first card in the schedule is something a host can start right now, so it
- * gets the double-width treatment — but only when it leads the page.
- */
-function ChallengeGrid({
-  challenges,
-  featureFirst = false,
-}: {
-  challenges: Challenge[];
-  featureFirst?: boolean;
-}) {
-  const [first, ...rest] = challenges;
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-      {featureFirst ? (
-        <div className="col-span-2">
-          <ChallengeEventCard challenge={first} featured />
-        </div>
-      ) : (
-        <ChallengeEventCard challenge={first} />
-      )}
-      {rest.map((challenge) => (
-        <ChallengeEventCard key={challenge.slug} challenge={challenge} />
-      ))}
-    </div>
-  );
-}
-
 function HostCallout() {
   return (
     <section className="soft-panel mt-auto flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
@@ -318,25 +208,16 @@ function HostCallout() {
           the room decide what&rsquo;s worth buying.
         </p>
       </div>
-      <Show when="signed-out">
-        <SignUpButton mode="modal">
-          <Button size="micro" className="w-fit">
-            Get started
-          </Button>
-        </SignUpButton>
-      </Show>
-      <Show when="signed-in">
-        <Button
-          size="micro"
-          className="w-fit"
-          render={<Link href="/host/setup" />}
-          onClick={() =>
-            trackEvent(AnalyticsEvent.CTA_GO_LIVE, { area: "home" })
-          }
-        >
-          Go live
-        </Button>
-      </Show>
+      <Button
+        size="micro"
+        className="w-fit"
+        render={<Link href="/host/setup" />}
+        onClick={() =>
+          trackEvent(AnalyticsEvent.CTA_GO_LIVE, { area: "home" })
+        }
+      >
+        Go live
+      </Button>
     </section>
   );
 }

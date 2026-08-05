@@ -1,45 +1,22 @@
 import type { Metadata } from "next";
 import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 
-import { BrowsePage } from "@/components/browse-page";
-import { isAdmin } from "@/lib/auth";
+import { LandingPage } from "@/components/landing-page";
 import { listChallenges } from "@/lib/challenges";
-import { listEndedShows, listLiveShows, listShowsForHost } from "@/lib/shows";
 
 export const metadata: Metadata = {
-  title: "frontrow — watch people shop",
+  title: "frontrow — brand challenges",
   description:
-    "Brand challenges, shows happening now, and recaps from every host. Join a room, vote on the picks, and shop along.",
+    "Take a brand challenge, go live, and let the room vote on every pick.",
 };
 
-/**
- * The home page *is* the browse experience — there is no marketing landing
- * page in front of it. Signed-out visitors see the same shows and challenges
- * as members; only the calls to action change.
- */
-export default async function HomePage() {
+/** Public landing — challenges only. Signed-in members go straight to the app. */
+export default async function PublicLandingPage() {
   const { userId } = await auth();
-  const [challenges, liveShows, pastShows, admin, hostShows] = await Promise.all([
-    listChallenges(),
-    listLiveShows(),
-    listEndedShows(),
-    isAdmin(),
-    userId ? listShowsForHost(userId) : Promise.resolve([]),
-  ]);
+  if (userId) redirect("/home");
 
-  return (
-    <BrowsePage
-      challenges={challenges}
-      liveShows={liveShows}
-      pastShows={pastShows}
-      isAdmin={admin}
-      hostShows={hostShows.map((show) => ({
-        id: show.id,
-        slug: show.slug,
-        title: show.title,
-        status: show.status,
-        startedAt: show.startedAt?.toISOString() ?? null,
-      }))}
-    />
-  );
+  const challenges = await listChallenges();
+
+  return <LandingPage challenges={challenges} />;
 }
