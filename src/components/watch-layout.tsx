@@ -98,19 +98,26 @@ export function WatchRail({
         })}
       </nav>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        {/* Keep chat mounted so LiveKit's useChat scan accumulator survives tab switches. */}
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col overflow-hidden p-3",
+            tab !== "chat" && "hidden",
+          )}
+        >
+          {chat}
+        </div>
         <AnimatePresence mode="wait">
-          <motion.div
-            key={tab}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.15 }}
-            className="flex min-h-0 flex-1 flex-col overflow-hidden"
-          >
-            {tab === "chat" ? (
-              <div className="flex min-h-0 flex-1 flex-col p-3">{chat}</div>
-            ) : (
+          {tab === "cart" ? (
+            <motion.div
+              key="cart"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.15 }}
+              className="absolute inset-0 flex min-h-0 flex-col overflow-hidden"
+            >
               <ShoppingTrail
                 products={trail}
                 pinnedId={pinned?.id ?? null}
@@ -122,8 +129,8 @@ export function WatchRail({
                 sortable
                 className="min-h-0 flex-1"
               />
-            )}
-          </motion.div>
+            </motion.div>
+          ) : null}
         </AnimatePresence>
       </div>
     </aside>
