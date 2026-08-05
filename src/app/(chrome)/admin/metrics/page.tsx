@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AdminAccessDenied } from "@/components/admin-access-denied";
+import { AdminNav } from "@/components/admin-nav";
 import { BarChart } from "@/components/metrics/bar-chart";
 import { LeaderboardTable } from "@/components/metrics/leaderboard-table";
 import { LineChart } from "@/components/metrics/line-chart";
@@ -9,6 +10,7 @@ import { SplitMeter } from "@/components/metrics/split-meter";
 import { StatTile } from "@/components/metrics/stat-tile";
 import { buttonVariants } from "@/components/ui/button";
 import { getAdminAccess } from "@/lib/auth";
+import { countPendingWaitlistSignups } from "@/lib/host-approvals";
 import {
   MAX_SESSION_HOURS,
   METRICS_RANGES,
@@ -58,7 +60,10 @@ export default async function AdminMetricsPage({
   }
 
   const range = parseRange((await searchParams).range);
-  const metrics = await getMetrics(range);
+  const [metrics, pendingWaitlist] = await Promise.all([
+    getMetrics(range),
+    countPendingWaitlistSignups(),
+  ]);
   const { totals, series, engagement, funnel } = metrics;
 
   const hoursSeries = series.map((p) => ({
@@ -114,12 +119,7 @@ export default async function AdminMetricsPage({
               {RANGE_LABELS[option]}
             </Link>
           ))}
-          <Link
-            href="/admin"
-            className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
-          >
-            Live control panel
-          </Link>
+          <AdminNav active="metrics" pendingWaitlist={pendingWaitlist} />
         </div>
       </div>
 

@@ -335,10 +335,16 @@ export const hostFeedback = pgTable(
   (table) => [uniqueIndex("host_feedback_stream_idx").on(table.streamId)],
 );
 
+export const waitlistStatus = pgEnum("waitlist_status", [
+  "pending",
+  "approved",
+  "declined",
+]);
+
 /**
  * Hosting is invite-only, so /apply collects interest instead of granting
  * access. One row per email — a repeat signup refreshes the details rather
- * than stacking duplicates.
+ * than stacking duplicates. Admins approve or decline at /admin/waitlist.
  */
 export const waitlistSignups = pgTable(
   "waitlist_signups",
@@ -359,6 +365,9 @@ export const waitlistSignups = pgTable(
     // Clerk user id when they were signed in — lets us grant hosting later
     // without matching on email.
     userId: text("user_id"),
+    status: waitlistStatus("status").notNull().default("pending"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewedBy: text("reviewed_by"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -366,7 +375,42 @@ export const waitlistSignups = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [uniqueIndex("waitlist_signups_email_idx").on(table.email)],
+  (table) => [
+    uniqueIndex("waitlist_signups_email_idx").on(table.email),
+    index("waitlist_signups_status_idx").on(table.status),
+  ],
+);
+
+export const hostApprovalSource = pgEnum("host_approval_source", [
+  "waitlist",
+  "migration",
+  "manual",
+]);
+
+/**
+ * Users allowed to create new live shows. Checked alongside HOST_ALLOWLIST
+ * env and admin bypass in lib/auth.ts.
+ */
+export const hostApprovals = pgTable(
+  "host_approvals",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id"),
+    email: text("email").notNull(),
+    source: hostApprovalSource("source").notNull(),
+    waitlistSignupId: uuid("waitlist_signup_id").references(
+      () => waitlistSignups.id,
+      { onDelete: "set null" },
+    ),
+    grantedAt: timestamp("granted_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    grantedBy: text("granted_by"),
+  },
+  (table) => [
+    uniqueIndex("host_approvals_user_id_idx").on(table.userId),
+    uniqueIndex("host_approvals_email_idx").on(table.email),
+  ],
 );
 
 /**
@@ -492,6 +536,10 @@ export type SavedShow = typeof savedShows.$inferSelect;
 export type NewSavedShow = typeof savedShows.$inferInsert;
 export type WaitlistSignup = typeof waitlistSignups.$inferSelect;
 export type NewWaitlistSignup = typeof waitlistSignups.$inferInsert;
+export type WaitlistStatus = (typeof waitlistStatus.enumValues)[number];
+export type HostApproval = typeof hostApprovals.$inferSelect;
+export type NewHostApproval = typeof hostApprovals.$inferInsert;
+export type HostApprovalSource = (typeof hostApprovalSource.enumValues)[number];
 export type Challenge = typeof challenges.$inferSelect;
 export type NewChallenge = typeof challenges.$inferInsert;
 export type HostFeedback = typeof hostFeedback.$inferSelect;

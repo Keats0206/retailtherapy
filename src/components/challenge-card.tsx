@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, Clock, Radio, Wallet } from "lucide-react";
+import { ArrowUpRight, Clock, Wallet } from "lucide-react";
 
+import { HostCtaButton } from "@/components/host-cta-button";
 import { Button } from "@/components/ui/button";
 import type { ChallengeCard as Challenge } from "@/lib/challenges";
 import {
@@ -37,10 +38,12 @@ const CHALLENGES_COMING_SOON = true;
 export function ChallengeEventCard({
   challenge,
   featured = false,
+  canHost = false,
 }: {
   challenge: Challenge;
   /** The first open event gets the wide treatment on mobile. */
   featured?: boolean;
+  canHost?: boolean;
 }) {
   const duration = formatDuration(challenge.durationSeconds);
   const budget = formatBudget(challenge.budget, challenge.currency);
@@ -128,23 +131,22 @@ export function ChallengeEventCard({
         ) : (
           <>
             {challenge.state !== "closed" ? (
-              <Button
+              <HostCtaButton
                 size="sm"
                 variant={isOpen ? "live" : "secondary"}
                 className="flex-1 rounded-none"
-                render={
-                  <Link href={`/host/setup?challenge=${challenge.slug}`} />
-                }
+                canHost={canHost}
+                href={`/host/setup?challenge=${challenge.slug}`}
+                area="browse"
+                showIcon
+                goLiveLabel={isOpen ? "Go live" : "Sign up to host"}
                 onClick={() =>
                   trackEvent(AnalyticsEvent.CHALLENGE_ACCEPT, {
                     area: "browse",
                     challenge: challenge.slug,
                   })
                 }
-              >
-                <Radio data-icon="inline-start" />
-                {isOpen ? "Go live" : "Sign up to host"}
-              </Button>
+              />
             ) : null}
             <Button
               size="sm"

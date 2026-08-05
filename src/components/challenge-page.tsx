@@ -7,6 +7,7 @@ import { ArrowLeft, Clock, ExternalLink, Wallet } from "lucide-react";
 import { ChallengeSteps } from "@/components/challenge-steps";
 import { ShowCard } from "@/components/show-card";
 import { Badge } from "@/components/ui/badge";
+import { HostCtaButton } from "@/components/host-cta-button";
 import { Button } from "@/components/ui/button";
 import type { ChallengeDetail } from "@/lib/challenges";
 import {
@@ -23,7 +24,13 @@ import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
  * The only action is Take it, which hands off to host setup carrying the slug
  * — that is what attaches the resulting show back to this page.
  */
-export function ChallengePage({ challenge }: { challenge: ChallengeDetail }) {
+export function ChallengePage({
+  challenge,
+  canHost = false,
+}: {
+  challenge: ChallengeDetail;
+  canHost?: boolean;
+}) {
   const duration = formatDuration(challenge.durationSeconds);
   const budget = formatBudget(challenge.budget, challenge.currency);
   const schedule = formatSchedule(challenge);
@@ -122,20 +129,19 @@ export function ChallengePage({ challenge }: { challenge: ChallengeDetail }) {
                   </SignUpButton>
                 </Show>
                 <Show when="signed-in">
-                  <Button
+                  <HostCtaButton
                     className="w-full sm:w-fit"
-                    render={
-                      <Link href={`/host/setup?challenge=${challenge.slug}`} />
-                    }
+                    canHost={canHost}
+                    href={`/host/setup?challenge=${challenge.slug}`}
+                    area="challenge"
+                    goLiveLabel="Take the challenge"
                     onClick={() =>
                       trackEvent(AnalyticsEvent.CHALLENGE_ACCEPT, {
                         area: "challenge",
                         challenge: challenge.slug,
                       })
                     }
-                  >
-                    Take the challenge
-                  </Button>
+                  />
                 </Show>
               </>
             ) : null}

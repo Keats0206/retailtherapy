@@ -1,10 +1,12 @@
 import "server-only";
 
+import { eq } from "drizzle-orm";
+
 import { db, waitlistSignups } from "@/lib/db";
 
 /**
- * The host waitlist behind /apply. Hosting access is granted by hand, so this
- * is purely a queue of interest — nothing here changes what a user can do.
+ * The host waitlist behind /creators and /apply. Hosting access is granted
+ * when an admin approves at /admin/waitlist.
  */
 
 export const MAX_FIELD_LENGTH = 280;
@@ -92,11 +94,22 @@ export async function joinWaitlist(input: WaitlistInput): Promise<void> {
     Object.entries(details).filter(([, value]) => value !== null),
   );
 
+  const [existing] = await db
+    .select({ status: waitlistSignups.status })
+    .from(waitlistSignups)
+    .where(eq(waitlistSignups.email, email))
+    .limit(1);
+
+  const statusUpdate =
+    existing?.status === "declined"
+      ? { status: "pending" as const, reviewedAt: null, reviewedBy: null }
+      : {};
+
   await db
     .insert(waitlistSignups)
-    .values({ email, ...details })
+    .values({ email, ...details, status: "pending" })
     .onConflictDoUpdate({
       target: waitlistSignups.email,
-      set: { ...supplied, updatedAt: new Date() },
+      set: { ...supplied, ...statusUpdate, updatedAt: new Date() },
     });
 }

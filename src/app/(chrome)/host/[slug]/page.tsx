@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { getSignedInUser } from "@/lib/auth";
+import { getSignedInUser, isHostingApproved } from "@/lib/auth";
 import { getHostFeedback } from "@/lib/host-feedback";
 import { buildEndedRecap } from "@/lib/show-recap";
 import { getRecordingStatus } from "@/lib/show-public";
@@ -41,7 +41,10 @@ export default async function HostShowPage({
 
   show = await resolveRecording(show);
   const snapshot = snapshotOf(show);
-  const feedback = await getHostFeedback(slug, user.id);
+  const [feedback, canHost] = await Promise.all([
+    getHostFeedback(slug, user.id),
+    isHostingApproved(user),
+  ]);
 
   const recap = buildEndedRecap({
     slug: show.slug,
@@ -61,6 +64,7 @@ export default async function HostShowPage({
     <HostRecapClient
       initialRecap={recap}
       initialRating={feedback?.rating ?? null}
+      canHost={canHost}
     />
   );
 }

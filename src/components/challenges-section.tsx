@@ -5,9 +5,11 @@ import type { ChallengeCard as Challenge } from "@/lib/challenges";
 export function ChallengesSection({
   challenges,
   id = "challenges",
+  canHost = false,
 }: {
   challenges: Challenge[];
   id?: string;
+  canHost?: boolean;
 }) {
   const openChallenges = challenges.filter((entry) => entry.state === "open");
   const upcomingChallenges = challenges.filter(
@@ -36,7 +38,7 @@ export function ChallengesSection({
       ) : (
         <div className="flex flex-col gap-8">
           {openChallenges.length > 0 ? (
-            <ChallengeGrid challenges={openChallenges} featureFirst />
+            <ChallengeGrid challenges={openChallenges} featureFirst canHost={canHost} />
           ) : null}
 
           {upcomingChallenges.length > 0 ? (
@@ -45,6 +47,7 @@ export function ChallengesSection({
               <ChallengeGrid
                 challenges={upcomingChallenges}
                 featureFirst={openChallenges.length === 0}
+                canHost={canHost}
               />
             </div>
           ) : null}
@@ -57,22 +60,28 @@ export function ChallengesSection({
 function ChallengeGrid({
   challenges,
   featureFirst = false,
+  canHost = false,
 }: {
   challenges: Challenge[];
   featureFirst?: boolean;
+  canHost?: boolean;
 }) {
   const [first, ...rest] = challenges;
   return (
     <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
       {featureFirst ? (
         <div className="col-span-2">
-          <ChallengeEventCard challenge={first} featured />
+          <ChallengeEventCard challenge={first} featured canHost={canHost} />
         </div>
       ) : (
-        <ChallengeEventCard challenge={first} />
+        <ChallengeEventCard challenge={first} canHost={canHost} />
       )}
       {rest.map((challenge) => (
-        <ChallengeEventCard key={challenge.slug} challenge={challenge} />
+        <ChallengeEventCard
+          key={challenge.slug}
+          challenge={challenge}
+          canHost={canHost}
+        />
       ))}
     </div>
   );

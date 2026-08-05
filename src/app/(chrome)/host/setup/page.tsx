@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { getSignedInUser } from "@/lib/auth";
+import { getSignedInUser, isHostingApproved } from "@/lib/auth";
 import { getChallengeBySlug } from "@/lib/challenges";
 import { LOCAL_STREAM } from "@/lib/live/mode";
 import {
@@ -27,14 +27,17 @@ export default async function HostSetupPage({
   const user = await getSignedInUser();
   if (!user) return null;
 
-  const [liveShow, { challenge: challengeSlug }] = await Promise.all([
+  const [liveShow, approved, { challenge: challengeSlug }] = await Promise.all([
     getLiveShowForHost(user.id),
+    isHostingApproved(user),
     searchParams,
   ]);
   if (LOCAL_STREAM) {
     await endDesignModeOrphansForHost(user.id);
   } else if (liveShow) {
     redirect(hostShowPath(liveShow.slug));
+  } else if (!approved) {
+    redirect("/creators");
   }
 
   const challenge = challengeSlug

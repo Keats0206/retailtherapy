@@ -1,4 +1,4 @@
-import { getHostUser } from "@/lib/auth";
+import { getApprovedHostUser } from "@/lib/auth";
 import { resolveChallengeId } from "@/lib/challenges";
 import { createAccessToken, getLiveKitConfig } from "@/lib/livekit";
 import {
@@ -38,9 +38,12 @@ export async function GET(request: Request) {
 // mints the host's LiveKit token. The recording itself starts separately, once
 // the host's browser reports it has connected (see ./[slug]/recording).
 export async function POST(request: Request) {
-  const host = await getHostUser();
+  const host = await getApprovedHostUser();
   if (!host) {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return Response.json(
+      { error: "Hosting not approved", code: "hosting_not_approved" },
+      { status: 403 },
+    );
   }
 
   const ip = clientIp(request);

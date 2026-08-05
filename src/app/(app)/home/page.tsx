@@ -3,7 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
 import { BrowsePage } from "@/components/browse-page";
-import { isAdmin } from "@/lib/auth";
+import { isAdmin, isHostingApproved } from "@/lib/auth";
+import { currentUser } from "@clerk/nextjs/server";
 import { listChallenges } from "@/lib/challenges";
 import { listEndedShows, listLiveShows, listScheduledShows, listShowsForHost } from "@/lib/shows";
 
@@ -17,13 +18,15 @@ export default async function AppHomePage() {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
-  const [challenges, liveShows, upcomingShows, pastShows, admin, hostShows] =
+  const user = await currentUser();
+  const [challenges, liveShows, upcomingShows, pastShows, admin, canHost, hostShows] =
     await Promise.all([
       listChallenges(),
       listLiveShows(),
       listScheduledShows(),
       listEndedShows(),
       isAdmin(),
+      user ? isHostingApproved(user) : Promise.resolve(false),
       listShowsForHost(userId),
     ]);
 
@@ -34,6 +37,7 @@ export default async function AppHomePage() {
       upcomingShows={upcomingShows}
       pastShows={pastShows}
       isAdmin={admin}
+      canHost={canHost}
       hostShows={hostShows.map((show) => ({
         id: show.id,
         slug: show.slug,

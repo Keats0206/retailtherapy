@@ -9,6 +9,7 @@ import { DeleteShowButton } from "@/components/delete-show-button";
 import { EndLiveShowButton } from "@/components/end-live-show-button";
 import { ShowCard } from "@/components/show-card";
 import { Badge } from "@/components/ui/badge";
+import { HostCtaButton } from "@/components/host-cta-button";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { ChallengeCard as Challenge } from "@/lib/challenges";
@@ -36,6 +37,7 @@ export function BrowsePage({
   upcomingShows = [],
   pastShows = [],
   isAdmin = false,
+  canHost = false,
   hostShows = [],
 }: {
   challenges?: Challenge[];
@@ -43,6 +45,7 @@ export function BrowsePage({
   upcomingShows?: DiscoveryShow[];
   pastShows?: DiscoveryShow[];
   isAdmin?: boolean;
+  canHost?: boolean;
   hostShows?: HostShow[];
 }) {
   const yourLiveShows = hostShows.filter((show) => show.status === "live");
@@ -50,7 +53,7 @@ export function BrowsePage({
 
   return (
     <main className="flex w-full flex-1 flex-col gap-10 px-4 py-6 sm:px-6 lg:gap-14 lg:py-10">
-      <PageHeader liveCount={liveShows.length} />
+      <PageHeader liveCount={liveShows.length} canHost={canHost} />
 
       {liveShows.length > 0 ? (
         <Section
@@ -95,7 +98,7 @@ export function BrowsePage({
         )}
       </Section>
 
-      <ChallengesSection challenges={challenges} />
+      <ChallengesSection challenges={challenges} canHost={canHost} />
 
       {hostShows.length > 0 ? (
         <Section title="Your shows">
@@ -142,7 +145,7 @@ export function BrowsePage({
         )}
       </Section>
 
-      <HostCallout />
+      <HostCallout canHost={canHost} />
     </main>
   );
 }
@@ -150,7 +153,13 @@ export function BrowsePage({
 /**
  * App home masthead — signed-in shortcuts only.
  */
-function PageHeader({ liveCount }: { liveCount: number }) {
+function PageHeader({
+  liveCount,
+  canHost,
+}: {
+  liveCount: number;
+  canHost: boolean;
+}) {
   return (
     <header className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-12">
       <div className="flex flex-col gap-5">
@@ -171,15 +180,7 @@ function PageHeader({ liveCount }: { liveCount: number }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            render={<Link href="/host/setup" />}
-            onClick={() =>
-              trackEvent(AnalyticsEvent.CTA_GO_LIVE, { area: "home" })
-            }
-          >
-            Go live
-          </Button>
+          <HostCtaButton size="sm" canHost={canHost} area="home" />
           <Button
             variant="ghost"
             size="sm"
@@ -224,7 +225,7 @@ function Section({
   );
 }
 
-function HostCallout() {
+function HostCallout({ canHost }: { canHost: boolean }) {
   return (
     <section className="soft-panel mt-auto flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-2">
@@ -234,16 +235,7 @@ function HostCallout() {
           the room decide what&rsquo;s worth buying.
         </p>
       </div>
-      <Button
-        size="micro"
-        className="w-fit"
-        render={<Link href="/host/setup" />}
-        onClick={() =>
-          trackEvent(AnalyticsEvent.CTA_GO_LIVE, { area: "home" })
-        }
-      >
-        Go live
-      </Button>
+      <HostCtaButton size="micro" className="w-fit" canHost={canHost} area="home" />
     </section>
   );
 }

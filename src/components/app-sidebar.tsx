@@ -12,8 +12,7 @@ import {
 } from "lucide-react";
 
 import { UserMenu } from "@/components/user-menu";
-import { Button } from "@/components/ui/button";
-import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import { HostCtaButton } from "@/components/host-cta-button";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -53,7 +52,13 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
+export function AppSidebar({
+  isAdmin = false,
+  canHost = false,
+}: {
+  isAdmin?: boolean;
+  canHost?: boolean;
+}) {
   const pathname = usePathname();
 
   return (
@@ -105,16 +110,12 @@ export function AppSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
       </nav>
 
       <div className="flex flex-col gap-3 border-t border-sidebar-border p-4">
-        <Button
+        <HostCtaButton
           size="sm"
           className="w-full"
-          render={<Link href="/host/setup" />}
-          onClick={() =>
-            trackEvent(AnalyticsEvent.CTA_GO_LIVE, { area: "sidebar" })
-          }
-        >
-          Go live
-        </Button>
+          canHost={canHost}
+          area="sidebar"
+        />
         <div className="flex items-center justify-between gap-2 px-1">
           <span className="micro text-muted-foreground">Account</span>
           <UserMenu />

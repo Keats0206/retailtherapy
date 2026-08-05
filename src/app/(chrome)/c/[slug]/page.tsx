@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ChallengePage } from "@/components/challenge-page";
+import { getSignedInUser, isHostingApproved } from "@/lib/auth";
 import { getChallengeBySlug } from "@/lib/challenges";
 
 type Params = { params: Promise<{ slug: string }> };
@@ -28,5 +29,8 @@ export default async function ChallengeRoute({ params }: Params) {
   const challenge = await getChallengeBySlug(slug);
   if (!challenge) notFound();
 
-  return <ChallengePage challenge={challenge} />;
+  const user = await getSignedInUser();
+  const canHost = user ? await isHostingApproved(user) : false;
+
+  return <ChallengePage challenge={challenge} canHost={canHost} />;
 }
