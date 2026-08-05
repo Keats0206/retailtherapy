@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AdminAccessDenied } from "@/components/admin-access-denied";
 import { BarChart } from "@/components/metrics/bar-chart";
 import { LeaderboardTable } from "@/components/metrics/leaderboard-table";
 import { LineChart } from "@/components/metrics/line-chart";
 import { SplitMeter } from "@/components/metrics/split-meter";
 import { StatTile } from "@/components/metrics/stat-tile";
 import { buttonVariants } from "@/components/ui/button";
-import { getAdminUser } from "@/lib/auth";
+import { getAdminAccess } from "@/lib/auth";
 import {
   MAX_SESSION_HOURS,
   METRICS_RANGES,
@@ -45,8 +46,16 @@ export default async function AdminMetricsPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const admin = await getAdminUser();
-  if (!admin) notFound();
+  const access = await getAdminAccess();
+  if (access.status === "unauthenticated") notFound();
+  if (access.status === "denied") {
+    return (
+      <AdminAccessDenied
+        username={access.username}
+        emails={access.emails}
+      />
+    );
+  }
 
   const range = parseRange((await searchParams).range);
   const metrics = await getMetrics(range);

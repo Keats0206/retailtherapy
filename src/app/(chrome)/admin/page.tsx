@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AdminAccessDenied } from "@/components/admin-access-denied";
 import { AdminCloseAllButton } from "@/components/admin-close-all-button";
 import { DeleteShowButton } from "@/components/delete-show-button";
 import { EndLiveShowButton } from "@/components/end-live-show-button";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getAdminUser, isSuperAdmin } from "@/lib/auth";
+import { getAdminAccess, isSuperAdmin } from "@/lib/auth";
 import { listLiveShowsForAdmin, listPastShowsForAdmin } from "@/lib/shows";
 import { viewerShowPath } from "@/lib/show-urls";
 import { cn } from "@/lib/utils";
@@ -45,8 +46,18 @@ function formatDuration(startedAt: Date): string {
 }
 
 export default async function AdminPage() {
-  const admin = await getAdminUser();
-  if (!admin) notFound();
+  const access = await getAdminAccess();
+  if (access.status === "unauthenticated") notFound();
+  if (access.status === "denied") {
+    return (
+      <AdminAccessDenied
+        username={access.username}
+        emails={access.emails}
+      />
+    );
+  }
+
+  const admin = access.user;
 
   const [liveShows, pastShows] = await Promise.all([
     listLiveShowsForAdmin(),

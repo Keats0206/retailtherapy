@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AdminAccessDenied } from "@/components/admin-access-denied";
 import { CreatorOutreachClient } from "@/components/creator-outreach-client";
 import { buttonVariants } from "@/components/ui/button";
-import { getAdminUser } from "@/lib/auth";
+import { getAdminAccess } from "@/lib/auth";
 import { countProspectsByStatus, listProspects } from "@/lib/creator-outreach";
 import { cn } from "@/lib/utils";
 
@@ -12,8 +13,16 @@ export const metadata = {
 };
 
 export default async function CreatorOutreachPage() {
-  const admin = await getAdminUser();
-  if (!admin) notFound();
+  const access = await getAdminAccess();
+  if (access.status === "unauthenticated") notFound();
+  if (access.status === "denied") {
+    return (
+      <AdminAccessDenied
+        username={access.username}
+        emails={access.emails}
+      />
+    );
+  }
 
   const [prospects, counts] = await Promise.all([
     listProspects(),

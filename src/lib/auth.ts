@@ -1,6 +1,6 @@
 import "server-only";
 
-import { currentUser } from "@clerk/nextjs/server";
+import { clerkClient, currentUser } from "@clerk/nextjs/server";
 import type { User } from "@clerk/nextjs/server";
 
 /**
@@ -25,6 +25,16 @@ const BUILTIN_ADMIN_EMAILS = new Set([
   "leon@boldenadvisors.com",
 ]);
 
+export type AdminAccess =
+  | { status: "granted"; user: User }
+  | {
+      status: "denied";
+      user: User;
+      emails: string[];
+      username: string | null;
+    }
+  | { status: "unauthenticated" };
+
 /**
  * Returns the current Clerk user when signed in and allowed as admin, otherwise
  * `null`. Super admins (username allowlist), built-in admin emails, and
@@ -32,21 +42,38 @@ const BUILTIN_ADMIN_EMAILS = new Set([
  * a live show.
  */
 export async function getAdminUser(): Promise<User | null> {
-  const user = await currentUser();
-  if (!user) return null;
-  if (!isUserAllowlistedAsAdmin(user)) return null;
-  return user;
+  const access = await getAdminAccess();
+  return access.status === "granted" ? access.user : null;
+}
+
+export async function getAdminAccess(): Promise<AdminAccess> {
+  const user = await resolveClerkUserForAdmin();
+  if (!user) return { status: "unauthenticated" };
+
+  const emails = userEmails(user);
+  const username = clerkUsername(user);
+
+  if (isUserAllowlistedAsAdmin(user, emails, username)) {
+    return { status: "granted", user };
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    console.info("[admin] access denied", { username, emails, userId: user.id });
+  }
+
+  return { status: "denied", user, emails, username };
 }
 
 export async function isAdmin(): Promise<boolean> {
   return (await getAdminUser()) !== null;
 }
 
-export function isUserAllowlistedAsAdmin(user: User): boolean {
-  const username = clerkUsername(user);
+export function isUserAllowlistedAsAdmin(
+  user: User,
+  emails = userEmails(user),
+  username = clerkUsername(user),
+): boolean {
   if (username && isSuperAdminUsername(username)) return true;
-
-  const emails = userEmails(user);
   if (emails.some((email) => BUILTIN_ADMIN_EMAILS.has(email))) return true;
 
   const allowlist = getAdminAllowlist();
@@ -63,6 +90,20 @@ export function isSuperAdmin(user: User): boolean {
 /** Signed-in user, regardless of allowlist. */
 export async function getSignedInUser(): Promise<User | null> {
   return currentUser();
+}
+
+async function resolveClerkUserForAdmin(): Promise<User | null> {
+  const user = await currentUser();
+  if (!user) return null;
+  if (userEmails(user).length > 0) return user;
+
+  try {
+    const client = await clerkClient();
+    return await client.users.getUser(user.id);
+  } catch (error) {
+    console.error("[admin] failed to load Clerk user profile", error);
+    return user;
+  }
 }
 
 function getAdminAllowlist(): Set<string> | null {
