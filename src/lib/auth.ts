@@ -38,8 +38,8 @@ export type AdminAccess =
 /**
  * Returns the current Clerk user when signed in and allowed as admin, otherwise
  * `null`. Super admins (username allowlist), built-in admin emails, and
- * `ADMIN_ALLOWLIST` emails all qualify. Use for ops actions like force-ending
- * a live show.
+ * `ADMIN_ALLOWLIST` emails all qualify. In local `next dev`, any signed-in user
+ * qualifies. Use for ops actions like force-ending a live show.
  */
 export async function getAdminUser(): Promise<User | null> {
   const access = await getAdminAccess();
@@ -57,8 +57,9 @@ export async function getAdminAccess(): Promise<AdminAccess> {
     return { status: "granted", user };
   }
 
+  // Local `next dev` only — production builds always use NODE_ENV=production.
   if (process.env.NODE_ENV === "development") {
-    console.info("[admin] access denied", { username, emails, userId: user.id });
+    return { status: "granted", user };
   }
 
   return { status: "denied", user, emails, username };
