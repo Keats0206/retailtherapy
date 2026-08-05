@@ -151,24 +151,33 @@ export function StudioRail({
         })}
       </nav>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        {/* Keep chat mounted so LiveKit's useChat scan accumulator survives tab switches. */}
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col overflow-hidden",
+            tab !== "chat" && "hidden",
+          )}
+        >
+          {chatPanel}
+        </div>
         <AnimatePresence mode="wait">
-          <motion.div
-            key={tab}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.15 }}
-            className="flex min-h-0 flex-1 flex-col overflow-hidden"
-          >
-            {tab === "chat" ? (
-              chatPanel
-            ) : tab === "cart" ? (
-              <HostCart stream={stream} variant={isPip ? "pip" : "rail"} />
-            ) : (
-              <div className="min-h-0 flex-1 overflow-y-auto">{controls}</div>
-            )}
-          </motion.div>
+          {tab !== "chat" ? (
+            <motion.div
+              key={tab}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.15 }}
+              className="absolute inset-0 flex min-h-0 flex-col overflow-hidden"
+            >
+              {tab === "cart" ? (
+                <HostCart stream={stream} variant={isPip ? "pip" : "rail"} />
+              ) : (
+                <div className="min-h-0 flex-1 overflow-y-auto">{controls}</div>
+              )}
+            </motion.div>
+          ) : null}
         </AnimatePresence>
       </div>
     </aside>
