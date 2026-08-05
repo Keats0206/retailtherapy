@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, ShoppingCart, Sparkles } from "lucide-react";
+import { MessageSquare, ShoppingCart, Sparkles, Square } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { ChatPanel } from "@/components/chat-panel";
 import { HostCart } from "@/components/host-cart";
+import { Button } from "@/components/ui/button";
 import {
   StudioControls,
   type HostPollControls,
@@ -48,6 +49,7 @@ export function StudioRail({
   variant = "rail",
   className,
   setup,
+  onEndShow,
 }: {
   stream: StreamState;
   poll?: HostPollControls;
@@ -57,6 +59,7 @@ export function StudioRail({
   className?: string;
   /** Pre-share checklist — sits above the tabs until the host is fully set up. */
   setup?: React.ReactNode;
+  onEndShow?: () => void;
 }) {
   const { verse, trail, endInteraction, verseVotesFor } = stream;
   const [tab, setTab] = useState<StudioTab>("chat");
@@ -171,6 +174,21 @@ export function StudioRail({
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {onEndShow ? (
+        <div className="shrink-0 border-t border-border/60 p-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onEndShow}
+            className="w-full gap-1.5 border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+            aria-label="Exit show"
+          >
+            <Square className="size-3.5 fill-current" />
+            Exit show
+          </Button>
+        </div>
+      ) : null}
     </aside>
   );
 }
@@ -184,12 +202,14 @@ export function StudioLayout({
   stage,
   chatCount = 0,
   setup,
+  onEndShow,
 }: {
   stream: StreamState;
   poll?: HostPollControls;
   stage: React.ReactNode;
   chatCount?: number;
   setup?: React.ReactNode;
+  onEndShow?: () => void;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col lg:h-full lg:flex-row">
@@ -203,6 +223,7 @@ export function StudioLayout({
         chatCount={chatCount}
         variant="rail"
         setup={setup}
+        onEndShow={onEndShow}
       />
     </div>
   );

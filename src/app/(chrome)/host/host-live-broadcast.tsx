@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Track } from "livekit-client";
 import "@livekit/components-styles";
-import { Square } from "lucide-react";
 
 import {
   LiveBridgeProvider,
@@ -29,7 +28,6 @@ import { ShareSurfaceBanner } from "@/components/share-surface-banner";
 import { StudioLayout } from "@/components/studio-layout";
 import type { ChallengeStore } from "@/components/store-launcher";
 import { ViewerStageOverlays } from "@/components/viewer-stage-overlays";
-import { Button } from "@/components/ui/button";
 import {
   POST_LIVE_STEPS,
   type PostLiveProgress,
@@ -470,6 +468,7 @@ function BroadcastStudio({
               />
             ) : undefined
           }
+          onEndShow={handleEndShow}
           stage={
             <HostStage
               slug={session.slug}
@@ -477,7 +476,6 @@ function BroadcastStudio({
               stream={stream}
               poll={poll}
               sharing={sharing}
-              onEndShow={handleEndShow}
               pipSupported={pipSupported}
             />
           }
@@ -505,7 +503,6 @@ function HostStage({
   stream,
   poll,
   sharing,
-  onEndShow,
   pipSupported,
 }: {
   slug: string;
@@ -513,7 +510,6 @@ function HostStage({
   stream: StreamState;
   poll: ReturnType<typeof usePollState>;
   sharing: boolean;
-  onEndShow: () => void;
   pipSupported: boolean;
 }) {
   const tracks = useTracks(
@@ -554,18 +550,6 @@ function HostStage({
         </div>
       </div>
 
-      <div className="pointer-events-none absolute bottom-4 left-4 z-10">
-        <Button
-          type="button"
-          onClick={onEndShow}
-          aria-label="Exit show"
-          className="pointer-events-auto h-9 gap-1.5 rounded-full border-transparent bg-black/80 px-3 text-xs font-medium text-white backdrop-blur-sm hover:bg-black/90"
-        >
-          <Square className="size-3.5 fill-current" />
-          Exit show
-        </Button>
-      </div>
-
       <ViewerStageOverlays stream={stream} poll={poll} role="creator" />
 
       <div className={HOST_CONTROL_BAR}>
@@ -573,7 +557,6 @@ function HostStage({
           <HostControlBar
             room={room}
             sharing={sharing}
-            onEndShow={onEndShow}
             pipSupported={pipSupported}
             variant="stage"
           />

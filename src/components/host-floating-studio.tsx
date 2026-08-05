@@ -100,7 +100,6 @@ export function HostFloatingStudio({
             <HostControlBar
               room={room}
               sharing={sharing}
-              onEndShow={onEndShow}
               pipSupported={pipSupported}
               variant="pip-overlay"
             />
@@ -114,6 +113,7 @@ export function HostFloatingStudio({
         chatCount={chatCount}
         variant="pip"
         className={cn("min-h-0 flex-1")}
+        onEndShow={onEndShow}
       />
 
       <EndShowDialog
