@@ -49,6 +49,7 @@ export const AnalyticsEvent = {
   REPLAY_SHARE: "replay_share",
   HOST_END_SHOW: "host_end_show",
   HOST_PREP_ANOTHER: "host_prep_another",
+  PROFILE_SAVE: "profile_save",
 } as const;
 
 export type AnalyticsEventName =
