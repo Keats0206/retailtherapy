@@ -19,10 +19,17 @@ export async function isHost(): Promise<boolean> {
 /** Built-in super admins — always have admin access when signed in. */
 const BUILTIN_SUPER_ADMIN_USERNAMES = new Set(["keats0206"]);
 
+/** Built-in admin emails — always have admin access when signed in. */
+const BUILTIN_ADMIN_EMAILS = new Set([
+  "keats0206@gmail.com",
+  "leon@boldenadvisors.com",
+]);
+
 /**
  * Returns the current Clerk user when signed in and allowed as admin, otherwise
- * `null`. Super admins (username allowlist) and `ADMIN_ALLOWLIST` emails both
- * qualify. Use for ops actions like force-ending a live show.
+ * `null`. Super admins (username allowlist), built-in admin emails, and
+ * `ADMIN_ALLOWLIST` emails all qualify. Use for ops actions like force-ending
+ * a live show.
  */
 export async function getAdminUser(): Promise<User | null> {
   const user = await currentUser();
@@ -39,10 +46,12 @@ export function isUserAllowlistedAsAdmin(user: User): boolean {
   const username = clerkUsername(user);
   if (username && isSuperAdminUsername(username)) return true;
 
+  const email = primaryEmail(user);
+  if (email && BUILTIN_ADMIN_EMAILS.has(email)) return true;
+
   const allowlist = getAdminAllowlist();
   if (!allowlist) return false;
 
-  const email = primaryEmail(user);
   return email !== null && allowlist.has(email);
 }
 
