@@ -476,66 +476,9 @@ export const creatorProspects = pgTable(
   ],
 );
 
-/**
- * Viewers who registered interest in an upcoming scheduled show.
- */
-export const showInterests = pgTable(
-  "show_interests",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    streamId: uuid("stream_id")
-      .notNull()
-      .references(() => streams.id, { onDelete: "cascade" }),
-    userId: text("user_id"),
-    email: text("email"),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    uniqueIndex("show_interests_stream_user_idx").on(
-      table.streamId,
-      table.userId,
-    ),
-    uniqueIndex("show_interests_stream_email_idx").on(
-      table.streamId,
-      table.email,
-    ),
-    index("show_interests_stream_idx").on(table.streamId),
-  ],
-);
-
-export const showReminderStatus = pgEnum("show_reminder_status", [
-  "pending",
-  "sent",
-  "skipped",
-]);
-
-export const showReminderJobs = pgTable(
-  "show_reminder_jobs",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    streamId: uuid("stream_id")
-      .notNull()
-      .references(() => streams.id, { onDelete: "cascade" }),
-    sendAt: timestamp("send_at", { withTimezone: true }).notNull(),
-    status: showReminderStatus("status").notNull().default("pending"),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    sentAt: timestamp("sent_at", { withTimezone: true }),
-  },
-  (table) => [
-    index("show_reminder_jobs_pending_idx").on(table.status, table.sendAt),
-    index("show_reminder_jobs_stream_idx").on(table.streamId),
-  ],
-);
-
 export const streamsRelations = relations(streams, ({ many, one }) => ({
   streamProducts: many(streamProducts),
   savedShows: many(savedShows),
-  interests: many(showInterests),
-  reminderJobs: many(showReminderJobs),
   challenge: one(challenges, {
     fields: [streams.challengeId],
     references: [challenges.id],
@@ -604,7 +547,3 @@ export type NewHostFeedback = typeof hostFeedback.$inferInsert;
 export type CreatorProspect = typeof creatorProspects.$inferSelect;
 export type NewCreatorProspect = typeof creatorProspects.$inferInsert;
 export type OutreachStatus = (typeof outreachStatus.enumValues)[number];
-export type ShowInterest = typeof showInterests.$inferSelect;
-export type NewShowInterest = typeof showInterests.$inferInsert;
-export type ShowReminderJob = typeof showReminderJobs.$inferSelect;
-export type NewShowReminderJob = typeof showReminderJobs.$inferInsert;

@@ -9,7 +9,7 @@ import { DeleteShowButton } from "@/components/delete-show-button";
 import { EndLiveShowButton } from "@/components/end-live-show-button";
 import { ShowCard } from "@/components/show-card";
 import { Badge } from "@/components/ui/badge";
-import { HostCtaButton, ScheduleShowButton } from "@/components/host-cta-button";
+import { HostCtaButton } from "@/components/host-cta-button";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { ChallengeCard as Challenge } from "@/lib/challenges";
@@ -194,7 +194,6 @@ function PageHeader({
 
         <div className="flex flex-wrap items-center gap-2">
           <HostCtaButton size="sm" canHost={canHost} area="home" />
-          <ScheduleShowButton size="sm" canHost={canHost} area="home" />
           <Button
             variant="ghost"
             size="sm"
@@ -251,13 +250,6 @@ function HostCallout({ canHost }: { canHost: boolean }) {
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <HostCtaButton size="micro" className="w-fit" canHost={canHost} area="home" />
-        <ScheduleShowButton
-          size="micro"
-          variant="ghost"
-          className="w-fit"
-          canHost={canHost}
-          area="home"
-        />
       </div>
     </section>
   );
