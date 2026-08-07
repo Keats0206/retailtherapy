@@ -49,6 +49,7 @@ function getMuxWebhookSecret(): string | null {
  */
 export async function createMuxLiveStream(): Promise<{
   liveStreamId: string;
+  playbackId: string;
   streamKey: string;
   rtmpUrl: string;
 }> {
@@ -70,11 +71,33 @@ export async function createMuxLiveStream(): Promise<{
     throw new Error("Mux did not return a stream key");
   }
 
+  const playbackId = stream.playback_ids?.[0]?.id;
+  if (!playbackId) {
+    throw new Error("Mux did not return a playback id");
+  }
+
   return {
     liveStreamId: stream.id,
+    playbackId,
     streamKey: stream.stream_key,
     rtmpUrl: `${MUX_RTMP_URL}/${stream.stream_key}`,
   };
+}
+
+/** Public thumbnail URL for a Mux asset or live stream playback id. */
+export function muxThumbnailUrl(
+  playbackId: string,
+  opts?: { width?: number; live?: boolean; time?: number },
+): string {
+  const params = new URLSearchParams();
+  params.set("width", String(opts?.width ?? 640));
+  if (opts?.live) {
+    params.set("latest", "true");
+  } else if (opts?.time != null) {
+    params.set("time", String(opts.time));
+  }
+  const query = params.toString();
+  return `https://image.mux.com/${playbackId}/thumbnail.jpg${query ? `?${query}` : ""}`;
 }
 
 /**

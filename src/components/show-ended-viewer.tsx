@@ -171,7 +171,6 @@ export function ShowEndedViewer({
                   className="h-full w-full"
                   streamType="on-demand"
                   preload="auto"
-                  accentColor="#ffffff"
                   metadata={{ video_title: recap.title }}
                 />
               ) : (

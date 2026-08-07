@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 
-import { Button } from "@/components/ui/button";
-import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import { HeroCtaGroup } from "@/components/hero-cta-group";
 import { cn } from "@/lib/utils";
 
 type ScatterCard = {
@@ -199,17 +197,24 @@ function ScatterCard({ card, index }: { card: ScatterCard; index: number }) {
   );
 }
 
-export default function HeroScatterMotion() {
+export default function HeroScatterMotion({
+  canHost = false,
+}: {
+  canHost?: boolean;
+}) {
   return (
     <motion.div
       initial="hidden"
       animate="show"
-      className="relative mx-auto flex min-h-[620px] w-full max-w-6xl flex-col items-center justify-center overflow-hidden px-6 py-16 sm:min-h-[680px] lg:min-h-[760px]"
+      className="relative mx-auto flex min-h-[680px] w-full max-w-6xl flex-col items-center justify-center overflow-hidden px-6 py-16 sm:min-h-[740px] lg:min-h-[820px]"
     >
       <motion.div
         variants={cardsContainer}
         aria-hidden
-        className="pointer-events-none absolute inset-0 hidden md:block"
+        // Inset from the clipping edge so each card's `0 18px 35px` drop shadow
+        // renders inside the container instead of being sliced off against the
+        // header and footer.
+        className="pointer-events-none absolute inset-x-8 inset-y-14 hidden md:block"
       >
         {CARDS.map((card, index) => (
           <ScatterCard key={card.src} card={card} index={index} />
@@ -228,13 +233,9 @@ export default function HeroScatterMotion() {
         </motion.span>
         <motion.h1
           variants={textItem}
-          className="text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl"
+          className="font-brand text-5xl font-normal leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl"
         >
-          watch people{" "}
-          <span className="bg-gradient-to-r from-pop via-live to-pop bg-clip-text text-transparent">
-            shop
-          </span>
-          .
+          watch people shop.
         </motion.h1>
         <motion.p
           variants={textItem}
@@ -243,28 +244,8 @@ export default function HeroScatterMotion() {
           Hosts go live, add links to what&rsquo;s on screen, and let the room
           vote on what&rsquo;s worth it.
         </motion.p>
-        <motion.div variants={textItem} className="flex flex-col items-center gap-3">
-          <Button
-            size="lg"
-            className="rounded-full bg-foreground px-8 text-background hover:bg-foreground/90"
-            render={<Link href="/browse" />}
-            onClick={() =>
-              trackEvent(AnalyticsEvent.CTA_BROWSE, { area: "hero" })
-            }
-          >
-            Browse live shows
-          </Button>
-          <Button
-            variant="ghost"
-            size="micro"
-            className="text-muted-foreground"
-            render={<Link href="/creators" />}
-            onClick={() =>
-              trackEvent(AnalyticsEvent.CTA_APPLY, { area: "hero" })
-            }
-          >
-            Join the creator waitlist &rarr;
-          </Button>
+        <motion.div variants={textItem}>
+          <HeroCtaGroup canHost={canHost} />
         </motion.div>
       </motion.div>
     </motion.div>

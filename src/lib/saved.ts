@@ -188,6 +188,7 @@ export async function listSavedShows(
     toDiscoveryShow(row.stream, {
       placeholderLabel: row.stream.status === "live" ? "LIVE" : "REPLAY",
       includeEndedAt: true,
+      liveMuxThumbnail: row.stream.status === "live",
     }),
   );
 }

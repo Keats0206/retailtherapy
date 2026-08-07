@@ -12,6 +12,11 @@ export function waitroomShowPath(slug: string): string {
 export function hostShowPath(slug: string): string {
   return `/host/${slug}`;
 }
+
+/** Post-schedule confirmation page for sharing the waitroom link. */
+export function hostScheduledPath(slug: string): string {
+  return `/host/scheduled/${slug}`;
+}
 /** Legacy short viewer path — kept for redirects and saved-link parsing. */
 export function legacyViewerShowPath(slug: string): string {
   return `/s/${slug}`;

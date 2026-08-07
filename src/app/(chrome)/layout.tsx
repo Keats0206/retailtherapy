@@ -7,7 +7,7 @@ import { UserMenu } from "@/components/user-menu";
 
 /**
  * The site header, for every route except `/watch` and the authenticated app
- * shell at `/home` and `/saved`.
+ * header at `/browse` and `/saved` (those routes use their own top nav).
  *
  * Watch is deliberately outside this group: it runs full-bleed with the video
  * filling the viewport, and a persistent header would both eat vertical space
@@ -46,7 +46,7 @@ export default function ChromeLayout({
             <Button
               variant="ghost"
               size="micro"
-              render={<Link href="/home">Open app</Link>}
+              render={<Link href="/browse">browse</Link>}
             />
             <UserMenu />
           </Show>
@@ -56,9 +56,7 @@ export default function ChromeLayout({
           so ordinary pages need to scroll inside this container instead. */}
       <div data-chrome-scroll className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {children}
-        <div data-site-chrome className="contents">
-          <SiteFooter />
-        </div>
+        <SiteFooter />
       </div>
     </>
   );

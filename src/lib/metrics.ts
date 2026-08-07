@@ -5,9 +5,30 @@ import { sql } from "drizzle-orm";
 import { countProspectsByStatus } from "@/lib/creator-outreach";
 import { db } from "@/lib/db";
 import { getMetricsExcludedHostIds } from "@/lib/excluded-hosts";
+import {
+  MAX_SESSION_HOURS,
+  METRICS_RANGES,
+  RANGE_LABELS,
+  parseRange,
+  type CreatorRow,
+  type MetricsRange,
+  type MetricsSummary,
+  type SeriesPoint,
+} from "@/lib/metrics-shared";
 import type { OutreachCounts } from "@/lib/outreach-status";
 import { streamProducts, streams, waitlistSignups } from "@/lib/db/schema";
 import type { StreamSnapshot } from "@/lib/stream-store";
+
+export {
+  MAX_SESSION_HOURS,
+  METRICS_RANGES,
+  RANGE_LABELS,
+  parseRange,
+  type CreatorRow,
+  type MetricsRange,
+  type MetricsSummary,
+  type SeriesPoint,
+};
 
 /**
  * Platform metrics for /admin/metrics, with **creator hours** as the headline.
@@ -31,35 +52,8 @@ import type { StreamSnapshot } from "@/lib/stream-store";
  * place. If `streams` passes a few thousand rows, push the bucketing into SQL.
  */
 
-export const MAX_SESSION_HOURS = 4;
-
-/**
- * Hosts whose shows never count. `npm run smoke` writes a real `streams` row
- * as `smoke-test-user` against the same database, and because that row is
- * abandoned rather than ended it lands at the full session cap every time —
- * enough to dominate the headline. See `lib/excluded-hosts.ts` for the full
- * allowlist and env vars.
- */
-
 const MAX_SESSION_MS = MAX_SESSION_HOURS * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
-
-export type MetricsRange = "30d" | "12w" | "all";
-
-export const METRICS_RANGES: readonly MetricsRange[] = ["30d", "12w", "all"];
-
-export const RANGE_LABELS: Record<MetricsRange, string> = {
-  "30d": "30 days",
-  "12w": "12 weeks",
-  all: "All time",
-};
-
-export function parseRange(value: string | string[] | undefined): MetricsRange {
-  const raw = Array.isArray(value) ? value[0] : value;
-  return METRICS_RANGES.includes(raw as MetricsRange)
-    ? (raw as MetricsRange)
-    : "30d";
-}
 
 /** The columns creator hours actually needs. */
 type SessionRow = {
@@ -98,76 +92,6 @@ export function sessionDurationMs(
 ): number {
   return Math.min(rawSessionDurationMs(show, now), MAX_SESSION_MS);
 }
-
-export type SeriesPoint = {
-  /** Short axis label, e.g. "Jul 3". */
-  label: string;
-  /** Tooltip label, e.g. "Week of Jul 3". */
-  fullLabel: string;
-  start: string;
-  hours: number;
-  shows: number;
-  creators: number;
-  newCreators: number;
-  signups: number;
-};
-
-export type CreatorRow = {
-  hostUserId: string;
-  hostName: string;
-  hours: number;
-  shows: number;
-  avgSessionMinutes: number;
-  firstShowAt: string | null;
-  lastLiveAt: string | null;
-  liveNow: boolean;
-};
-
-export type MetricsSummary = {
-  range: MetricsRange;
-  generatedAt: string;
-  rangeStart: string;
-  totals: {
-    hoursAllTime: number;
-    hoursInRange: number;
-    hoursPrevPeriod: number | null;
-    hoursDeltaPct: number | null;
-    showsAllTime: number;
-    showsInRange: number;
-    creatorsAllTime: number;
-    creatorsInRange: number;
-    newCreatorsInRange: number;
-    liveNow: number;
-    cappedSessions: number;
-    avgSessionMinutes: number;
-    /** Shows dropped as test-account noise — see `excludedHostIds`. */
-    excludedShows: number;
-  };
-  series: SeriesPoint[];
-  creators: CreatorRow[];
-  engagement: {
-    showsWithStats: number;
-    peakViewers: number;
-    chatMessages: number;
-    avgPeakViewers: number;
-    avgChatMessages: number;
-    productsPinned: number;
-    avgProductsPerShow: number;
-    buyVotes: number;
-    skipVotes: number;
-    /** Share of product votes that were "buy", 0–1, or null with no votes. */
-    buyShare: number | null;
-  };
-  funnel: {
-    signupsAllTime: number;
-    signupsInRange: number;
-    signupsWithAccount: number;
-    signupsConverted: number;
-    conversionPct: number | null;
-    prospects: OutreachCounts;
-    prospectTotal: number;
-  };
-};
 
 type Bucket = {
   key: string;

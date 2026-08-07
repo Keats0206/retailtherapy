@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { getSignedInUser, isHostingApproved } from "@/lib/auth";
 import { LOCAL_STREAM } from "@/lib/live/mode";
+import { hasOnboarded } from "@/lib/onboarding";
 import {
   endDesignModeOrphansForHost,
   getLiveShowForHost,
@@ -16,6 +17,8 @@ export default async function HostPage({
 }) {
   const user = await getSignedInUser();
   if (!user) return null;
+  // Outside the (app) group, so the first-run gate has to be repeated here.
+  if (!hasOnboarded(user)) redirect("/welcome");
 
   const { slug: resumeSlug, challenge: challengeSlug } = await searchParams;
 

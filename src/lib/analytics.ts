@@ -21,6 +21,9 @@ export const AnalyticsEvent = {
   HOST_VIEW_RECAP: "host_view_recap",
   SHOW_DELETE: "show_delete",
   SHOW_END: "show_end",
+  ONBOARDING_STEP: "onboarding_step",
+  ONBOARDING_INTENT: "onboarding_intent",
+  ONBOARDING_COMPLETE: "onboarding_complete",
   HOST_SETUP_INTENT: "host_setup_intent",
   HOST_SETUP_DETAIL: "host_setup_detail",
   HOST_SETUP_ITEMS: "host_setup_items",
@@ -52,6 +55,7 @@ export const AnalyticsEvent = {
   REPLAY_SHARE: "replay_share",
   HOST_END_SHOW: "host_end_show",
   HOST_PREP_ANOTHER: "host_prep_another",
+  VIEWER_REGISTER_INTEREST: "viewer_register_interest",
 } as const;
 
 export type AnalyticsEventName =

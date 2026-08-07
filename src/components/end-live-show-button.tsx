@@ -67,7 +67,7 @@ export function EndLiveShowButton({
       });
       setOpen(false);
       onEnded?.();
-      router.refresh();
+      if (!onEnded) router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {

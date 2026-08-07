@@ -19,8 +19,8 @@
  *
  * Typography:
  *   --text-xs … --text-9xl in @theme inline (~15% larger than Tailwind defaults)
- *   font-heading / font-display — hero & section titles (sans)
- *   font-brand — Stardom display serif; wordmark and hero display type only
+ *   font-sans / font-heading / font-display — Nunito for body, UI, and headings
+ *   font-brand — Stardom; wordmark and homepage hero display type only
  *   @utility micro — eyebrow labels only (section headers, metadata, status)
  *   Do NOT use micro on headings, product names, or buttons.
  *
@@ -205,12 +205,8 @@
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono, var(--font-mono));
   --font-serif: var(--font-serif);
-  /* Everything that isn't the wordmark is Nunito, so display and heading both
-     resolve to the sans rather than to the old SF Pro Display stack. */
   --font-display: var(--font-sans);
   --font-heading: var(--font-sans);
-  /* font-brand — Stardom, the wordmark/hero serif. Deliberately NOT wired to
-     font-heading: card, dialog and section titles stay on the sans. */
   --font-brand: var(--font-stardom, ui-serif, Georgia, "Times New Roman", serif);
 
   /* Type scale, bumped ~15% larger than Tailwind's defaults. Every text-*
@@ -320,11 +316,25 @@
   );
 }
 
-/** Inset app section — setup summaries, apply forms, browse empty states. */
+/** Inset app section — setup summaries, apply forms, content panels. */
 @utility soft-panel {
   border-radius: 0;
   background-color: color-mix(in oklch, var(--muted) 40%, transparent);
   box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 8%, transparent);
+}
+
+/** Creator promo banner — action-oriented, distinct from quiet empty states. */
+@utility creator-promo {
+  border-radius: 0;
+  background-color: color-mix(in oklch, var(--live) 14%, var(--background));
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--live) 40%, transparent);
+}
+
+/** Quiet empty state — dashed outline, no fill. */
+@utility empty-placeholder {
+  border-radius: 0;
+  border: 1px dashed color-mix(in oklch, var(--foreground) 14%, transparent);
+  background-color: transparent;
 }
 
 /**
@@ -496,6 +506,11 @@
 .studio-rail {
   background: color-mix(in oklch, var(--muted) 35%, var(--background));
   border-left: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+}
+
+/** Mux Player — progress bar, range thumbs, and control hovers use brand neon. */
+mux-player {
+  --media-accent-color: var(--live);
 }
 
 @media (max-width: 1023px) {

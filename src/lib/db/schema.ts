@@ -413,6 +413,54 @@ export const hostApprovals = pgTable(
   ],
 );
 
+export const onboardingIntent = pgEnum("onboarding_intent", [
+  "shop",
+  "host",
+  "both",
+]);
+
+/**
+ * What a new account told us about itself at /welcome.
+ *
+ * Not a users table — Clerk remains the user store, and this is keyed by Clerk
+ * id as plain text, the same convention as `saved_items` and
+ * `streams.host_user_id`. It holds only the onboarding answers.
+ *
+ * `brands` and `categories` are jsonb string arrays rather than join tables,
+ * mirroring `streams.setup`: there is no `brands` table to join against, and
+ * the picks are read as a set far more often than they are queried across
+ * users. If brand affinity becomes a real query surface, these graduate to a
+ * `user_brand_follows` table — the stored values are already stable slugs.
+ *
+ * `waitlist_signup_id` is set when the answer to "what brings you here" was
+ * hosting. Onboarding files the application; it never grants hosting, which
+ * still comes only from `host_approvals`.
+ */
+export const userProfiles = pgTable(
+  "user_profiles",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").notNull(),
+    intent: onboardingIntent("intent").notNull(),
+    brands: jsonb("brands").$type<string[]>().notNull().default([]),
+    categories: jsonb("categories").$type<string[]>().notNull().default([]),
+    waitlistSignupId: uuid("waitlist_signup_id").references(
+      () => waitlistSignups.id,
+      { onDelete: "set null" },
+    ),
+    completedAt: timestamp("completed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [uniqueIndex("user_profiles_user_id_idx").on(table.userId)],
+);
+
 /**
  * Creators we've sourced from TikTok search and want to recruit as hosts.
  *
@@ -476,9 +524,63 @@ export const creatorProspects = pgTable(
   ],
 );
 
+export const showInterests = pgTable(
+  "show_interests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    streamId: uuid("stream_id")
+      .notNull()
+      .references(() => streams.id, { onDelete: "cascade" }),
+    userId: text("user_id"),
+    email: text("email"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("show_interests_stream_user_idx").on(
+      table.streamId,
+      table.userId,
+    ),
+    uniqueIndex("show_interests_stream_email_idx").on(
+      table.streamId,
+      table.email,
+    ),
+    index("show_interests_stream_idx").on(table.streamId),
+  ],
+);
+
+export const showReminderStatus = pgEnum("show_reminder_status", [
+  "pending",
+  "sent",
+  "skipped",
+]);
+
+export const showReminderJobs = pgTable(
+  "show_reminder_jobs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    streamId: uuid("stream_id")
+      .notNull()
+      .references(() => streams.id, { onDelete: "cascade" }),
+    sendAt: timestamp("send_at", { withTimezone: true }).notNull(),
+    status: showReminderStatus("status").notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("show_reminder_jobs_pending_idx").on(table.status, table.sendAt),
+    index("show_reminder_jobs_stream_idx").on(table.streamId),
+  ],
+);
+
 export const streamsRelations = relations(streams, ({ many, one }) => ({
   streamProducts: many(streamProducts),
   savedShows: many(savedShows),
+  interests: many(showInterests),
+  reminderJobs: many(showReminderJobs),
   challenge: one(challenges, {
     fields: [streams.challengeId],
     references: [challenges.id],
@@ -544,6 +646,13 @@ export type Challenge = typeof challenges.$inferSelect;
 export type NewChallenge = typeof challenges.$inferInsert;
 export type HostFeedback = typeof hostFeedback.$inferSelect;
 export type NewHostFeedback = typeof hostFeedback.$inferInsert;
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type NewUserProfile = typeof userProfiles.$inferInsert;
+export type OnboardingIntent = (typeof onboardingIntent.enumValues)[number];
 export type CreatorProspect = typeof creatorProspects.$inferSelect;
 export type NewCreatorProspect = typeof creatorProspects.$inferInsert;
 export type OutreachStatus = (typeof outreachStatus.enumValues)[number];
+export type ShowInterest = typeof showInterests.$inferSelect;
+export type NewShowInterest = typeof showInterests.$inferInsert;
+export type ShowReminderJob = typeof showReminderJobs.$inferSelect;
+export type NewShowReminderJob = typeof showReminderJobs.$inferInsert;

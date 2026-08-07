@@ -1,22 +1,24 @@
 import type { Metadata } from "next";
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
-import { LandingPage } from "@/components/landing-page";
-import { listChallenges } from "@/lib/challenges";
+import { HeroScatter } from "@/components/hero-scatter";
+import { isHostingApproved } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "frontrow — brand challenges",
+  title: "frontrow — watch people shop",
   description:
-    "Take a brand challenge, go live, and let the room vote on every pick.",
+    "Hosts go live, add links to what's on screen, and let the room vote on what's worth it.",
 };
 
-/** Public landing — challenges only. Signed-in members go straight to the app. */
+/** Public landing — scatter hero with browse as the primary CTA. */
 export default async function PublicLandingPage() {
   const { userId } = await auth();
-  if (userId) redirect("/home");
+  const user = userId ? await currentUser() : null;
+  const canHost = user ? await isHostingApproved(user) : false;
 
-  const challenges = await listChallenges();
-
-  return <LandingPage challenges={challenges} />;
+  return (
+    <main className="flex flex-1 items-center justify-center">
+      <HeroScatter canHost={canHost} />
+    </main>
+  );
 }

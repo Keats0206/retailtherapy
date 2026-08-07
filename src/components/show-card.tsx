@@ -4,7 +4,11 @@ import Link from "next/link";
 
 import { EndLiveShowButton } from "@/components/end-live-show-button";
 import { SaveButton } from "@/components/save-button";
-import { HostAvatar, ShowMosaic } from "@/components/show-mosaic";
+import {
+  HostAvatar,
+  ShowCover,
+  TrailPreviewStrip,
+} from "@/components/show-mosaic";
 import { Badge } from "@/components/ui/badge";
 import type { DiscoveryShow } from "@/lib/shows";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
@@ -12,10 +16,8 @@ import { viewerShowPath, waitroomShowPath } from "@/lib/show-urls";
 import { cn } from "@/lib/utils";
 
 /**
- * A show in a grid — on /browse, and on a challenge's event page.
- *
- * `area` only tags the analytics event, so the two surfaces stay
- * distinguishable in the funnel without duplicating the card.
+ * A show in a grid — Twitch-style: wide preview on top, host row underneath,
+ * then a strip of trail items where tags would sit on a stream card.
  */
 export function ShowCard({
   show,
@@ -49,17 +51,19 @@ export function ShowCard({
         ? "Starting soon"
         : null;
 
-  // The board metaphor: what's in it, then when. Live shows lead with the
-  // product on screen instead, since that's what a viewer is joining for.
   const itemLabel =
     show.trailTotal > 0
       ? `${show.trailTotal} ${show.trailTotal === 1 ? "item" : "items"}`
       : null;
-  const meta = isLive
-    ? show.pinnedProduct ?? itemLabel
+  const subtitle = isLive
+    ? show.pinnedProduct ?? "Live shopping"
     : isUpcoming
       ? scheduledDateLabel
-      : [itemLabel, endedDateLabel].filter(Boolean).join(" · ");
+      : endedDateLabel ?? "Replay";
+
+  const thumbnailCaption = isUpcoming
+    ? scheduledDateLabel
+    : itemLabel;
 
   const href = isUpcoming
     ? waitroomShowPath(show.slug)
@@ -69,7 +73,7 @@ export function ShowCard({
     <div className="group relative">
       <Link
         href={href}
-        className="flex w-full flex-col gap-3 bg-card p-2 text-left outline-none ring-1 ring-border transition-shadow hover:shadow-lg hover:ring-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex w-full flex-col gap-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onClick={() =>
           trackEvent(
             isLive
@@ -81,17 +85,14 @@ export function ShowCard({
           )
         }
       >
-        <div className="relative">
-          <ShowMosaic
-            items={show.trailPreview}
-            extraCount={show.trailExtraCount}
-            fallbackUrl={show.thumbnailUrl}
-          />
+        <div className="relative overflow-hidden bg-muted">
+          <ShowCover src={show.thumbnailUrl} alt={show.title} />
+
           {isLive ? (
             <Badge
               variant="destructive"
               size="micro"
-              className="absolute left-3 top-3 gap-1.5 bg-live text-live-foreground"
+              className="absolute left-2 top-2 gap-1.5 bg-live text-live-foreground"
             >
               <span className="size-1.5 animate-pulse rounded-full bg-live-foreground/80" />
               Live
@@ -100,27 +101,50 @@ export function ShowCard({
             <Badge
               variant="secondary"
               size="micro"
-              className="absolute left-3 top-3"
+              className="absolute left-2 top-2 bg-background/90"
             >
               Upcoming
             </Badge>
+          ) : (
+            <Badge
+              variant="secondary"
+              size="micro"
+              className="absolute left-2 top-2 bg-background/90"
+            >
+              Replay
+            </Badge>
+          )}
+
+          {thumbnailCaption ? (
+            <span className="absolute bottom-2 left-2 max-w-[calc(100%-1rem)] truncate bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
+              {thumbnailCaption}
+            </span>
           ) : null}
         </div>
 
-        <div className="flex items-end justify-between gap-3 px-2 pb-1">
+        <div className="flex gap-2.5">
+          <HostAvatar name={show.host} className="size-10" />
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-lg font-medium tracking-tight text-foreground">
+            <h3 className="truncate text-sm font-semibold leading-snug text-foreground group-hover:underline">
               {show.title}
             </h3>
-            {meta ? (
-              <p className="truncate text-sm text-muted-foreground">{meta}</p>
+            <p className="truncate text-sm text-muted-foreground">{show.host}</p>
+            {subtitle ? (
+              <p className="truncate text-sm text-muted-foreground/80">
+                {subtitle}
+              </p>
             ) : null}
           </div>
-          <HostAvatar name={show.host} />
         </div>
+
+        <TrailPreviewStrip
+          items={show.trailPreview}
+          extraCount={show.trailExtraCount}
+        />
       </Link>
+
       {isLive && isAdmin ? (
-        <div className="absolute right-5 top-5">
+        <div className="absolute right-2 top-2">
           <EndLiveShowButton
             slug={show.slug}
             title={show.title}
@@ -129,18 +153,25 @@ export function ShowCard({
           />
         </div>
       ) : null}
-      {/* Sibling of the card link, not a child: a button inside the <a> would
-          be invalid markup and clicking it would navigate to the show. Drops
-          below the admin control when both are on the same card. */}
+
       <SaveButton
         showSlug={show.slug}
         area={area}
         variant="overlay"
         className={cn(
-          "absolute right-5 z-10",
-          isLive && isAdmin ? "top-16" : "top-5",
+          "absolute right-2 z-10",
+          isLive && isAdmin ? "top-12" : "top-2",
         )}
       />
     </div>
   );
+}
+
+/** Pick the card variant from discovery fields when the caller doesn't know status. */
+export function discoveryShowVariant(
+  show: DiscoveryShow,
+): "live" | "past" | "upcoming" {
+  if (show.scheduledFor) return "upcoming";
+  if (show.endedAt) return "past";
+  return "live";
 }

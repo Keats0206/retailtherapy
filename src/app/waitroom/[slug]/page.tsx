@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
+import { auth } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
 
 import { cache } from "react";
 
+import {
+  getInterestCount,
+  hasUserRegisteredInterest,
+} from "@/lib/show-interest";
 import { getShowBySlug } from "@/lib/shows";
 import { toPublicShow } from "@/lib/show-public";
 import { viewerShowPath } from "@/lib/show-urls";
@@ -30,11 +35,22 @@ export default async function WaitroomPage({
   const show = await getShowBySlugCached(slug);
   if (!show) notFound();
 
-  // The waitroom is only for a show that hasn't started. Once it's live (or
-  // over, and playing back its replay), the show itself lives at /show/<slug>.
   if (show.status !== "scheduled") {
     redirect(viewerShowPath(slug));
   }
 
-  return <WaitroomClient initialShow={toPublicShow(show)} />;
+  const { userId } = await auth();
+  const [total, registered] = await Promise.all([
+    getInterestCount(show.id),
+    userId
+      ? hasUserRegisteredInterest(show.id, userId)
+      : Promise.resolve(false),
+  ]);
+
+  return (
+    <WaitroomClient
+      initialShow={toPublicShow(show)}
+      initialInterest={{ total, registered }}
+    />
+  );
 }

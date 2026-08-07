@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Radio } from "lucide-react";
 
 import { HostSetupPanel } from "@/components/host-onboarding";
@@ -14,6 +15,7 @@ import {
   writePendingLiveSession,
 } from "@/lib/host-go-live";
 import { hostShowPath } from "@/lib/show-urls";
+import { HOST_CTA } from "@/lib/host-cta-copy";
 import {
   EMPTY_DRAFT,
   readShowSetupDraft,
@@ -144,7 +146,10 @@ export default function HostSetupClient({
           </p>
         ) : null}
 
-        <div className="flex justify-end">
+        <div className="flex flex-col items-end gap-2 sm:flex-row sm:justify-end">
+          <Button variant="ghost" size="sm" render={<Link href={HOST_CTA.schedule.href} />}>
+            Schedule for later
+          </Button>
           <Button
             disabled={!draft.intent || loading}
             onClick={() => void handleGoLive()}

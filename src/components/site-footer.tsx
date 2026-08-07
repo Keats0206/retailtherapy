@@ -1,13 +1,26 @@
+import Link from "next/link";
+
 export function SiteFooter() {
   return (
-    <footer className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 px-6 py-6 text-sm text-muted-foreground">
-      <span>&copy; {new Date().getFullYear()} frontrow</span>
-      <a href="/privacy" className="hover:text-foreground hover:underline">
+    <footer
+      data-site-chrome
+      className="mt-auto flex w-full shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/60 px-6 py-5"
+    >
+      <span className="micro text-muted-foreground">
+        &copy; {new Date().getFullYear()} frontrow
+      </span>
+      <Link
+        href="/privacy"
+        className="micro text-muted-foreground transition-colors hover:text-foreground"
+      >
         Privacy
-      </a>
-      <a href="/terms" className="hover:text-foreground hover:underline">
+      </Link>
+      <Link
+        href="/terms"
+        className="micro text-muted-foreground transition-colors hover:text-foreground"
+      >
         Terms
-      </a>
+      </Link>
     </footer>
   );
 }

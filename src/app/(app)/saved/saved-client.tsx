@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { ArrowUpRight, Bookmark } from "lucide-react";
 
 import { SaveButton } from "@/components/save-button";
-import { HostAvatar, ShowMosaic } from "@/components/show-mosaic";
+import { ShowCard, discoveryShowVariant } from "@/components/show-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
@@ -119,7 +119,7 @@ export function SavedClient({
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {visible.map((entry) => (
               <SavedItemCard key={entry.product.id} entry={entry} />
             ))}
@@ -147,36 +147,11 @@ function EmptyBoard() {
 
 function SavedShowCard({ show }: { show: DiscoveryShow }) {
   return (
-    <div className="group relative">
-      <Link
-        href={viewerShowPath(show.slug)}
-        className="flex w-full flex-col gap-3 rounded-none bg-card p-2 text-left outline-none ring-1 ring-transparent transition-shadow hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <ShowMosaic
-          items={show.trailPreview}
-          extraCount={show.trailExtraCount}
-          fallbackUrl={show.thumbnailUrl}
-        />
-        <div className="flex items-end justify-between gap-3 px-2 pb-1">
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-base font-medium tracking-tight">
-              {show.title}
-            </h3>
-            <p className="truncate text-sm text-muted-foreground">
-              {show.trailTotal} {show.trailTotal === 1 ? "item" : "items"}
-            </p>
-          </div>
-          <HostAvatar name={show.host} />
-        </div>
-      </Link>
-      {/* Sibling of the card link — see SaveButton's note on nested anchors. */}
-      <SaveButton
-        showSlug={show.slug}
-        area="saved"
-        variant="overlay"
-        className="absolute right-5 top-5 z-10"
-      />
-    </div>
+    <ShowCard
+      show={show}
+      variant={discoveryShowVariant(show)}
+      area="saved"
+    />
   );
 }
 
@@ -186,13 +161,13 @@ function SavedItemCard({ entry }: { entry: SavedProduct }) {
   const name = cleanProductTitle(product.name, product.retailer);
 
   return (
-    <div className="flex flex-col gap-3 rounded-none bg-card p-2 ring-1 ring-foreground/5">
+    <article className="group flex flex-col">
       <div className="relative">
         <a
           href={product.buyUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="group block overflow-hidden rounded-none bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="block overflow-hidden bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={() =>
             trackEvent(AnalyticsEvent.SAVED_SHOP_CLICK, { area: "saved" })
           }
@@ -204,10 +179,10 @@ function SavedItemCard({ entry }: { entry: SavedProduct }) {
               alt={name}
               loading="lazy"
               decoding="async"
-              className="aspect-[4/3] w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="aspect-[3/4] w-full object-contain p-4 transition-transform duration-500 group-hover:scale-[1.02]"
             />
           ) : (
-            <span className="flex aspect-[4/3] w-full items-center justify-center text-xs text-muted-foreground">
+            <span className="flex aspect-[3/4] w-full items-center justify-center text-xs text-muted-foreground">
               No image
             </span>
           )}
@@ -216,54 +191,67 @@ function SavedItemCard({ entry }: { entry: SavedProduct }) {
           product={product}
           area="saved"
           variant="overlay"
-          className="absolute right-3 top-3 z-10"
+          className="absolute right-2 top-2 z-10"
         />
       </div>
 
-      <div className="flex flex-col gap-1 px-2 pb-1">
-        <p className="line-clamp-2 text-sm font-medium leading-snug" title={name}>
-          {name}
-        </p>
-        <div className="flex items-center gap-2">
-          <span className="text-sm tabular-nums">
-            {formatPrice(product.price, product.currency)}
-          </span>
-          {product.retailer && (
-            <span className="truncate text-xs text-muted-foreground">
-              {product.retailer}
-            </span>
-          )}
-        </div>
-
-        {product.note && (
-          <p className="line-clamp-2 border-l border-border pl-2 text-xs leading-relaxed text-muted-foreground">
-            {product.note}
+      <div className="flex flex-col gap-1.5 pt-3">
+        {product.retailer ? (
+          <p className="micro truncate uppercase tracking-[0.14em] text-muted-foreground">
+            {product.retailer}
           </p>
-        )}
-
-        {source && (
-          <Link
-            href={viewerShowPath(source.slug)}
-            className="mt-1 truncate text-xs text-muted-foreground underline-offset-2 hover:underline"
-          >
-            From {source.host}&apos;s {source.title}
-          </Link>
-        )}
-
+        ) : null}
         <a
           href={product.buyUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-2 inline-flex items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
+          className="line-clamp-2 text-sm font-medium leading-snug hover:underline"
+          title={name}
           onClick={() =>
             trackEvent(AnalyticsEvent.SAVED_SHOP_CLICK, { area: "saved" })
           }
         >
-          Shop
-          <ArrowUpRight className="size-4" />
+          {name}
         </a>
+        <p className="text-base font-medium tabular-nums tracking-tight">
+          {formatPrice(product.price, product.currency)}
+        </p>
+
+        {product.note ? (
+          <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+            {product.note}
+          </p>
+        ) : null}
+
+        {source ? (
+          <Link
+            href={viewerShowPath(source.slug)}
+            className="truncate text-xs text-muted-foreground underline-offset-2 hover:underline"
+          >
+            From {source.host}&apos;s {source.title}
+          </Link>
+        ) : null}
+
+        <Button
+          variant="outline"
+          size="micro"
+          className="mt-1 w-fit"
+          render={
+            <a
+              href={product.buyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() =>
+                trackEvent(AnalyticsEvent.SAVED_SHOP_CLICK, { area: "saved" })
+              }
+            />
+          }
+        >
+          Shop
+          <ArrowUpRight className="size-3.5" />
+        </Button>
       </div>
-    </div>
+    </article>
   );
 }
 

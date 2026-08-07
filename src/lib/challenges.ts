@@ -153,6 +153,7 @@ export async function getChallengeBySlug(
       hostName: streams.hostName,
       endedAt: streams.endedAt,
       status: streams.status,
+      muxPlaybackId: streams.muxPlaybackId,
       snapshot: streams.snapshot,
     })
     .from(streams)
@@ -162,7 +163,7 @@ export async function getChallengeBySlug(
 
   const liveShows = shows
     .filter((show) => show.status === "live")
-    .map((show) => toDiscoveryShow(show));
+    .map((show) => toDiscoveryShow(show, { liveMuxThumbnail: true }));
   const pastShows = shows
     .filter((show) => show.status === "ended")
     .map((show) =>

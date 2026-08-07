@@ -78,6 +78,20 @@
       "when": 1785933349066,
       "tag": "0010_host_approvals",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786106755467,
+      "tag": "0011_user_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786107864823,
+      "tag": "0012_spooky_madame_web",
+      "breakpoints": true
     }
   ]
 }

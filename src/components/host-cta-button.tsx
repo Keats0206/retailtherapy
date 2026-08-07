@@ -6,6 +6,7 @@ import type { ComponentProps } from "react";
 
 import { Button } from "@/components/ui/button";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
+import { HOST_CTA } from "@/lib/host-cta-copy";
 import { cn } from "@/lib/utils";
 
 type HostCtaButtonProps = Omit<ComponentProps<typeof Button>, "render"> & {
@@ -20,16 +21,16 @@ type HostCtaButtonProps = Omit<ComponentProps<typeof Button>, "render"> & {
 
 export function HostCtaButton({
   canHost,
-  href = "/host/setup",
+  href = HOST_CTA.approved.href,
   area,
   showIcon = false,
-  applyLabel = "Apply to host",
-  goLiveLabel = "Go live",
+  applyLabel = HOST_CTA.apply.compactLabel,
+  goLiveLabel = HOST_CTA.approved.label,
   className,
   onClick,
   ...props
 }: HostCtaButtonProps) {
-  const destination = canHost ? href : "/creators";
+  const destination = canHost ? href : HOST_CTA.apply.href;
   const label = canHost ? goLiveLabel : applyLabel;
 
   return (

@@ -15,6 +15,7 @@ import {
   createMuxLiveStream,
   deleteMuxAsset,
   deleteMuxLiveStream,
+  muxThumbnailUrl,
   requestMuxAssetSubtitles,
   resolveMuxRecording,
   type RecordingBackfill,
@@ -140,7 +141,7 @@ export async function backfillRecording(
   show: Show,
   recording: RecordingBackfill,
 ): Promise<Show> {
-  if (show.muxPlaybackId) return show;
+  if (show.muxAssetId) return show;
 
   const [updated] = await db
     .update(streams)
@@ -196,6 +197,7 @@ type ShowCard = {
   hostName: string | null;
   endedAt: Date | null;
   scheduledFor?: Date | null;
+  muxPlaybackId?: string | null;
   snapshot: unknown;
 };
 
@@ -214,6 +216,7 @@ const showCardColumns = {
   hostName: streams.hostName,
   endedAt: streams.endedAt,
   scheduledFor: streams.scheduledFor,
+  muxPlaybackId: streams.muxPlaybackId,
   snapshot: sql<Pick<StreamSnapshot, "active" | "trail"> | null>`
     case when ${streams.snapshot} is null then null else jsonb_build_object(
       'active', ${streams.snapshot} -> 'active',
@@ -228,6 +231,8 @@ export function toDiscoveryShow(
     placeholderLabel?: string;
     includeEndedAt?: boolean;
     includeScheduledFor?: boolean;
+    /** When true, ask Mux for the latest live frame instead of a VOD still. */
+    liveMuxThumbnail?: boolean;
   },
 ): DiscoveryShow {
   const snapshot = snapshotOf(show);
@@ -238,12 +243,19 @@ export function toDiscoveryShow(
   const previews = trailPreview(show, previewLimit);
   const trailExtraCount = Math.max(0, snapshot.trail.length - previewLimit);
   const placeholder = opts?.placeholderLabel ?? "LIVE";
+  const muxThumb = show.muxPlaybackId
+    ? muxThumbnailUrl(show.muxPlaybackId, {
+        live: opts?.liveMuxThumbnail,
+        time: opts?.liveMuxThumbnail ? undefined : 30,
+      })
+    : null;
   return {
     slug: show.slug,
     title: show.title,
     host: show.hostName ?? "Host",
     pinnedProduct: pinned?.name,
-    thumbnailUrl: pinned?.imageUrl ?? discoveryThumbnail(placeholder),
+    thumbnailUrl:
+      pinned?.imageUrl ?? muxThumb ?? discoveryThumbnail(placeholder),
     trailPreview: previews,
     trailExtraCount,
     trailTotal: snapshot.trail.length,
@@ -270,7 +282,9 @@ const listLiveShowsCached = unstable_cache(
   async (limit: number) => {
     const excluded = await getDiscoveryExclusions();
     const rows = await listLiveShowCards(limit, excluded);
-    return rows.map((show) => toDiscoveryShow(show));
+    return rows.map((show) =>
+      toDiscoveryShow(show, { liveMuxThumbnail: true }),
+    );
   },
   ["list-live-shows"],
   { revalidate: 10 },
@@ -382,7 +396,7 @@ const listScheduledShowsCached = unstable_cache(
     const rows = await listScheduledShowCards(limit, excluded);
     return rows.map((show) =>
       toDiscoveryShow(show, {
-        placeholderLabel: "SOON",
+        placeholderLabel: show.title.slice(0, 28).toUpperCase(),
         includeScheduledFor: true,
       }),
     );
@@ -450,6 +464,109 @@ export async function endDesignModeOrphansForHost(
  */
 export const STALE_SHOW_HOURS = 2;
 
+/** Minutes before show time to queue reminder emails for interested viewers. */
+export const REMINDER_LEAD_MINUTES = 15;
+
+/**
+ * Schedules a show for a future time. No Mux stream is provisioned yet — that
+ * happens when the host actually goes live (see `startScheduledShow`).
+ */
+export async function scheduleShow(opts: {
+  hostUserId: string;
+  hostName: string | null;
+  title: string;
+  scheduledFor: Date;
+  setup?: ShowSetup | null;
+  challengeId?: string | null;
+}): Promise<Show> {
+  if (opts.scheduledFor.getTime() <= Date.now()) {
+    throw new Error("Scheduled time must be in the future.");
+  }
+
+  const slug = generateSlug();
+
+  const [show] = await db
+    .insert(streams)
+    .values({
+      slug,
+      title: opts.title,
+      hostUserId: opts.hostUserId,
+      hostName: opts.hostName,
+      status: "scheduled",
+      roomName: `show_${slug}`,
+      snapshot: EMPTY,
+      setup: opts.setup ?? null,
+      challengeId: opts.challengeId ?? null,
+      scheduledFor: opts.scheduledFor,
+    })
+    .returning();
+
+  return show;
+}
+
+/**
+ * Transitions a scheduled show to live: provisions Mux, sets startedAt, and
+ * returns the row ready for the host studio.
+ */
+export async function startScheduledShow(
+  slug: string,
+  hostUserId: string,
+): Promise<Show> {
+  const show = await getShowBySlug(slug);
+  if (!show || show.hostUserId !== hostUserId) {
+    throw new Error("Show not found.");
+  }
+  if (show.status !== "scheduled") {
+    throw new Error("This show is not scheduled.");
+  }
+
+  const existing = await getLiveShowForHost(hostUserId);
+  if (existing && existing.slug !== slug) {
+    throw new Error(
+      "You already have a live show. Open studio to reconnect, or end it first.",
+    );
+  }
+
+  let liveStreamId: string | null = null;
+
+  try {
+    const mux = DESIGN_MODE ? null : await createMuxLiveStream();
+    liveStreamId = mux?.liveStreamId ?? null;
+    const streamKey = mux?.streamKey ?? null;
+    const livePlaybackId = mux?.playbackId ?? null;
+
+    const [updated] = await db
+      .update(streams)
+      .set({
+        status: "live",
+        muxLiveStreamId: liveStreamId,
+        muxStreamKey: streamKey,
+        muxPlaybackId: livePlaybackId,
+        startedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(streams.id, show.id),
+          eq(streams.hostUserId, hostUserId),
+          eq(streams.status, "scheduled"),
+        ),
+      )
+      .returning();
+
+    if (!updated) {
+      throw new Error("Could not start show — it may have already started.");
+    }
+
+    return updated;
+  } catch (err) {
+    if (liveStreamId) {
+      await deleteMuxLiveStream(liveStreamId);
+    }
+    throw err;
+  }
+}
+
 /**
  * Opens a show. The row and the Mux live stream are created up front so the
  * host has a working share link the instant they click Go live — before the
@@ -488,6 +605,7 @@ export async function createShow(opts: {
     const mux = DESIGN_MODE ? null : await createMuxLiveStream();
     liveStreamId = mux?.liveStreamId ?? null;
     const streamKey = mux?.streamKey ?? null;
+    const livePlaybackId = mux?.playbackId ?? null;
 
     const [show] = await db
       .insert(streams)
@@ -500,6 +618,7 @@ export async function createShow(opts: {
         roomName: `show_${slug}`,
         muxLiveStreamId: liveStreamId,
         muxStreamKey: streamKey,
+        muxPlaybackId: livePlaybackId,
         snapshot: EMPTY,
         setup: opts.setup ?? null,
         challengeId: opts.challengeId ?? null,
@@ -617,6 +736,9 @@ export async function endShow(
       endedAt: new Date(),
       snapshot: final,
       recordingCaptured: !!show.egressId,
+      // Live playback id is for browse thumbnails during the broadcast only.
+      // Clear it so recap polling waits for the packaged VOD asset id.
+      muxPlaybackId: null,
       // The key has no use once the broadcast is over, and it is a credential.
       muxStreamKey: null,
       egressId: null,
@@ -895,7 +1017,7 @@ export async function endStaleShows(
 }
 
 export async function resolveRecording(show: Show): Promise<Show> {
-  if (show.muxPlaybackId) return show;
+  if (show.muxAssetId) return show;
   if (show.status !== "ended" || !show.muxLiveStreamId) return show;
 
   let recording: RecordingBackfill | null = null;

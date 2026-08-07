@@ -12,9 +12,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 /**
- * Nunito (Fontshare) carries everything that isn't the wordmark — body copy, UI
- * and headings alike. Stardom (below) is the only exception. Self-hosted so it
- * ships with the app instead of hitting cdn.fontshare.com.
+ * Nunito (Fontshare) — body copy, UI, and headings app-wide.
+ * Self-hosted so it ships with the app instead of hitting cdn.fontshare.com.
  */
 const nunito = localFont({
   src: [
@@ -44,9 +43,8 @@ const nunito = localFont({
 });
 
 /**
- * Stardom (Fontshare) — high-contrast display serif, wordmark/hero only.
+ * Stardom (Fontshare) — display serif for the wordmark and homepage hero only.
  * Self-hosted so it ships with the app instead of hitting cdn.fontshare.com.
- * Exposed as `font-brand`; headings stay on the sans (`font-heading`).
  */
 const stardom = localFont({
   src: [

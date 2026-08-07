@@ -69,7 +69,8 @@ const INTENTS: {
   },
 ];
 
-const ITEM_OPTIONS = [
+/** Also the category board on /welcome — one list, so the two stay in step. */
+export const ITEM_OPTIONS = [
   { label: "Jackets", emoji: "🧥" },
   { label: "Knitwear", emoji: "🧶" },
   { label: "Denim", emoji: "👖" },
@@ -82,9 +83,10 @@ const ITEM_OPTIONS = [
 
 const PRESET_LABELS = new Set<string>(ITEM_OPTIONS.map((o) => o.label));
 
-const setupChipClass = "h-9 gap-2 rounded-none px-3 text-sm";
+/** The shared chip metric for every setup surface, /welcome included. */
+export const setupChipClass = "h-9 gap-2 rounded-none px-3 text-sm";
 
-function ChipEmoji({ emoji }: { emoji: string }) {
+export function ChipEmoji({ emoji }: { emoji: string }) {
   return (
     <span
       className="inline-flex size-4 shrink-0 items-center justify-center text-base leading-none"

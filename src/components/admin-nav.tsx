@@ -1,68 +1,45 @@
-import Link from "next/link";
-
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+export type AdminTab = "panel" | "metrics" | "waitlist" | "outreach";
 
 export function AdminNav({
   pendingWaitlist = 0,
   active,
+  onTabChange,
 }: {
   pendingWaitlist?: number;
-  active?: "panel" | "metrics" | "waitlist" | "outreach";
+  active: AdminTab;
+  onTabChange: (tab: AdminTab) => void;
 }) {
+  const tabs: Array<{ id: AdminTab; label: string }> = [
+    { id: "panel", label: "Live show panel" },
+    { id: "metrics", label: "Metrics" },
+    { id: "waitlist", label: "Waitlist" },
+    { id: "outreach", label: "Creator outreach" },
+  ];
+
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Link
-        href="/admin"
-        className={cn(
-          buttonVariants({
-            variant: active === "panel" ? "default" : "outline",
-            size: "sm",
-          }),
-        )}
-      >
-        Live show panel
-      </Link>
-      <Link
-        href="/admin/metrics"
-        className={cn(
-          buttonVariants({
-            variant: active === "metrics" ? "default" : "outline",
-            size: "sm",
-          }),
-        )}
-      >
-        Metrics
-      </Link>
-      <Link
-        href="/admin/waitlist"
-        className={cn(
-          buttonVariants({
-            variant: active === "waitlist" ? "default" : "outline",
-            size: "sm",
-          }),
-          "inline-flex items-center gap-2",
-        )}
-      >
-        Waitlist
-        {pendingWaitlist > 0 ? (
-          <Badge variant="live" size="micro">
-            {pendingWaitlist} pending
-          </Badge>
-        ) : null}
-      </Link>
-      <Link
-        href="/admin/creator-outreach"
-        className={cn(
-          buttonVariants({
-            variant: active === "outreach" ? "default" : "outline",
-            size: "sm",
-          }),
-        )}
-      >
-        Creator outreach
-      </Link>
+      {tabs.map((tab) => (
+        <Button
+          key={tab.id}
+          type="button"
+          variant={active === tab.id ? "default" : "outline"}
+          size="sm"
+          aria-current={active === tab.id ? "page" : undefined}
+          className={cn(tab.id === "waitlist" && "inline-flex items-center gap-2")}
+          onClick={() => onTabChange(tab.id)}
+        >
+          {tab.label}
+          {tab.id === "waitlist" && pendingWaitlist > 0 ? (
+            <Badge variant="live" size="micro">
+              {pendingWaitlist} pending
+            </Badge>
+          ) : null}
+        </Button>
+      ))}
     </div>
   );
 }

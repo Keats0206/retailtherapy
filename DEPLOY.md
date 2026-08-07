@@ -43,6 +43,8 @@ Set these in the Vercel project (Production environment):
 | `MUX_TOKEN_ID`, `MUX_TOKEN_SECRET` | Mux access token |
 | `CHANNEL3_API_KEY` | Product lookup |
 | `CRON_SECRET` | Random string; matches Vercel Cron auth header |
+| `RESEND_API_KEY` | Optional — pre-show reminder emails for scheduled shows |
+| `RESEND_FROM_EMAIL` | Verified sender, e.g. `Frontrow <notifications@yourdomain.com>` |
 | `SENTRY_DSN` | Optional but recommended |
 
 Sync from local `.env.local` (optional):
@@ -65,7 +67,7 @@ Push to the branch connected to Vercel, or:
 vercel --prod
 ```
 
-`vercel.json` schedules stale-show cleanup every 6 hours via `/api/cron/end-stale-shows`.
+`vercel.json` schedules stale-show cleanup hourly via `/api/cron/end-stale-shows` and pre-show reminder delivery every 5 minutes via `/api/cron/show-reminders`.
 
 ## 5. Post-deploy smoke test
 
@@ -103,7 +105,7 @@ Built-in admin accounts and `ADMIN_ALLOWLIST` emails can always go live without 
 Share with approved hosts:
 
 - Sign-up / sign-in link
-- `/home` → **Go live as host** (or `/host` studio URL)
+- `/browse` → **Go live** or **Schedule show**
 - `/privacy` and `/terms` links
 
 ## Rollback

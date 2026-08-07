@@ -7,7 +7,8 @@ import {
   rateLimitResponse,
 } from "@/lib/rate-limit";
 import { parseShowSetup } from "@/lib/show-setup";
-import { createShow, listLiveShows } from "@/lib/shows";
+import { queueShowReminder } from "@/lib/show-reminders";
+import { createShow, listLiveShows, scheduleShow } from "@/lib/shows";
 
 // GET /api/shows?status=live — public list of live shows for discovery.
 export async function GET(request: Request) {
@@ -55,7 +56,12 @@ export async function POST(request: Request) {
     return rateLimitResponse(limit.retryAfterSec ?? 60);
   }
 
-  let body: { title?: string; setup?: unknown; challengeSlug?: string };
+  let body: {
+    title?: string;
+    setup?: unknown;
+    challengeSlug?: string;
+    scheduledFor?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -69,13 +75,52 @@ export async function POST(request: Request) {
   // instead of the go-live failing.
   const challengeId = await resolveChallengeId(body.challengeSlug);
 
+  const hostName =
+    host.username ??
+    [host.firstName, host.lastName].filter(Boolean).join(" ") ??
+    null;
+
+  if (body.scheduledFor) {
+    const scheduledFor = new Date(body.scheduledFor);
+    if (Number.isNaN(scheduledFor.getTime())) {
+      return Response.json(
+        { error: "Invalid scheduled time" },
+        { status: 400 },
+      );
+    }
+
+    try {
+      const show = await scheduleShow({
+        hostUserId: host.id,
+        hostName,
+        title,
+        scheduledFor,
+        setup,
+        challengeId,
+      });
+
+      await queueShowReminder(show.id, scheduledFor);
+
+      return Response.json(
+        {
+          slug: show.slug,
+          title: show.title,
+          scheduledFor: show.scheduledFor?.toISOString() ?? null,
+          scheduled: true,
+        },
+        { status: 201 },
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to schedule the show";
+      return Response.json({ error: message }, { status: 400 });
+    }
+  }
+
   try {
     const show = await createShow({
       hostUserId: host.id,
-      hostName:
-        host.username ??
-        [host.firstName, host.lastName].filter(Boolean).join(" ") ??
-        null,
+      hostName,
       title,
       setup,
       challengeId,

@@ -79,7 +79,7 @@ function primaryHandle(socials: WaitlistSocials | null): string | null {
  * A resubmit only overwrites fields it actually supplies — leaving the pitch
  * blank the second time must not erase the one we already have.
  */
-export async function joinWaitlist(input: WaitlistInput): Promise<void> {
+export async function joinWaitlist(input: WaitlistInput): Promise<string> {
   const email = input.email.trim().toLowerCase();
   const socials = normalizeSocials(input.socials);
   const details = {
@@ -105,11 +105,16 @@ export async function joinWaitlist(input: WaitlistInput): Promise<void> {
       ? { status: "pending" as const, reviewedAt: null, reviewedBy: null }
       : {};
 
-  await db
+  // Returns the row id on both paths — /welcome links the profile it just
+  // wrote to the application it just filed.
+  const [row] = await db
     .insert(waitlistSignups)
     .values({ email, ...details, status: "pending" })
     .onConflictDoUpdate({
       target: waitlistSignups.email,
       set: { ...supplied, ...statusUpdate, updatedAt: new Date() },
-    });
+    })
+    .returning({ id: waitlistSignups.id });
+
+  return row.id;
 }

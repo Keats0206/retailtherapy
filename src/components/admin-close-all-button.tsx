@@ -18,9 +18,12 @@ import { readResponseJson } from "@/lib/fetch-json";
 export function AdminCloseAllButton({
   liveCount,
   size = "sm",
+  onClosed,
 }: {
   liveCount: number;
   size?: "sm" | "micro" | "default" | "lg";
+  /** Called after a successful close-all, before router.refresh(). */
+  onClosed?: () => void;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -45,7 +48,8 @@ export function AdminCloseAllButton({
       }
 
       setOpen(false);
-      router.refresh();
+      onClosed?.();
+      if (!onClosed) router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {

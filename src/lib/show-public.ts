@@ -26,13 +26,13 @@ export function getRecordingStatus(
   show: Pick<
     Show,
     | "status"
-    | "muxPlaybackId"
+    | "muxAssetId"
     | "recordingCaptured"
     | "endedAt"
     | "muxLiveStreamId"
   >,
 ): RecordingStatus {
-  if (show.muxPlaybackId) return "ready";
+  if (show.muxAssetId) return "ready";
   if (show.status !== "ended") return "processing";
   if (!show.recordingCaptured) return "unavailable";
 

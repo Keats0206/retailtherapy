@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Show, SignInButton, SignUpButton } from "@clerk/nextjs";
 
+import { SiteFooter } from "@/components/site-footer";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/user-menu";
 
@@ -32,7 +33,7 @@ export function ApplyPageChrome({ children }: { children: React.ReactNode }) {
               </SignUpButton>
             </Show>
             <Show when="signed-in">
-              <Button variant="ghost" size="micro" render={<Link href="/home" />}>
+              <Button variant="ghost" size="micro" render={<Link href="/browse" />}>
                 App
               </Button>
               <UserMenu />
@@ -43,17 +44,7 @@ export function ApplyPageChrome({ children }: { children: React.ReactNode }) {
 
       {children}
 
-      <footer className="border-t border-border">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-8">
-          <span className="micro text-muted-foreground">frontrow</span>
-          <Link
-            href="/browse"
-            className="micro text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Browse shows
-          </Link>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
