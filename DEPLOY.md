@@ -37,7 +37,7 @@ Set these in the Vercel project (Production environment):
 | `CLERK_SECRET_KEY` | Use `sk_live_…` |
 | `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `/sign-in` |
 | `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/sign-up` |
-| `HOST_ALLOWLIST` | Comma-separated beta host emails |
+| `HOST_ALLOWLIST` | Optional comma-separated beta host emails (bypasses waitlist approval) |
 | `DATABASE_URL` | Neon pooled connection |
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | LiveKit Cloud |
 | `MUX_TOKEN_ID`, `MUX_TOKEN_SECRET` | Mux access token |
@@ -93,10 +93,17 @@ No extra env vars are required on Vercel-hosted deployments.
 
 ## 6. Invite beta hosts
 
-Add host emails to `HOST_ALLOWLIST` in Vercel, redeploy if needed, and share:
+Grant hosting access one of two ways:
+
+1. **Waitlist approval (recommended):** Host applies at `/creators`. You review and approve at `/admin/waitlist`. Approval writes a row to `host_approvals` — no redeploy needed.
+2. **Allowlist bypass:** Add the host's email to `HOST_ALLOWLIST` in Vercel and redeploy if the var changed.
+
+Built-in admin accounts and `ADMIN_ALLOWLIST` emails can always go live without approval.
+
+Share with approved hosts:
 
 - Sign-up / sign-in link
-- `/host` studio URL
+- `/home` → **Go live as host** (or `/host` studio URL)
 - `/privacy` and `/terms` links
 
 ## Rollback

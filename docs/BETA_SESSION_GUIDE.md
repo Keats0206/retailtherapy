@@ -4,7 +4,7 @@ Run **3 structured sessions** after the polish deploy lands in production. Goal:
 
 ## Before each session
 
-- [ ] Host email is on `HOST_ALLOWLIST` in Vercel
+- [ ] Host is approved to go live — via `/admin/waitlist` **or** email on `HOST_ALLOWLIST` in Vercel
 - [ ] Host has signed up in Clerk (production instance)
 - [ ] You are **not** screen-sharing or driving — host runs solo
 - [ ] One viewer device ready (phone + laptop ideal)
