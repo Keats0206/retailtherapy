@@ -18,6 +18,8 @@ See also [docs/BETA_SESSION_GUIDE.md](./docs/BETA_SESSION_GUIDE.md) and [docs/DE
 npm run db:migrate
 ```
 
+After merging schedule-show + hosting approval, ensure migrations `0010_host_approvals` and `0010_show_scheduling` have run (creates `host_approvals`, `show_interests`, `show_reminder_jobs`).
+
 If the database already has rows from an older schema, backfill `slug`, `host_user_id`, and `room_name` before running migration `0001`, or start from a fresh Neon branch.
 
 Verify:
@@ -43,6 +45,9 @@ Set these in the Vercel project (Production environment):
 | `MUX_TOKEN_ID`, `MUX_TOKEN_SECRET` | Mux access token |
 | `CHANNEL3_API_KEY` | Product lookup |
 | `CRON_SECRET` | Random string; matches Vercel Cron auth header |
+| `RESEND_API_KEY` | Optional — enables pre-show reminder emails |
+| `RESEND_FROM_EMAIL` | Optional — e.g. `Frontrow <reminders@yourdomain.com>` |
+| `NEXT_PUBLIC_APP_URL` | Optional — full origin for email links (defaults to `VERCEL_URL`) |
 | `SENTRY_DSN` | Optional but recommended |
 
 Sync from local `.env.local` (optional):
@@ -65,7 +70,7 @@ Push to the branch connected to Vercel, or:
 vercel --prod
 ```
 
-`vercel.json` schedules stale-show cleanup every 6 hours via `/api/cron/end-stale-shows`.
+`vercel.json` schedules stale-show cleanup hourly and show-reminder processing every 5 minutes via `/api/cron/show-reminders`.
 
 ## 5. Post-deploy smoke test
 
@@ -79,7 +84,10 @@ Or against production:
 
 ```bash
 SMOKE_TEST_BASE_URL=https://<your-domain> npm run smoke
+SMOKE_TEST_BASE_URL=https://<your-domain> npm run smoke:schedule
 ```
+
+The schedule smoke test inserts a temporary scheduled show, exercises the interest API and waitroom UI, then cleans up.
 
 ## 5b. Web Analytics (optional but recommended)
 

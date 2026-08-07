@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Radio } from "lucide-react";
 
 import { HostSetupPanel } from "@/components/host-onboarding";
@@ -144,7 +145,10 @@ export default function HostSetupClient({
           </p>
         ) : null}
 
-        <div className="flex justify-end">
+        <div className="flex flex-col items-end gap-2 sm:flex-row sm:justify-end">
+          <Button variant="ghost" size="sm" render={<Link href="/host/schedule" />}>
+            Schedule for later
+          </Button>
           <Button
             disabled={!draft.intent || loading}
             onClick={() => void handleGoLive()}

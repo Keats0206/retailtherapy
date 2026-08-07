@@ -1,5 +1,6 @@
 import "server-only";
 
+import { clerkClient } from "@clerk/nextjs/server";
 import { and, count, eq } from "drizzle-orm";
 
 import { db, showInterests } from "@/lib/db";
@@ -74,13 +75,36 @@ export async function hasUserRegisteredInterest(
   return !!row;
 }
 
-/** Emails for reminder delivery — used by the future cron worker. */
+async function resolveClerkEmail(userId: string): Promise<string | null> {
+  try {
+    const client = await clerkClient();
+    const user = await client.users.getUser(userId);
+    const email = user.emailAddresses[0]?.emailAddress?.trim().toLowerCase();
+    return email && email.includes("@") ? email : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Unique emails for reminder delivery for a scheduled show. */
 export async function listInterestEmails(streamId: string): Promise<string[]> {
   const rows = await db
     .select({ email: showInterests.email, userId: showInterests.userId })
     .from(showInterests)
     .where(eq(showInterests.streamId, streamId));
 
-  // TODO: resolve userId → email via Clerk when sending reminders
-  return rows.flatMap((row) => (row.email ? [row.email] : []));
+  const emails = new Set<string>();
+
+  for (const row of rows) {
+    if (row.email) {
+      emails.add(normalizeEmail(row.email));
+      continue;
+    }
+    if (row.userId) {
+      const resolved = await resolveClerkEmail(row.userId);
+      if (resolved) emails.add(resolved);
+    }
+  }
+
+  return [...emails];
 }

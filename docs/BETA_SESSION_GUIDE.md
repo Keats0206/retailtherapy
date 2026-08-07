@@ -63,6 +63,27 @@ Host path: **End show** from studio **or** home
 | Shopping trail visible | ☐ | |
 | Host recap at `/host/<slug>` loads | ☐ | |
 
+### 6. Schedule a show (optional — run once across beta)
+
+Host path: sign in → `/home` → **Schedule show** → pick date/time → copy waitroom link
+
+| Check | Pass | Notes |
+|---|---|---|
+| Show appears under **Your shows → Scheduled** | ☐ | |
+| Waitroom link opens `/waitroom/<slug>` with countdown | ☐ | |
+| Viewer taps **I'm interested** (guest email or signed in) | ☐ | |
+| Show appears in **Upcoming shows** on home | ☐ | |
+
+### 7. Go live from scheduled show
+
+Host path: **Your shows → Manage** → **Go live now**
+
+| Check | Pass | Notes |
+|---|---|---|
+| Host enters studio without re-entering setup | ☐ | |
+| Viewer in waitroom auto-redirects to live show | ☐ | |
+| Full live cycle (steps 2–5) still works | ☐ | |
+
 ## Friction log (fill after each session)
 
 ```text
@@ -91,6 +112,8 @@ Quotes (host verbatim):
 - Share link copy button in host studio
 - Browse empty state when no one is live
 - 409 messaging when host already has a live show
+- Scheduled show datetime picker UX (timezone clarity)
+- Waitroom interest signup copy for guests vs signed-in viewers
 
 ## Success criteria (after 3 sessions)
 
