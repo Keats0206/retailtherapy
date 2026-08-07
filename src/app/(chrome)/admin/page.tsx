@@ -3,12 +3,14 @@ import { notFound } from "next/navigation";
 
 import { AdminAccessDenied } from "@/components/admin-access-denied";
 import { AdminCloseAllButton } from "@/components/admin-close-all-button";
+import { AdminNav } from "@/components/admin-nav";
 import { DeleteShowButton } from "@/components/delete-show-button";
 import { EndLiveShowButton } from "@/components/end-live-show-button";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getAdminAccess, isSuperAdmin } from "@/lib/auth";
+import { countPendingWaitlistSignups } from "@/lib/host-approvals";
 import { listLiveShowsForAdmin, listPastShowsForAdmin } from "@/lib/shows";
 import { viewerShowPath } from "@/lib/show-urls";
 import { cn } from "@/lib/utils";
@@ -59,9 +61,10 @@ export default async function AdminPage() {
 
   const admin = access.user;
 
-  const [liveShows, pastShows] = await Promise.all([
+  const [liveShows, pastShows, pendingWaitlist] = await Promise.all([
     listLiveShowsForAdmin(),
     listPastShowsForAdmin(),
+    countPendingWaitlistSignups(),
   ]);
   const adminLabel =
     admin.username ??
@@ -90,18 +93,7 @@ export default async function AdminPage() {
           <Link href="/browse" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
             Browse live shows
           </Link>
-          <Link
-            href="/admin/metrics"
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-          >
-            Metrics
-          </Link>
-          <Link
-            href="/admin/creator-outreach"
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-          >
-            Creator outreach
-          </Link>
+          <AdminNav active="panel" pendingWaitlist={pendingWaitlist} />
           <AdminCloseAllButton liveCount={liveShows.length} />
         </div>
       </div>

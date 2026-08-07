@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { getSignedInUser } from "@/lib/auth";
+import { getSignedInUser, isHostingApproved } from "@/lib/auth";
 import { getHostFeedback } from "@/lib/host-feedback";
 import { buildEndedRecap } from "@/lib/show-recap";
 import { getRecordingStatus } from "@/lib/show-public";
@@ -8,6 +8,7 @@ import { getShowBySlug, resolveRecording, snapshotOf } from "@/lib/shows";
 
 import HostClient from "../host-client";
 import HostRecapClient from "./host-recap-client";
+import HostScheduledClient from "./host-scheduled-client";
 
 export default async function HostShowPage({
   params,
@@ -37,11 +38,24 @@ export default async function HostShowPage({
     );
   }
 
+  if (show.status === "scheduled" && show.scheduledFor) {
+    return (
+      <HostScheduledClient
+        slug={show.slug}
+        title={show.title}
+        scheduledFor={show.scheduledFor.toISOString()}
+      />
+    );
+  }
+
   if (show.status !== "ended") notFound();
 
   show = await resolveRecording(show);
   const snapshot = snapshotOf(show);
-  const feedback = await getHostFeedback(slug, user.id);
+  const [feedback, canHost] = await Promise.all([
+    getHostFeedback(slug, user.id),
+    isHostingApproved(user),
+  ]);
 
   const recap = buildEndedRecap({
     slug: show.slug,
@@ -61,6 +75,7 @@ export default async function HostShowPage({
     <HostRecapClient
       initialRecap={recap}
       initialRating={feedback?.rating ?? null}
+      canHost={canHost}
     />
   );
 }

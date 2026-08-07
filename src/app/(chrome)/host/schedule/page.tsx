@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-
 import { getSignedInUser, isHostingApproved } from "@/lib/auth";
 import { getChallengeBySlug } from "@/lib/challenges";
 import { LOCAL_STREAM } from "@/lib/live/mode";
@@ -8,18 +6,19 @@ import {
   getLiveShowForHost,
 } from "@/lib/shows";
 import { hostShowPath } from "@/lib/show-urls";
+import { redirect } from "next/navigation";
 
-import HostSetupClient from "./setup-client";
+import HostScheduleClient from "./schedule-client";
 
 export const metadata = {
-  title: "Set up your show — frontrow",
+  title: "Schedule your show — frontrow",
 };
 
 /**
- * Creator setup before go-live. Collects shopping intent and show name, then
- * starts the show and hands off to /host/<slug> for the live studio.
+ * Creator setup for a scheduled show. Same intent/items flow as go-live setup,
+ * but picks a future datetime and lands on a share-link confirmation page.
  */
-export default async function HostSetupPage({
+export default async function HostSchedulePage({
   searchParams,
 }: {
   searchParams: Promise<{ challenge?: string }>;
@@ -45,7 +44,7 @@ export default async function HostSetupPage({
     : null;
 
   return (
-    <HostSetupClient
+    <HostScheduleClient
       challenge={
         challenge && challenge.state !== "closed"
           ? {

@@ -8,6 +8,7 @@ import { HostExitSurvey } from "@/components/host-exit-survey";
 import { PostShowProcessing } from "@/components/post-show-processing";
 import { ShoppingTrail } from "@/components/shopping-trail";
 import { Badge } from "@/components/ui/badge";
+import { HostCtaButton } from "@/components/host-cta-button";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -41,11 +42,13 @@ export function ShowEndedCreator({
   recap,
   initialRating = null,
   onStartNew,
+  canHost = true,
 }: {
   recap: EndedShowRecap;
   /** The host's previous answer to the exit survey, if they gave one. */
   initialRating?: number | null;
   onStartNew?: () => void;
+  canHost?: boolean;
 }) {
   const votes = tallyVotes(recap);
   const viewerPath = viewerShowPath(recap.slug);
@@ -174,20 +177,19 @@ export function ShowEndedCreator({
             Prep another show
           </Button>
         ) : (
-          <Link href="/host/setup">
-            <Button
-              size="micro"
-              variant="outline"
-              onClick={() =>
-                trackEvent(AnalyticsEvent.HOST_PREP_ANOTHER, {
-                  area: "host_studio",
-                })
-              }
-            >
-              <RotateCcw />
-              Prep another show
-            </Button>
-          </Link>
+          <HostCtaButton
+            size="micro"
+            variant="outline"
+            canHost={canHost}
+            area="host_studio"
+            goLiveLabel="Prep another show"
+            applyLabel="Apply to host"
+            onClick={() =>
+              trackEvent(AnalyticsEvent.HOST_PREP_ANOTHER, {
+                area: "host_studio",
+              })
+            }
+          />
         )}
       </div>
     </main>

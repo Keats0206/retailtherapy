@@ -3,6 +3,8 @@ import "server-only";
 import { clerkClient, currentUser } from "@clerk/nextjs/server";
 import type { User } from "@clerk/nextjs/server";
 
+import { hasHostingApproval } from "@/lib/host-approvals";
+
 /**
  * Returns the current Clerk user when signed in, otherwise `null`. Use in
  * Server Components, Route Handlers, and Server Actions to gate host-only
@@ -14,6 +16,32 @@ export async function getHostUser(): Promise<User | null> {
 
 export async function isHost(): Promise<boolean> {
   return (await getHostUser()) !== null;
+}
+
+/**
+ * Whether the signed-in user may create new live shows. Admins, HOST_ALLOWLIST
+ * emails, and rows in `host_approvals` all qualify.
+ */
+export async function isHostingApproved(user: User): Promise<boolean> {
+  const emails = userEmails(user);
+  const username = clerkUsername(user);
+
+  if (isUserAllowlistedAsAdmin(user, emails, username)) return true;
+
+  const hostAllowlist = getHostAllowlist();
+  if (hostAllowlist && emails.some((email) => hostAllowlist.has(email))) {
+    return true;
+  }
+
+  return hasHostingApproval({ userId: user.id, emails });
+}
+
+/** Signed-in user who is allowed to create new live shows, or `null`. */
+export async function getApprovedHostUser(): Promise<User | null> {
+  const user = await getHostUser();
+  if (!user) return null;
+  if (!(await isHostingApproved(user))) return null;
+  return user;
 }
 
 /** Built-in super admins — always have admin access when signed in. */
@@ -109,6 +137,10 @@ async function resolveClerkUserForAdmin(): Promise<User | null> {
 
 function getAdminAllowlist(): Set<string> | null {
   return parseEmailAllowlist(process.env.ADMIN_ALLOWLIST);
+}
+
+function getHostAllowlist(): Set<string> | null {
+  return parseEmailAllowlist(process.env.HOST_ALLOWLIST);
 }
 
 function getSuperAdminUsernames(): Set<string> | null {

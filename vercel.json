@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/end-stale-shows",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/show-reminders",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

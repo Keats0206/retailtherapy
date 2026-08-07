@@ -20,6 +20,7 @@ import {
   type RecordingBackfill,
 } from "@/lib/mux";
 import { indexShowForSearch } from "@/lib/show-search";
+import { cancelShowReminders } from "@/lib/show-reminders";
 import type { ShowSetup } from "@/lib/show-setup";
 import { EMPTY, type StreamSnapshot } from "@/lib/stream-store";
 import { normalizeSnapshot, spotlightProductId } from "@/lib/interaction-models";
@@ -516,6 +517,107 @@ export async function createShow(opts: {
   }
 }
 
+/** Minutes before show time to queue reminder emails for interested viewers. */
+export const REMINDER_LEAD_MINUTES = 15;
+
+/**
+ * Schedules a show for a future time. No Mux stream is provisioned yet — that
+ * happens when the host actually goes live (see `startScheduledShow`).
+ */
+export async function scheduleShow(opts: {
+  hostUserId: string;
+  hostName: string | null;
+  title: string;
+  scheduledFor: Date;
+  setup?: ShowSetup | null;
+  challengeId?: string | null;
+}): Promise<Show> {
+  if (opts.scheduledFor.getTime() <= Date.now()) {
+    throw new Error("Scheduled time must be in the future.");
+  }
+
+  const slug = generateSlug();
+
+  const [show] = await db
+    .insert(streams)
+    .values({
+      slug,
+      title: opts.title,
+      hostUserId: opts.hostUserId,
+      hostName: opts.hostName,
+      status: "scheduled",
+      roomName: `show_${slug}`,
+      snapshot: EMPTY,
+      setup: opts.setup ?? null,
+      challengeId: opts.challengeId ?? null,
+      scheduledFor: opts.scheduledFor,
+    })
+    .returning();
+
+  return show;
+}
+
+/**
+ * Transitions a scheduled show to live: provisions Mux, sets startedAt, and
+ * returns the row ready for the host studio.
+ */
+export async function startScheduledShow(
+  slug: string,
+  hostUserId: string,
+): Promise<Show> {
+  const show = await getShowBySlug(slug);
+  if (!show || show.hostUserId !== hostUserId) {
+    throw new Error("Show not found.");
+  }
+  if (show.status !== "scheduled") {
+    throw new Error("This show is not scheduled.");
+  }
+
+  const existing = await getLiveShowForHost(hostUserId);
+  if (existing && existing.slug !== slug) {
+    throw new Error(
+      "You already have a live show. Open studio to reconnect, or end it first.",
+    );
+  }
+
+  let liveStreamId: string | null = null;
+
+  try {
+    const mux = DESIGN_MODE ? null : await createMuxLiveStream();
+    liveStreamId = mux?.liveStreamId ?? null;
+    const streamKey = mux?.streamKey ?? null;
+
+    const [updated] = await db
+      .update(streams)
+      .set({
+        status: "live",
+        muxLiveStreamId: liveStreamId,
+        muxStreamKey: streamKey,
+        startedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(streams.id, show.id),
+          eq(streams.hostUserId, hostUserId),
+          eq(streams.status, "scheduled"),
+        ),
+      )
+      .returning();
+
+    if (!updated) {
+      throw new Error("Could not start show — it may have already started.");
+    }
+
+    return updated;
+  } catch (err) {
+    if (liveStreamId) {
+      await deleteMuxLiveStream(liveStreamId);
+    }
+    throw err;
+  }
+}
+
 /**
  * Starts mirroring the room to Mux. Called once the host's browser reports it
  * has connected.
@@ -851,6 +953,10 @@ export async function deleteShowAsAdmin(slug: string): Promise<Show | null> {
 
 /** Drops the Mux artifacts, then the row. Ownership is checked by the caller. */
 async function removeShow(show: Show): Promise<Show> {
+  if (show.status === "scheduled") {
+    await cancelShowReminders(show.id);
+  }
+
   if (show.muxLiveStreamId) {
     await deleteMuxLiveStream(show.muxLiveStreamId);
   }

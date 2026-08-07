@@ -13,9 +13,11 @@ const POLL_MS = 10_000;
 export default function HostRecapClient({
   initialRecap,
   initialRating = null,
+  canHost = true,
 }: {
   initialRecap: EndedShowRecap;
   initialRating?: number | null;
+  canHost?: boolean;
 }) {
   const [recap, setRecap] = useState(initialRecap);
 
@@ -51,5 +53,11 @@ export default function HostRecapClient({
 
   useVisiblePoll(refreshShow, POLL_MS, shouldPoll);
 
-  return <ShowEndedCreator recap={recap} initialRating={initialRating} />;
+  return (
+    <ShowEndedCreator
+      recap={recap}
+      initialRating={initialRating}
+      canHost={canHost}
+    />
+  );
 }

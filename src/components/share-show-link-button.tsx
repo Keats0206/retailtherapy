@@ -5,7 +5,7 @@ import { Check, Link2, Share2 } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { AnalyticsEvent, trackEvent } from "@/lib/analytics";
-import { viewerShowPath } from "@/lib/show-urls";
+import { viewerShowPath, waitroomShowPath } from "@/lib/show-urls";
 import { cn } from "@/lib/utils";
 import type { VariantProps } from "class-variance-authority";
 
@@ -15,6 +15,8 @@ type ShareShowLinkButtonProps = {
   size?: VariantProps<typeof buttonVariants>["size"];
   variant?: VariantProps<typeof buttonVariants>["variant"];
   showPath?: boolean;
+  /** Which public link to copy — live viewer page or pre-show waitroom. */
+  sharePath?: "show" | "waitroom";
   /** Compact icon-only style for stage overlay */
   compact?: boolean;
   /** Fired once the link actually reached the clipboard. */
@@ -27,16 +29,18 @@ export function ShareShowLinkButton({
   size = "lg",
   variant = "outline",
   showPath = false,
+  sharePath = "show",
   compact = false,
   onShared,
 }: ShareShowLinkButtonProps) {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
-  const sharePath = viewerShowPath(slug);
+  const sharePathUrl =
+    sharePath === "waitroom" ? waitroomShowPath(slug) : viewerShowPath(slug);
 
   async function shareLink() {
     setCopyError(false);
-    const url = `${window.location.origin}${sharePath}`;
+    const url = `${window.location.origin}${sharePathUrl}`;
     try {
       await navigator.clipboard.writeText(url);
       trackEvent(AnalyticsEvent.HOST_SHARE_LINK, { area: "host_studio" });
@@ -93,7 +97,7 @@ export function ShareShowLinkButton({
       </span>
       {showPath ? (
         <span className="hidden font-normal text-muted-foreground sm:inline">
-          {sharePath}
+          {sharePathUrl}
         </span>
       ) : null}
     </Button>

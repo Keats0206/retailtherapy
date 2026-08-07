@@ -15,14 +15,16 @@ import {
 export function AppShell({
   children,
   isAdmin = false,
+  canHost = false,
 }: {
   children: React.ReactNode;
   isAdmin?: boolean;
+  canHost?: boolean;
 }) {
   return (
     <div className="flex min-h-0 flex-1">
       <div className="hidden w-56 shrink-0 lg:block">
-        <AppSidebar isAdmin={isAdmin} />
+        <AppSidebar isAdmin={isAdmin} canHost={canHost} />
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -39,7 +41,7 @@ export function AppShell({
               <SheetHeader className="sr-only">
                 <SheetTitle>Navigation</SheetTitle>
               </SheetHeader>
-              <AppSidebar isAdmin={isAdmin} />
+              <AppSidebar isAdmin={isAdmin} canHost={canHost} />
             </SheetContent>
           </Sheet>
           <span className="font-brand text-lg uppercase tracking-[0.12em]">

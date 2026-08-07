@@ -2,16 +2,15 @@ import { notFound } from "next/navigation";
 
 import { AdminAccessDenied } from "@/components/admin-access-denied";
 import { AdminNav } from "@/components/admin-nav";
-import { CreatorOutreachClient } from "@/components/creator-outreach-client";
+import { AdminWaitlistClient } from "@/components/admin-waitlist-client";
 import { getAdminAccess } from "@/lib/auth";
-import { countProspectsByStatus, listProspects } from "@/lib/creator-outreach";
-import { countPendingWaitlistSignups } from "@/lib/host-approvals";
+import { countPendingWaitlistSignups, listWaitlistSignups } from "@/lib/host-approvals";
 
 export const metadata = {
-  title: "Creator outreach — frontrow",
+  title: "Waitlist — frontrow",
 };
 
-export default async function CreatorOutreachPage() {
+export default async function AdminWaitlistPage() {
   const access = await getAdminAccess();
   if (access.status === "unauthenticated") notFound();
   if (access.status === "denied") {
@@ -23,9 +22,8 @@ export default async function CreatorOutreachPage() {
     );
   }
 
-  const [prospects, counts, pendingWaitlist] = await Promise.all([
-    listProspects(),
-    countProspectsByStatus(),
+  const [{ signups, counts }, pendingWaitlist] = await Promise.all([
+    listWaitlistSignups(),
     countPendingWaitlistSignups(),
   ]);
 
@@ -35,23 +33,19 @@ export default async function CreatorOutreachPage() {
         <div className="flex flex-col gap-3">
           <span className="micro text-muted-foreground">Admin</span>
           <h1 className="text-2xl font-normal leading-snug tracking-tight">
-            Creator outreach
+            Creator waitlist
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Search TikTok for creators in a niche, pull the ones who publish a
-            contact address in their bio, and write them a first-touch invite.
-            Drafts open in your own Gmail, so you review and send every one by
-            hand.
+            Applications from /creators and /apply land here. Approve to grant
+            hosting — they&rsquo;ll see Go live across the app. Decline to keep
+            them on the waitlist.
           </p>
         </div>
 
-        <AdminNav active="outreach" pendingWaitlist={pendingWaitlist} />
+        <AdminNav active="waitlist" pendingWaitlist={pendingWaitlist} />
       </div>
 
-      <CreatorOutreachClient
-        initialProspects={prospects}
-        initialCounts={counts}
-      />
+      <AdminWaitlistClient initialSignups={signups} initialCounts={counts} />
     </main>
   );
 }
