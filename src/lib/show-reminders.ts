@@ -3,15 +3,10 @@ import "server-only";
 import { and, eq, lte } from "drizzle-orm";
 
 import { db, showReminderJobs, streams } from "@/lib/db";
+import { sendShowReminderEmail } from "@/lib/email";
+import { listInterestEmails } from "@/lib/show-interest";
 import { REMINDER_LEAD_MINUTES } from "@/lib/shows";
 import { waitroomShowPath } from "@/lib/show-urls";
-
-/**
- * Email reminders for scheduled shows.
- *
- * No transactional provider is wired yet — jobs are persisted and logged so a
- * future cron can call `processPendingReminders()` with Resend/SendGrid.
- */
 
 /** Queue a reminder job when a show is scheduled. */
 export async function queueShowReminder(
@@ -22,7 +17,6 @@ export async function queueShowReminder(
     scheduledFor.getTime() - REMINDER_LEAD_MINUTES * 60 * 1000,
   );
 
-  // If the lead window already passed, skip — the show is imminent.
   if (sendAt.getTime() <= Date.now()) {
     if (process.env.NODE_ENV === "development") {
       console.info(
@@ -53,8 +47,8 @@ export async function cancelShowReminders(streamId: string): Promise<void> {
 }
 
 /**
- * Process due reminder jobs. Intended for a cron/worker — not called inline
- * during scheduling. Logs what would be sent until a provider is integrated.
+ * Process due reminder jobs. Called by /api/cron/show-reminders every 5 minutes.
+ * Sends via Resend when RESEND_API_KEY is set; otherwise logs and marks sent.
  */
 export async function processPendingReminders(limit = 50): Promise<number> {
   const now = new Date();
@@ -81,11 +75,27 @@ export async function processPendingReminders(limit = 50): Promise<number> {
   let processed = 0;
 
   for (const job of due) {
-    const waitroomUrl = waitroomShowPath(job.slug);
-    // TODO: integrate Resend/SendGrid — fetch interested emails from show_interests
-    console.info(
-      `[show-reminders] Would send "${job.title}" reminder → ${waitroomUrl} (${job.scheduledFor?.toISOString()})`,
-    );
+    const waitroomPath = waitroomShowPath(job.slug);
+    const hostName = job.hostName?.trim() || "Your host";
+    const scheduledFor = job.scheduledFor ?? now;
+
+    const recipients = await listInterestEmails(job.streamId);
+
+    if (recipients.length === 0) {
+      console.info(
+        `[show-reminders] No interested viewers for "${job.title}" (${job.slug})`,
+      );
+    } else {
+      for (const to of recipients) {
+        await sendShowReminderEmail({
+          to,
+          showTitle: job.title,
+          hostName,
+          waitroomPath,
+          scheduledFor,
+        });
+      }
+    }
 
     await db
       .update(showReminderJobs)

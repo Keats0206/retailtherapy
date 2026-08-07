@@ -10,6 +10,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "smoke": "tsx scripts/smoke-test-show.ts",
+    "smoke:schedule": "tsx scripts/smoke-test-schedule.ts",
     "verify:env": "tsx --env-file=.env.local scripts/verify-prod-env.ts",
     "landing:products": "tsx --conditions=react-server --env-file=.env.local scripts/fetch-landing-products.ts",
     "db:seed:challenges": "tsx scripts/seed-challenges.ts",

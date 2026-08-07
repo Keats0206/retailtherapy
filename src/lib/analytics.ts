@@ -28,6 +28,7 @@ export const AnalyticsEvent = {
   HOST_GO_LIVE: "host_go_live",
   HOST_SCHEDULE_SHOW: "host_schedule_show",
   HOST_MANAGE_SCHEDULED: "host_manage_scheduled",
+  VIEWER_REGISTER_INTEREST: "viewer_register_interest",
   HOST_SHARE_LINK: "host_share_link",
   HOST_MIC_TOGGLE: "host_mic_toggle",
   HOST_CAMERA_TOGGLE: "host_camera_toggle",
