@@ -8,7 +8,6 @@ import { getShowBySlug, resolveRecording, snapshotOf } from "@/lib/shows";
 
 import HostClient from "../host-client";
 import HostRecapClient from "./host-recap-client";
-import HostScheduledClient from "./host-scheduled-client";
 
 export default async function HostShowPage({
   params,
@@ -34,16 +33,6 @@ export default async function HostShowPage({
         showSlug={slug}
         resumeSlug={slug}
         liveShowTitle={show.title}
-      />
-    );
-  }
-
-  if (show.status === "scheduled" && show.scheduledFor) {
-    return (
-      <HostScheduledClient
-        slug={show.slug}
-        title={show.title}
-        scheduledFor={show.scheduledFor.toISOString()}
       />
     );
   }

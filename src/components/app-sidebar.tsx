@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import { UserMenu } from "@/components/user-menu";
-import { HostCtaButton, ScheduleShowButton } from "@/components/host-cta-button";
+import { HostCtaButton } from "@/components/host-cta-button";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -111,12 +111,6 @@ export function AppSidebar({
 
       <div className="flex flex-col gap-3 border-t border-sidebar-border p-4">
         <HostCtaButton
-          size="sm"
-          className="w-full"
-          canHost={canHost}
-          area="sidebar"
-        />
-        <ScheduleShowButton
           size="sm"
           className="w-full"
           canHost={canHost}
